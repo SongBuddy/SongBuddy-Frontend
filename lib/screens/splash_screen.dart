@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:songbuddy/main.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -6,7 +7,7 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pushReplacementNamed(context, '/onboarding');
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MainScreen()));
     });
 
     return const Scaffold(

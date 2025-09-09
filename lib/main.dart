@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:songbuddy/screens/splash_screen.dart';
 import 'screens/home_feed_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
@@ -18,7 +19,7 @@ class SongBuddyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
       ),
-      home: const MainScreen(), // <- Root widget with bottom nav
+      home: const SplashScreen(), // <- Root widget with bottom nav
     );
   }
 }

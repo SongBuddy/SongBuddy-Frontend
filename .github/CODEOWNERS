@@ -1,0 +1,15 @@
+# Global owners
+* @mohammadaminrez
+
+# Flutter specific files
+/lib/ @mohammadaminrez @MohsenKashefi
+/pubspec.yaml @mohammadaminrez
+/pubspec.lock @mohammadaminrez
+
+# CI/CD files
+/.github/ @mohammadaminrez
+
+# Platform specific
+/android/ @mohammadaminrez @MohsenKashefi
+/ios/ @mohammadaminrez @MohsenKashefi
+/web/ @mohammadaminrez @MohsenKashefi

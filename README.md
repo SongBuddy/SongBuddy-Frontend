@@ -1,6 +1,10 @@
 # 🎵 SongBuddy
 
+
 A social music app built with Flutter that connects with Spotify to share music experiences with  friends
+=======
+A social music app built with Flutter that connects with Spotify to share music experiences with friends
+
 
 ## ✨ Features
 - 🎧 Connect with Spotify

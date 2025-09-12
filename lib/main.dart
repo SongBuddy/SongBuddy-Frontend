@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:songbuddy/screens/splash_screen.dart';
 import 'package:songbuddy/theme/app_theme.dart';
 import 'screens/home_feed_screen.dart';
@@ -6,7 +7,12 @@ import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Load environment variables
+  await dotenv.load(fileName: ".env");
+  
   runApp(const SongBuddyApp());
 }
 

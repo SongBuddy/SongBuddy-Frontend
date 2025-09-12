@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'onboarding_page.dart';
 import '../../main.dart';
+import '../../widgets/spotify_login_button.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -12,6 +13,7 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _controller = PageController();
   int _currentPage = 0;
+  bool _isSpotifyLoading = false;
 
   final List<OnboardingPage> _pages = const [
     OnboardingPage(
@@ -51,6 +53,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       context,
       MaterialPageRoute(builder: (_) => const MainScreen()),
     );
+  }
+
+  void _handleSpotifyLogin() async {
+    setState(() {
+      _isSpotifyLoading = true;
+    });
+
+    // TODO: Implement actual Spotify OAuth flow
+    // For now, simulate loading and navigate to main screen
+    await Future.delayed(const Duration(seconds: 2));
+    
+    if (mounted) {
+      setState(() {
+        _isSpotifyLoading = false;
+      });
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+      );
+    }
   }
 
   @override
@@ -110,26 +133,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                   ),
 
-                  // Next button
-                  ElevatedButton(
-                    onPressed: _nextPage,
-                    style: ElevatedButton.styleFrom(
-                      shape: const StadiumBorder(),
-                      backgroundColor: Colors.deepPurple,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                    ),
-                    child: Text(
-                      style: TextStyle(
-                        color: Colors.white,
-                      ),
-                      _currentPage == _pages.length - 1
-                          ? "Get Started"
-                          : "Next",
-                    ),
-                  ),
+                  // Next button or Spotify login button
+                  _currentPage == _pages.length - 1
+                      ? SpotifyLoginButton(
+                          onPressed: _handleSpotifyLogin,
+                          isLoading: _isSpotifyLoading,
+                        )
+                      : ElevatedButton(
+                          onPressed: _nextPage,
+                          style: ElevatedButton.styleFrom(
+                            shape: const StadiumBorder(),
+                            backgroundColor: Colors.deepPurple,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                          ),
+                          child: const Text(
+                            "Next",
+                            style: TextStyle(
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
                 ],
               ),
             ),

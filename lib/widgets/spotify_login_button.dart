@@ -62,7 +62,7 @@ class _SpotifyLoginButtonState extends State<SpotifyLoginButton> {
                 Text(
                   widget.text,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

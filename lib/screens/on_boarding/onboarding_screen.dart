@@ -15,7 +15,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<OnboardingPage> _pages = const [
     OnboardingPage(
-      title: "Welcome to SongBuddy",
+      title: "Welcome to SongBuddy App",
       description: "Your ultimate music companion app.",
       icon: Icons.music_note,
     ),
@@ -45,7 +45,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
     }
   }
-
+ 
   void _skip() {
     Navigator.pushReplacement(
       context,

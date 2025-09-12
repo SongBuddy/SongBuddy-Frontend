@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Custom exception for Spotify API errors
 class SpotifyException implements Exception {
@@ -15,17 +16,41 @@ class SpotifyException implements Exception {
 
 /// Service class to handle Spotify Web API calls
 class SpotifyService {
-  static const String _baseUrl = 'https://api.spotify.com/v1';
-  static const String _authUrl = 'https://accounts.spotify.com/api/token';
+  static String get _baseUrl => dotenv.env['SPOTIFY_API_BASE_URL'] ?? 'https://api.spotify.com/v1';
+  static String get _authUrl => dotenv.env['SPOTIFY_AUTH_URL'] ?? 'https://accounts.spotify.com/api/token';
   
-  // TODO: Replace with your actual Spotify app credentials
-  static const String _clientId = 'YOUR_SPOTIFY_CLIENT_ID';
-  static const String _clientSecret = 'YOUR_SPOTIFY_CLIENT_SECRET';
-  static const String _redirectUri = 'YOUR_REDIRECT_URI';
+  // Get credentials from environment variables
+  static String get _clientId => dotenv.env['SPOTIFY_CLIENT_ID'] ?? '';
+  static String get _clientSecret => dotenv.env['SPOTIFY_CLIENT_SECRET'] ?? '';
+  static String get _redirectUri => dotenv.env['SPOTIFY_REDIRECT_URI'] ?? '';
 
   final http.Client _client;
 
-  SpotifyService({http.Client? client}) : _client = client ?? http.Client();
+  SpotifyService({http.Client? client}) : _client = client ?? http.Client() {
+    _validateEnvironmentVariables();
+  }
+
+  /// Validate that required environment variables are set
+  void _validateEnvironmentVariables() {
+    if (_clientId.isEmpty) {
+      throw SpotifyException(
+        'SPOTIFY_CLIENT_ID is not set in environment variables. '
+        'Please create a .env file with your Spotify app credentials.',
+      );
+    }
+    if (_clientSecret.isEmpty) {
+      throw SpotifyException(
+        'SPOTIFY_CLIENT_SECRET is not set in environment variables. '
+        'Please create a .env file with your Spotify app credentials.',
+      );
+    }
+    if (_redirectUri.isEmpty) {
+      throw SpotifyException(
+        'SPOTIFY_REDIRECT_URI is not set in environment variables. '
+        'Please create a .env file with your Spotify app credentials.',
+      );
+    }
+  }
 
   /// Dispose the HTTP client
   void dispose() {

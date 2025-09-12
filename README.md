@@ -25,7 +25,7 @@ A modern social music app built with Flutter that connects with Spotify to share
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/songbuddy.git
+   git clone https://github.com/mohammadaminrez/songbuddy.git
    cd songbuddy
    ```
 
@@ -94,9 +94,6 @@ lib/
 - ✅ iOS
 - ✅ Android
 - ✅ Web
-- ✅ macOS
-- ✅ Linux
-- ✅ Windows
 
 ## 🔧 Development
 
@@ -154,9 +151,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 If you encounter any issues or have questions:
 
 - Open an issue on GitHub
-- Check the [troubleshooting guide](docs/troubleshooting.md)
 - Join our community discussions
 
 ---
 
-Made with ❤️ and Flutter
+Made with ❤️

@@ -3,21 +3,36 @@
 ## 🚀 **Quick Start for Contributors**
 
 ### 1. Fork and Clone
+1. **Fork the repository** on GitHub
+2. **Clone your fork:**
 ```bash
-git clone https://github.com/yourusername/SongBuddy.git
+git clone https://github.com/YOUR_USERNAME/SongBuddy.git
 cd SongBuddy
 ```
+3. **Add upstream remote:**
+```bash
+git remote add upstream https://github.com/mohammadaminrez/SongBuddy.git
+```
 
-### 2. Environment Setup
+### 2. Prerequisites
+- **Flutter SDK**: Version 3.5.4 or higher
+- **Dart SDK**: Included with Flutter
+- **IDE**: VS Code or Android Studio (recommended)
+- **Git**: For version control
+
+### 3. Environment Setup
 ```bash
 # Copy environment template
 cp env.example .env
 
 # Install dependencies
 flutter pub get
+
+# Verify Flutter installation
+flutter doctor
 ```
 
-### 3. Create Your Spotify App
+### 4. Create Your Spotify App
 **Each contributor needs their own Spotify app:**
 
 1. **Go to** [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/applications)
@@ -36,9 +51,15 @@ flutter pub get
    SPOTIFY_REDIRECT_URI=songbuddy://callback
    ```
 
-### 4. Run the App
+### 5. Run the App
 ```bash
+# For development
 flutter run
+
+# For specific platform
+flutter run -d android  # Android
+flutter run -d ios      # iOS (macOS only)
+flutter run -d chrome   # Web
 ```
 
 ## 🔒 **Security Guidelines**
@@ -57,24 +78,104 @@ flutter run
 
 ## 🧪 **Testing**
 
-### **Postman Testing**
-- Import `postman_collection.json`
-- Follow `POSTMAN_SETUP.md` guide
-- Test your credentials before coding
+### **Manual Testing**
+- Test Spotify login button functionality
+- Verify API calls work correctly
+- Check error handling scenarios
+- Test on different platforms (Android/iOS/Web)
 
-### **App Testing**
-- Test Spotify login button
-- Verify API calls work
-- Check error handling
+### **Running Tests**
+```bash
+# Run unit tests
+flutter test
+
+# Run integration tests
+flutter test integration_test/
+
+# Check code coverage
+flutter test --coverage
+```
 
 ## 📝 **Development Workflow**
 
-1. **Create feature branch**
-2. **Make changes**
-3. **Test thoroughly**
-4. **Create pull request**
-5. **Get code review**
-6. **Merge to main**
+1. **Create feature branch:**
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Make changes** following code style guidelines
+
+3. **Test thoroughly** on multiple platforms
+
+4. **Commit changes:**
+   ```bash
+   git add .
+   git commit -m "feat: add your feature description"
+   ```
+
+5. **Push to your fork:**
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+6. **Create pull request** on GitHub
+
+7. **Get code review** and address feedback
+
+8. **Merge to main** after approval
+
+## 🎨 **Code Style Guidelines**
+
+### **Dart/Flutter Standards**
+- Follow [Dart Style Guide](https://dart.dev/guides/language/effective-dart/style)
+- Use `flutter_lints` package (already configured)
+- Run `flutter analyze` before committing
+- Use meaningful variable and function names
+- Add comments for complex logic
+
+### **File Organization**
+- Keep files under 200 lines when possible
+- Use proper folder structure (`lib/screens/`, `lib/widgets/`, etc.)
+- Follow existing naming conventions
+
+### **Commit Messages**
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+- `feat:` for new features
+- `fix:` for bug fixes
+- `docs:` for documentation
+- `style:` for formatting changes
+- `refactor:` for code refactoring
+- `test:` for adding tests
+
+## 🔧 **Troubleshooting**
+
+### **Common Issues**
+
+**Flutter Doctor Issues:**
+```bash
+# Fix common Flutter issues
+flutter doctor --android-licenses
+flutter clean
+flutter pub get
+```
+
+**Spotify Authentication Issues:**
+- Verify your `.env` file has correct credentials
+- Check redirect URI matches Spotify dashboard
+- Ensure SHA1 fingerprint is correct for Android
+
+**Build Issues:**
+```bash
+# Clean and rebuild
+flutter clean
+flutter pub get
+flutter run
+```
+
+**Platform-Specific Issues:**
+- **Android**: Check Android SDK installation
+- **iOS**: Verify Xcode installation (macOS only)
+- **Web**: Ensure Chrome is installed
 
 ## 🐛 **Reporting Issues**
 
@@ -94,12 +195,14 @@ flutter run
 
 - [Spotify Web API Documentation](https://developer.spotify.com/documentation/web-api/)
 - [Flutter Documentation](https://flutter.dev/docs)
-- [Project Setup Guide](SETUP.md)
-- [Postman Testing Guide](POSTMAN_SETUP.md)
+- [Dart Style Guide](https://dart.dev/guides/language/effective-dart/style)
+- [Conventional Commits](https://www.conventionalcommits.org/)
+- [Flutter Lints Package](https://pub.dev/packages/flutter_lints)
 
 ## ❓ **Need Help?**
 
-- Check existing issues
-- Ask in discussions
-- Review documentation
-- Test with Postman first
+- Check existing [GitHub Issues](https://github.com/mohammadaminrez/SongBuddy/issues)
+- Ask in [GitHub Discussions](https://github.com/mohammadaminrez/SongBuddy/discussions)
+- Review Flutter and Spotify documentation
+- Test your Spotify credentials manually first
+- Run `flutter doctor` to check your setup

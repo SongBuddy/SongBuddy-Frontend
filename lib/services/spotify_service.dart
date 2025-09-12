@@ -75,7 +75,7 @@ class SpotifyService {
   }
 
   /// Exchange authorization code for access token
-  Future<String> exchangeCodeForToken(String code) async {
+  Future<Map<String, dynamic>> exchangeCodeForToken(String code) async {
     try {
       final response = await _client.post(
         Uri.parse(_authUrl),
@@ -91,12 +91,17 @@ class SpotifyService {
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['access_token'] as String;
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        return data;
       } else {
+        final errorData = response.body.isNotEmpty 
+            ? json.decode(response.body) as Map<String, dynamic>
+            : <String, dynamic>{};
+        
         throw SpotifyException(
-          'Failed to exchange code for token',
+          errorData['error_description'] ?? 'Failed to exchange code for token',
           statusCode: response.statusCode,
+          errorType: errorData['error'],
         );
       }
     } catch (e) {

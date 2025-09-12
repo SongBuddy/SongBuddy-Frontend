@@ -1,4 +1,4 @@
-package com.example.songbuddy
+package com.songbuddy.app
 
 import io.flutter.embedding.android.FlutterActivity
 

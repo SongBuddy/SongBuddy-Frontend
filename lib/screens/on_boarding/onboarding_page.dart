@@ -6,7 +6,7 @@ class OnboardingPage extends StatelessWidget {
   final IconData icon;
 
   const OnboardingPage({
-    super.key,
+    super.key, 
     required this.title,
     required this.description,
     required this.icon,

@@ -2,15 +2,20 @@
 
 ## Environment Variables Setup
 
-### 1. Create Spotify App
+### 1. Create Your Own Spotify App
+**Each contributor needs their own Spotify app:**
+
 1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/applications)
 2. Click "Create App"
 3. Fill in app details:
-   - **App name**: SongBuddy
+   - **App name**: SongBuddy (or SongBuddy-YourName)
    - **App description**: Social music app
    - **Website**: Your website (optional)
    - **Redirect URI**: `songbuddy://callback`
-4. Save and note your **Client ID** and **Client Secret**
+4. **Select APIs**: Web API, Android (and iOS if needed)
+5. **Set Package Name**: `com.songbuddy.app`
+6. **Set SHA1 Fingerprint**: `B0:E2:69:77:43:3F:55:44:E2:39:51:E7:74:24:73:8E:B1:C1:74:14`
+7. Save and note your **Client ID** and **Client Secret**
 
 ### 2. Create Environment File
 1. Copy `env.example` to `.env`:
@@ -26,10 +31,12 @@
    ```
 
 ### 3. Security Notes
+- ✅ **Never share your `.env` file** - It contains sensitive credentials
+- ✅ **Each developer needs their own Spotify app** - Don't share credentials
+- ✅ **Keep Client Secret secure** - Never commit to version control
+- ✅ **Use different apps for dev/staging/production** - Environment separation
 - ✅ `.env` file is automatically ignored by Git
 - ✅ Never commit your actual credentials to version control
-- ✅ Each developer should have their own `.env` file
-- ✅ Use different credentials for development/production
 
 ### 4. Running the App
 ```bash

@@ -1,0 +1,224 @@
+{
+  "info": {
+    "name": "SongBuddy Spotify API",
+    "description": "Collection for testing Spotify Web API endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://api.spotify.com/v1",
+      "type": "string"
+    },
+    {
+      "key": "auth_url",
+      "value": "https://accounts.spotify.com/api/token",
+      "type": "string"
+    },
+    {
+      "key": "client_id",
+      "value": "35c4d18b83ff493c89595f74003e5265",
+      "type": "string"
+    },
+    {
+      "key": "client_secret",
+      "value": "db95b99103ee4817bf6ea69d2c5dfffc",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Get Client Credentials Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              },
+              {
+                "key": "Authorization",
+                "value": "Basic {{client_credentials_base64}}"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{auth_url}}",
+              "host": ["{{auth_url}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User Data",
+      "item": [
+        {
+          "name": "Get Current User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/me",
+              "host": ["{{base_url}}"],
+              "path": ["me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Currently Playing Track",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/me/player/currently-playing",
+              "host": ["{{base_url}}"],
+              "path": ["me", "player", "currently-playing"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User's Playlists",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/me/playlists?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["me", "playlists"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User's Top Tracks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/me/top/tracks?time_range=medium_term&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["me", "top", "tracks"],
+              "query": [
+                {
+                  "key": "time_range",
+                  "value": "medium_term"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User's Top Artists",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/me/top/artists?time_range=medium_term&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["me", "top", "artists"],
+              "query": [
+                {
+                  "key": "time_range",
+                  "value": "medium_term"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User's Saved Tracks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/me/tracks?limit=20&offset=0",
+              "host": ["{{base_url}}"],
+              "path": ["me", "tracks"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -189,9 +189,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
                   // Next button or Spotify login button
                   _currentPage == _pages.length - 1
-                      ? SpotifyLoginButton(
-                          onPressed: _handleSpotifyLogin,
-                          isLoading: _authProvider.state == AuthState.authenticating,
+                      ? Row(
+                          children: [
+                            Expanded(
+                              child: SpotifyLoginButton(
+                                onPressed: _handleSpotifyLogin,
+                                isLoading: _authProvider.state == AuthState.authenticating,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            if (_authProvider.state == AuthState.authenticating)
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: _authProvider.cancelAuthentication,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.grey.shade600,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                  child: const Text('Cancel'),
+                                ),
+                              ),
+                          ],
                         )
                       : ElevatedButton(
                           onPressed: _nextPage,

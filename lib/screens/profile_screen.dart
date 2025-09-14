@@ -80,6 +80,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
     final token = _authProvider.accessToken!;
     try {
+      // ignore: avoid_print
+      print('[Profile] Fetch start');
       final results = await Future.wait([
         _spotifyService.getCurrentUser(token),
         _spotifyService.getCurrentlyPlaying(token),
@@ -110,10 +112,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _recentlyPlayed = (recently['items'] as List<dynamic>? ?? const [])
             .cast<Map<String, dynamic>>();
       });
+      // ignore: avoid_print
+      print('[Profile] Fetch success: user=${user['id']} topArtists=${_topArtists.length} topTracks=${_topTracks.length} recently=${_recentlyPlayed.length}');
     } catch (e) {
       setState(() {
         _error = e.toString();
       });
+      // ignore: avoid_print
+      print('[Profile] Fetch error: $e');
     } finally {
       if (mounted) {
         setState(() {

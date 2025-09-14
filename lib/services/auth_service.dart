@@ -25,6 +25,8 @@ class AuthService extends ChangeNotifier {
   final SpotifyService _spotifyService;
   final FlutterSecureStorage _secureStorage;
   StreamSubscription<Uri>? _linkSubscription;
+  Timer? _authTimeoutTimer;
+  Timer? _softRetryTimer;
 
   AuthState _state = AuthState.unauthenticated;
   String? _accessToken;
@@ -154,10 +156,22 @@ class AuthService extends ChangeNotifier {
       debugPrint('URL launched successfully');
       
       // Set a timeout for the authentication process
-      Timer(const Duration(minutes: 5), () {
+      _authTimeoutTimer?.cancel();
+      _authTimeoutTimer = Timer(const Duration(minutes: 5), () {
         if (_state == AuthState.authenticating) {
           _state = AuthState.error;
           _errorMessage = 'Authentication timed out. Please try again.';
+          notifyListeners();
+          _linkSubscription?.cancel();
+        }
+      });
+
+      // Soft auto-reset to allow retry sooner without killing the app
+      _softRetryTimer?.cancel();
+      _softRetryTimer = Timer(const Duration(seconds: 30), () {
+        if (_state == AuthState.authenticating) {
+          _state = AuthState.unauthenticated;
+          _errorMessage = null;
           notifyListeners();
           _linkSubscription?.cancel();
         }
@@ -232,6 +246,8 @@ class AuthService extends ChangeNotifier {
       notifyListeners();
     } finally {
       _linkSubscription?.cancel();
+      _authTimeoutTimer?.cancel();
+      _softRetryTimer?.cancel();
     }
   }
 
@@ -391,6 +407,18 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Allow user to cancel an in-flight authentication attempt
+  void cancelAuthentication() {
+    if (_state == AuthState.authenticating) {
+      _state = AuthState.unauthenticated;
+      _errorMessage = null;
+      _linkSubscription?.cancel();
+      _authTimeoutTimer?.cancel();
+      _softRetryTimer?.cancel();
+      notifyListeners();
+    }
+  }
+
   /// Clear error state
   void clearError() {
     if (_state == AuthState.error) {
@@ -403,6 +431,8 @@ class AuthService extends ChangeNotifier {
   @override
   void dispose() {
     _linkSubscription?.cancel();
+    _authTimeoutTimer?.cancel();
+    _softRetryTimer?.cancel();
     super.dispose();
   }
 }

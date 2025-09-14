@@ -20,6 +20,7 @@ class AuthService extends ChangeNotifier {
   static const String _refreshTokenKey = 'spotify_refresh_token';
   static const String _expiresAtKey = 'spotify_expires_at';
   static const String _userIdKey = 'spotify_user_id';
+  static const String _oauthStateKey = 'spotify_oauth_state';
 
   final SpotifyService _spotifyService;
   final FlutterSecureStorage _secureStorage;
@@ -105,8 +106,15 @@ class AuthService extends ChangeNotifier {
         throw Exception('No internet connection. Please check your network and try again.');
       }
 
-      // Generate authorization URL
-      final authUrl = _spotifyService.getAuthorizationUrl();
+      // Generate and persist secure state
+      final stateParam = SpotifyService.generateSecureState();
+      await _secureStorage.write(key: _oauthStateKey, value: stateParam);
+
+      // Attach deep link listener BEFORE launching the URL to avoid race conditions
+      _setupDeepLinkListener();
+
+      // Generate authorization URL with state
+      final authUrl = _spotifyService.getAuthorizationUrl(state: stateParam);
       debugPrint('Generated auth URL: $authUrl');
       
       // Launch the authorization URL
@@ -115,24 +123,35 @@ class AuthService extends ChangeNotifier {
       // Use external application mode to open in browser
       bool launched = false;
       try {
+        // Primary: external app (browser)
         launched = await launchUrl(
-          uri, 
+          uri,
           mode: LaunchMode.externalApplication,
         );
         debugPrint('External application launch: $launched');
+        if (!launched) {
+          // Fallback: in-app webview
+          launched = await launchUrl(
+            uri,
+            mode: LaunchMode.inAppWebView,
+            webViewConfiguration: const WebViewConfiguration(enableJavaScript: true),
+          );
+          debugPrint('In-app webview launch: $launched');
+        }
+        if (!launched) {
+          // Last resort: platform default
+          launched = await launchUrl(uri);
+          debugPrint('Default launch: $launched');
+        }
       } catch (e) {
-        debugPrint('External application launch failed: $e');
+        debugPrint('URL launch failed: $e');
       }
-      
+
       if (!launched) {
-        throw Exception('Could not open Spotify authorization page. Please check your internet connection and ensure you have a web browser installed.');
+        throw Exception('Could not open Spotify authorization page. Install or enable a web browser, or try again later.');
       }
       
       debugPrint('URL launched successfully');
-      
-      // Wait a moment for the browser to open, then set up deep link listener
-      await Future.delayed(const Duration(seconds: 2));
-      _setupDeepLinkListener();
       
       // Set a timeout for the authentication process
       Timer(const Duration(minutes: 5), () {
@@ -179,9 +198,19 @@ class AuthService extends ChangeNotifier {
 
         debugPrint('Callback parameters - code: ${code != null ? "present" : "missing"}, error: $error');
 
+        // Validate state parameter to prevent CSRF
+        final expectedState = await _secureStorage.read(key: _oauthStateKey);
+        await _secureStorage.delete(key: _oauthStateKey);
+        if (expectedState == null || state == null || state != expectedState) {
+          throw Exception('Invalid OAuth state. Please try again.');
+        }
+
         if (error != null) {
           final errorMsg = errorDescription ?? error;
           debugPrint('OAuth error received: $errorMsg');
+          if (error == 'access_denied') {
+            throw Exception('You denied access. Please grant permissions to continue.');
+          }
           throw Exception('OAuth error: $errorMsg');
         }
 
@@ -248,7 +277,8 @@ class AuthService extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _state = AuthState.error;
-      _errorMessage = e.toString();
+      _errorMessage = _friendlyMessage(e);
+      _errorMessage = _friendlyMessage(e);
       notifyListeners();
     }
   }
@@ -271,9 +301,73 @@ class AuthService extends ChangeNotifier {
 
   /// Refresh access token if needed
   Future<void> _refreshTokenIfNeeded() async {
-    // TODO: Implement token refresh logic
-    // For now, just clear the expired token
-    await logout();
+    try {
+      // No token or not expired yet
+      if (_expiresAt == null || _accessToken == null) {
+        // Try loading from storage first
+        final storedToken = await _secureStorage.read(key: _accessTokenKey);
+        final storedExpiresAt = await _secureStorage.read(key: _expiresAtKey);
+        final storedRefresh = await _secureStorage.read(key: _refreshTokenKey);
+        if (storedToken != null && storedExpiresAt != null) {
+          _accessToken = storedToken;
+          _expiresAt = DateTime.tryParse(storedExpiresAt);
+        }
+        _refreshToken = storedRefresh;
+      }
+
+      if (_expiresAt != null && _expiresAt!.isAfter(DateTime.now().add(const Duration(minutes: 1)))) {
+        // Token still valid
+        return;
+      }
+
+      if (_refreshToken == null) {
+        await logout();
+        return;
+      }
+
+      final response = await _spotifyService.refreshAccessToken(_refreshToken!);
+
+      final newAccessToken = response['access_token'] as String?;
+      final newExpiresIn = response['expires_in'] as int?;
+      final maybeNewRefreshToken = response['refresh_token'] as String?; // Spotify may not always return this
+
+      if (newAccessToken == null) {
+        throw Exception('Failed to refresh access token');
+      }
+
+      _accessToken = newAccessToken;
+      if (newExpiresIn != null) {
+        _expiresAt = DateTime.now().add(Duration(seconds: newExpiresIn));
+      }
+      if (maybeNewRefreshToken != null && maybeNewRefreshToken.isNotEmpty) {
+        _refreshToken = maybeNewRefreshToken;
+      }
+
+      await _storeTokens();
+
+      _state = AuthState.authenticated;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Token refresh failed: $e');
+      await logout();
+    }
+  }
+
+  String _friendlyMessage(Object e) {
+    final msg = e.toString();
+    if (msg.contains('No internet connection')) {
+      return 'No internet connection. Check your network and try again.';
+    }
+    if (msg.contains('access_denied')) {
+      return 'You denied access. Grant permissions to continue.';
+    }
+    if (msg.contains('browser') || msg.contains('authorization page')) {
+      return 'Could not open the authorization page. Install or enable a browser.';
+    }
+    if (msg.contains('state') && msg.contains('Invalid')) {
+      return 'Security check failed. Please try logging in again.';
+    }
+    return msg;
   }
 
   /// Logout user and clear stored tokens

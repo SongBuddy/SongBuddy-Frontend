@@ -5,6 +5,7 @@ import 'package:songbuddy/theme/app_theme.dart';
 import 'screens/home_feed_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/debug_auth_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 
 void main() async {
@@ -44,6 +45,7 @@ class _MainScreenState extends State<MainScreen> {
     HomeFeedScreen(),
     ProfileScreen(),
     SettingsScreen(),
+    DebugAuthScreen(), // Temporary debug screen
   ];
 
   void _onItemTapped(int index) {

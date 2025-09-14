@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'onboarding_page.dart';
 import '../../main.dart';
 import '../../widgets/spotify_login_button.dart';
+import '../../widgets/success_dialog.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/auth_service.dart' show AuthState;
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -13,7 +16,75 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _controller = PageController();
   int _currentPage = 0;
-  bool _isSpotifyLoading = false;
+  late final AuthProvider _authProvider;
+
+  @override
+  void initState() {
+    super.initState();
+    _authProvider = AuthProvider();
+    _authProvider.addListener(_onAuthStateChanged);
+    _authProvider.initialize();
+  }
+
+  @override
+  void dispose() {
+    _authProvider.removeListener(_onAuthStateChanged);
+    super.dispose();
+  }
+
+  void _onAuthStateChanged() {
+    if (_authProvider.isAuthenticated) {
+      // Show success animation before navigating
+      _showSuccessAnimation();
+    } else if (_authProvider.state == AuthState.error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Authentication failed: ${_authProvider.errorMessage}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showSuccessAnimation() {
+    // Show success dialog with animation
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const SuccessDialog(),
+    );
+
+    // Navigate after animation
+    Future.delayed(const Duration(milliseconds: 2000), () {
+      if (mounted) {
+        Navigator.of(context).pop(); // Close dialog
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => const MainScreen(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              const begin = Offset(1.0, 0.0);
+              const end = Offset.zero;
+              const curve = Curves.easeInOut;
+
+              var tween = Tween(begin: begin, end: end).chain(
+                CurveTween(curve: curve),
+              );
+
+              return SlideTransition(
+                position: animation.drive(tween),
+                child: FadeTransition(
+                  opacity: animation,
+                  child: child,
+                ),
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 800),
+          ),
+        );
+      }
+    });
+  }
 
   final List<OnboardingPage> _pages = const [
     OnboardingPage(
@@ -56,24 +127,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _handleSpotifyLogin() async {
-    setState(() {
-      _isSpotifyLoading = true;
-    });
-
-    // TODO: Implement actual Spotify OAuth flow
-    // For now, simulate loading and navigate to main screen
-    await Future.delayed(const Duration(seconds: 2));
-    
-    if (mounted) {
-      setState(() {
-        _isSpotifyLoading = false;
-      });
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MainScreen()),
-      );
-    }
+    await _authProvider.login();
   }
 
   @override
@@ -137,7 +191,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   _currentPage == _pages.length - 1
                       ? SpotifyLoginButton(
                           onPressed: _handleSpotifyLogin,
-                          isLoading: _isSpotifyLoading,
+                          isLoading: _authProvider.state == AuthState.authenticating,
                         )
                       : ElevatedButton(
                           onPressed: _nextPage,

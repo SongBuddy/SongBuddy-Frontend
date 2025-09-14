@@ -3,7 +3,8 @@ import 'onboarding_page.dart';
 import '../../main.dart';
 import '../../widgets/spotify_login_button.dart';
 import '../../widgets/success_dialog.dart';
-import '../../services/auth_service.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/auth_service.dart' show AuthState;
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -15,30 +16,30 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _controller = PageController();
   int _currentPage = 0;
-  late final AuthService _authService;
+  late final AuthProvider _authProvider;
 
   @override
   void initState() {
     super.initState();
-    _authService = AuthService();
-    _authService.addListener(_onAuthStateChanged);
+    _authProvider = AuthProvider();
+    _authProvider.addListener(_onAuthStateChanged);
+    _authProvider.initialize();
   }
 
   @override
   void dispose() {
-    _authService.removeListener(_onAuthStateChanged);
-    _authService.dispose();
+    _authProvider.removeListener(_onAuthStateChanged);
     super.dispose();
   }
 
   void _onAuthStateChanged() {
-    if (_authService.state == AuthState.authenticated) {
+    if (_authProvider.isAuthenticated) {
       // Show success animation before navigating
       _showSuccessAnimation();
-    } else if (_authService.state == AuthState.error) {
+    } else if (_authProvider.state == AuthState.error) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Authentication failed: ${_authService.errorMessage}'),
+          content: Text('Authentication failed: ${_authProvider.errorMessage}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -126,7 +127,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _handleSpotifyLogin() async {
-    await _authService.login();
+    await _authProvider.login();
   }
 
   @override
@@ -190,7 +191,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   _currentPage == _pages.length - 1
                       ? SpotifyLoginButton(
                           onPressed: _handleSpotifyLogin,
-                          isLoading: _authService.state == AuthState.authenticating,
+                          isLoading: _authProvider.state == AuthState.authenticating,
                         )
                       : ElevatedButton(
                           onPressed: _nextPage,

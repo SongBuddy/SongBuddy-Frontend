@@ -26,6 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int? _playlistsTotal;
   List<Map<String, dynamic>> _topArtists = const [];
   List<Map<String, dynamic>> _topTracks = const [];
+  List<Map<String, dynamic>> _recentlyPlayed = const [];
 
   @override
   void initState() {
@@ -86,6 +87,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _spotifyService.getUserPlaylists(token, limit: 1),
         _spotifyService.getUserTopArtists(token, limit: 10),
         _spotifyService.getUserTopTracks(token, limit: 10),
+        _spotifyService.getRecentlyPlayed(token, limit: 10),
       ]);
 
       final user = results[0] as Map<String, dynamic>;
@@ -94,6 +96,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final playlists = results[3] as Map<String, dynamic>;
       final topArtists = results[4] as Map<String, dynamic>;
       final topTracks = results[5] as Map<String, dynamic>;
+      final recently = results[6] as Map<String, dynamic>;
 
       setState(() {
         _user = user;
@@ -103,6 +106,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _topArtists = (topArtists['items'] as List<dynamic>? ?? const [])
             .cast<Map<String, dynamic>>();
         _topTracks = (topTracks['items'] as List<dynamic>? ?? const [])
+            .cast<Map<String, dynamic>>();
+        _recentlyPlayed = (recently['items'] as List<dynamic>? ?? const [])
             .cast<Map<String, dynamic>>();
       });
     } catch (e) {
@@ -128,7 +133,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     if (!_initialized || _loading) {
-      return const Scaffold(
+    return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
@@ -177,6 +182,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildTopArtists(),
             SliverToBoxAdapter(child: _buildSectionTitle('Top Tracks')),
             _buildTopTracks(),
+            SliverToBoxAdapter(child: _buildSectionTitle('Recently Played')),
+            _buildRecentlyPlayed(),
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
         ),
@@ -424,6 +431,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         },
         childCount: _topTracks.length,
+      ),
+    );
+  }
+
+  SliverList _buildRecentlyPlayed() {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          if (index >= _recentlyPlayed.length) return const SizedBox.shrink();
+          final item = _recentlyPlayed[index];
+          final track = item['track'] as Map<String, dynamic>? ?? const {};
+          final images = track['album']?['images'] as List<dynamic>? ?? const [];
+          final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
+          final artists = (track['artists'] as List<dynamic>? ?? const [])
+              .map((a) => a['name'] as String? ?? '')
+              .where((s) => s.isNotEmpty)
+              .join(', ');
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Card(
+              child: ListTile(
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: imageUrl != null
+                      ? Image.network(imageUrl!, width: 56, height: 56, fit: BoxFit.cover)
+                      : Container(
+                          width: 56,
+                          height: 56,
+                          color: Colors.grey.shade300,
+                          child: const Icon(Icons.music_note),
+                        ),
+                ),
+                title: Text(track['name'] as String? ?? ''),
+                subtitle: Text(artists, style: AppTextStyles.caption),
+              ),
+            ),
+          );
+        },
+        childCount: _recentlyPlayed.length,
       ),
     );
   }

@@ -62,7 +62,7 @@ class SpotifyService {
   /// will be echoed back by Spotify. It should be validated upon callback.
   String getAuthorizationUrl({required String state}) {
     _validateEnvironmentVariables();
-    const String scope = 'user-read-private user-read-email user-read-currently-playing user-read-playback-state user-library-read playlist-read-private';
+    const String scope = 'user-read-private user-read-email user-read-currently-playing user-read-playback-state user-library-read playlist-read-private user-read-recently-played';
 
     final Uri authUri = Uri.parse('https://accounts.spotify.com/authorize').replace(
       queryParameters: {
@@ -178,6 +178,16 @@ class SpotifyService {
     return await _makeAuthenticatedRequest(
       'GET',
       '/me/top/artists?time_range=$timeRange&limit=$limit',
+      accessToken,
+    );
+  }
+
+  /// Get user's recently played tracks
+  Future<Map<String, dynamic>> getRecentlyPlayed(String accessToken, {int limit = 20}) async {
+    _validateEnvironmentVariables();
+    return await _makeAuthenticatedRequest(
+      'GET',
+      '/me/player/recently-played?limit=$limit',
       accessToken,
     );
   }

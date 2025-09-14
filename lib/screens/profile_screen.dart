@@ -27,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<Map<String, dynamic>> _topArtists = const [];
   List<Map<String, dynamic>> _topTracks = const [];
   List<Map<String, dynamic>> _recentlyPlayed = const [];
+  bool _insufficientScopeTop = false;
 
   @override
   void initState() {
@@ -79,38 +80,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _error = null;
     });
     final token = _authProvider.accessToken!;
+    // ignore: avoid_print
+    print('[Profile] Fetch start');
     try {
-      // ignore: avoid_print
-      print('[Profile] Fetch start');
-      final results = await Future.wait([
-        _spotifyService.getCurrentUser(token),
-        _spotifyService.getCurrentlyPlaying(token),
-        _spotifyService.getUserSavedTracks(token, limit: 1),
-        _spotifyService.getUserPlaylists(token, limit: 1),
-        _spotifyService.getUserTopArtists(token, limit: 10),
-        _spotifyService.getUserTopTracks(token, limit: 10),
-        _spotifyService.getRecentlyPlayed(token, limit: 10),
-      ]);
-
-      final user = results[0] as Map<String, dynamic>;
-      final currentlyPlaying = results[1] as Map<String, dynamic>?;
-      final savedTracks = results[2] as Map<String, dynamic>;
-      final playlists = results[3] as Map<String, dynamic>;
-      final topArtists = results[4] as Map<String, dynamic>;
-      final topTracks = results[5] as Map<String, dynamic>;
-      final recently = results[6] as Map<String, dynamic>;
+      // User profile (required)
+      final user = await _spotifyService.getCurrentUser(token);
+      // Optional parallel calls with individual handling
+      final futures = <Future<void>>[
+        () async {
+          try {
+            _currentlyPlaying = await _spotifyService.getCurrentlyPlaying(token);
+          } catch (e) {
+            // ignore
+          }
+        }(),
+        () async {
+          try {
+            final saved = await _spotifyService.getUserSavedTracks(token, limit: 1);
+            _savedTracksTotal = saved['total'] as int?;
+          } catch (e) {}
+        }(),
+        () async {
+          try {
+            final pls = await _spotifyService.getUserPlaylists(token, limit: 1);
+            _playlistsTotal = pls['total'] as int?;
+          } catch (e) {}
+        }(),
+        () async {
+          try {
+            final ta = await _spotifyService.getUserTopArtists(token, limit: 10);
+            _topArtists = (ta['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
+          } catch (e) {
+            _insufficientScopeTop = true;
+            _topArtists = const [];
+          }
+        }(),
+        () async {
+          try {
+            final tt = await _spotifyService.getUserTopTracks(token, limit: 10);
+            _topTracks = (tt['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
+          } catch (e) {
+            _insufficientScopeTop = true;
+            _topTracks = const [];
+          }
+        }(),
+        () async {
+          try {
+            final rp = await _spotifyService.getRecentlyPlayed(token, limit: 10);
+            _recentlyPlayed = (rp['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
+          } catch (e) {}
+        }(),
+      ];
+      await Future.wait(futures);
 
       setState(() {
         _user = user;
-        _currentlyPlaying = currentlyPlaying;
-        _savedTracksTotal = savedTracks['total'] as int?;
-        _playlistsTotal = playlists['total'] as int?;
-        _topArtists = (topArtists['items'] as List<dynamic>? ?? const [])
-            .cast<Map<String, dynamic>>();
-        _topTracks = (topTracks['items'] as List<dynamic>? ?? const [])
-            .cast<Map<String, dynamic>>();
-        _recentlyPlayed = (recently['items'] as List<dynamic>? ?? const [])
-            .cast<Map<String, dynamic>>();
       });
       // ignore: avoid_print
       print('[Profile] Fetch success: user=${user['id']} topArtists=${_topArtists.length} topTracks=${_topTracks.length} recently=${_recentlyPlayed.length}');
@@ -190,6 +214,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildTopTracks(),
             SliverToBoxAdapter(child: _buildSectionTitle('Recently Played')),
             _buildRecentlyPlayed(),
+            if (_insufficientScopeTop)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _EmptyCard(
+                    icon: Icons.lock_outline,
+                    title: 'Limited data due to permissions',
+                    subtitle: 'Re-connect and grant access to Top Artists/Tracks to see more.',
+                  ),
+                ),
+              ),
             const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
         ),

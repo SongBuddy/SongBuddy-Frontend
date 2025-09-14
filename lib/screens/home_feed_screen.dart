@@ -151,13 +151,16 @@ class _MusicPostCardState extends State<_MusicPostCard>
           // Track cover with gradient overlay
           Stack(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.network(
-                  widget.coverUrl,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  height: 240, 
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    widget.coverUrl,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: 240, 
+                  ),
                 ),
               ),
               Container(
@@ -183,12 +186,12 @@ class _MusicPostCardState extends State<_MusicPostCard>
                   children: [
                     Text(widget.trackTitle,
                         style: const TextStyle(
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.white)),
                     Text(widget.artist,
                         style:
-                            const TextStyle(color: Colors.white70, fontSize: 14)),
+                            const TextStyle(color: Colors.white70, fontSize: 12)),
                   ],
                 ),
               )

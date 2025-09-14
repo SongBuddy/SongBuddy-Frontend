@@ -202,6 +202,18 @@ class _DebugAuthScreenState extends State<DebugAuthScreen> {
                         : const Text('Test Login'),
                   ),
                 ),
+                const SizedBox(width: 8),
+                if (_authProvider.state == AuthState.authenticating)
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _authProvider.cancelAuthentication,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey.shade600,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
               ],
             ),
             

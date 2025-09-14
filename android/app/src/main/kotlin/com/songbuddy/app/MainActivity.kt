@@ -21,6 +21,11 @@ class MainActivity: FlutterActivity() {
                 override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
                     // Store the event sink for later use
                     oauthEventSink = events
+                    // Flush any pending deep link captured before Dart listener attached
+                    pendingUri?.let {
+                        oauthEventSink?.success(it)
+                        pendingUri = null
+                    }
                 }
 
                 override fun onCancel(arguments: Any?) {
@@ -47,7 +52,13 @@ class MainActivity: FlutterActivity() {
             Log.d("MainActivity", "Received URI: $uri")
             if (uri?.scheme == "songbuddy" && uri.host == "callback") {
                 Log.d("MainActivity", "Sending Spotify callback to Flutter: $uri")
-                oauthEventSink?.success(uri.toString())
+                val url = uri.toString()
+                if (oauthEventSink != null) {
+                    oauthEventSink?.success(url)
+                } else {
+                    // Buffer until listener attaches
+                    pendingUri = url
+                }
             } else {
                 Log.d("MainActivity", "Ignoring non-Spotify deep link: ${uri?.scheme}://${uri?.host}")
             }
@@ -56,5 +67,6 @@ class MainActivity: FlutterActivity() {
 
     companion object {
         private var oauthEventSink: EventChannel.EventSink? = null
+        private var pendingUri: String? = null
     }
 }

@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/auth_service.dart';
 import '../services/spotify_service.dart';
+import '../providers/auth_provider.dart';
 
 class DebugAuthScreen extends StatefulWidget {
   const DebugAuthScreen({super.key});
@@ -12,23 +13,23 @@ class DebugAuthScreen extends StatefulWidget {
 }
 
 class _DebugAuthScreenState extends State<DebugAuthScreen> {
-  late final AuthService _authService;
+  late final AuthProvider _authProvider;
   late final SpotifyService _spotifyService;
   String _debugInfo = '';
 
   @override
   void initState() {
     super.initState();
-    _authService = AuthService();
+    _authProvider = AuthProvider();
     _spotifyService = SpotifyService();
-    _authService.addListener(_onAuthStateChanged);
+    _authProvider.addListener(_onAuthStateChanged);
+    _authProvider.initialize();
     _runDebugChecks();
   }
 
   @override
   void dispose() {
-    _authService.removeListener(_onAuthStateChanged);
-    _authService.dispose();
+    _authProvider.removeListener(_onAuthStateChanged);
     super.dispose();
   }
 
@@ -43,7 +44,7 @@ class _DebugAuthScreenState extends State<DebugAuthScreen> {
       // Check environment variables
       buffer.writeln('=== Environment Variables ===');
       try {
-        final authUrl = _spotifyService.getAuthorizationUrl();
+        final authUrl = _spotifyService.getAuthorizationUrl(state: SpotifyService.generateSecureState());
         buffer.writeln('Environment variables: ✓ Loaded successfully');
       } catch (e) {
         buffer.writeln('Environment variables: ✗ Error - $e');
@@ -52,7 +53,7 @@ class _DebugAuthScreenState extends State<DebugAuthScreen> {
 
       // Generate auth URL
       buffer.writeln('=== Authorization URL ===');
-      final authUrl = _spotifyService.getAuthorizationUrl();
+      final authUrl = _spotifyService.getAuthorizationUrl(state: SpotifyService.generateSecureState());
       buffer.writeln('Generated URL: $authUrl');
       buffer.writeln('');
 
@@ -93,13 +94,13 @@ class _DebugAuthScreenState extends State<DebugAuthScreen> {
   }
 
   Future<void> _testLogin() async {
-    await _authService.login();
+    await _authProvider.login();
   }
 
   Future<void> _testDeepLink() async {
     // Simulate a deep link callback for testing
     final testUri = Uri.parse('songbuddy://callback?code=test_code&state=test_state');
-    await _authService.testHandleOAuthCallback(testUri);
+    await _authProvider.testHandleOAuthCallback(testUri);
   }
 
   @override
@@ -130,12 +131,12 @@ class _DebugAuthScreenState extends State<DebugAuthScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text('State: ${_authService.state}'),
-                    if (_authService.errorMessage != null)
-                      Text('Error: ${_authService.errorMessage}'),
-                    if (_authService.isAuthenticated) ...[
-                      Text('User ID: ${_authService.userId}'),
-                      Text('Access Token: ${_authService.accessToken?.substring(0, 20)}...'),
+                    Text('State: ${_authProvider.state}'),
+                    if (_authProvider.errorMessage != null)
+                      Text('Error: ${_authProvider.errorMessage}'),
+                    if (_authProvider.isAuthenticated) ...[
+                      Text('User ID: ${_authProvider.userId}'),
+                      Text('Access Token: ${_authProvider.accessToken?.substring(0, 20)}...'),
                     ],
                   ],
                 ),
@@ -191,12 +192,12 @@ class _DebugAuthScreenState extends State<DebugAuthScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: _authService.state == AuthState.authenticating ? null : _testLogin,
+                    onPressed: _authProvider.state == AuthState.authenticating ? null : _testLogin,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF1DB954),
                       foregroundColor: Colors.white,
                     ),
-                    child: _authService.state == AuthState.authenticating
+                    child: _authProvider.state == AuthState.authenticating
                         ? const CircularProgressIndicator(color: Colors.white)
                         : const Text('Test Login'),
                   ),

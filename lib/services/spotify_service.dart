@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -26,9 +27,7 @@ class SpotifyService {
 
   final http.Client _client;
 
-  SpotifyService({http.Client? client}) : _client = client ?? http.Client() {
-    _validateEnvironmentVariables();
-  }
+  SpotifyService({http.Client? client}) : _client = client ?? http.Client();
 
   /// Validate that required environment variables are set
   void _validateEnvironmentVariables() {
@@ -58,25 +57,30 @@ class SpotifyService {
   }
 
   /// Get authorization URL for OAuth flow
-  String getAuthorizationUrl() {
+  ///
+  /// The [state] parameter MUST be a securely generated random string and
+  /// will be echoed back by Spotify. It should be validated upon callback.
+  String getAuthorizationUrl({required String state}) {
+    _validateEnvironmentVariables();
     const String scope = 'user-read-private user-read-email user-read-currently-playing user-read-playback-state user-library-read playlist-read-private';
-    
+
     final Uri authUri = Uri.parse('https://accounts.spotify.com/authorize').replace(
       queryParameters: {
         'response_type': 'code',
         'client_id': _clientId,
         'scope': scope,
         'redirect_uri': _redirectUri,
-        'state': _generateRandomString(16),
+        'state': state,
       },
     );
-    
+
     return authUri.toString();
   }
 
   /// Exchange authorization code for access token
   Future<Map<String, dynamic>> exchangeCodeForToken(String code) async {
     try {
+      _validateEnvironmentVariables();
       final response = await _client.post(
         Uri.parse(_authUrl),
         headers: {
@@ -112,6 +116,7 @@ class SpotifyService {
 
   /// Get current user's profile
   Future<Map<String, dynamic>> getCurrentUser(String accessToken) async {
+    _validateEnvironmentVariables();
     return await _makeAuthenticatedRequest(
       'GET',
       '/me',
@@ -122,6 +127,7 @@ class SpotifyService {
   /// Get user's currently playing track
   Future<Map<String, dynamic>?> getCurrentlyPlaying(String accessToken) async {
     try {
+      _validateEnvironmentVariables();
       return await _makeAuthenticatedRequest(
         'GET',
         '/me/player/currently-playing',
@@ -138,6 +144,7 @@ class SpotifyService {
 
   /// Get user's playlists
   Future<Map<String, dynamic>> getUserPlaylists(String accessToken, {int limit = 20, int offset = 0}) async {
+    _validateEnvironmentVariables();
     return await _makeAuthenticatedRequest(
       'GET',
       '/me/playlists?limit=$limit&offset=$offset',
@@ -147,6 +154,7 @@ class SpotifyService {
 
   /// Get user's saved tracks (liked songs)
   Future<Map<String, dynamic>> getUserSavedTracks(String accessToken, {int limit = 20, int offset = 0}) async {
+    _validateEnvironmentVariables();
     return await _makeAuthenticatedRequest(
       'GET',
       '/me/tracks?limit=$limit&offset=$offset',
@@ -156,6 +164,7 @@ class SpotifyService {
 
   /// Get user's top tracks
   Future<Map<String, dynamic>> getUserTopTracks(String accessToken, {String timeRange = 'medium_term', int limit = 20}) async {
+    _validateEnvironmentVariables();
     return await _makeAuthenticatedRequest(
       'GET',
       '/me/top/tracks?time_range=$timeRange&limit=$limit',
@@ -165,6 +174,7 @@ class SpotifyService {
 
   /// Get user's top artists
   Future<Map<String, dynamic>> getUserTopArtists(String accessToken, {String timeRange = 'medium_term', int limit = 20}) async {
+    _validateEnvironmentVariables();
     return await _makeAuthenticatedRequest(
       'GET',
       '/me/top/artists?time_range=$timeRange&limit=$limit',
@@ -252,10 +262,46 @@ class SpotifyService {
     return base64Encode(utf8.encode(credentials));
   }
 
-  /// Generate random string for state parameter
-  String _generateRandomString(int length) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    final random = DateTime.now().millisecondsSinceEpoch;
-    return List.generate(length, (index) => chars[random % chars.length]).join();
+  /// Securely generate a random URL-safe state string
+  static String generateSecureState({int numBytes = 16}) {
+    final secureRandom = Random.secure();
+    final bytes = List<int>.generate(numBytes, (_) => secureRandom.nextInt(256));
+    // Base64 URL-safe without padding
+    return base64UrlEncode(bytes).replaceAll('=', '');
+  }
+
+  /// Refresh access token using a refresh token
+  Future<Map<String, dynamic>> refreshAccessToken(String refreshToken) async {
+    try {
+      final response = await _client.post(
+        Uri.parse(_authUrl),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': 'Basic ${_encodeCredentials()}',
+        },
+        body: {
+          'grant_type': 'refresh_token',
+          'refresh_token': refreshToken,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        return data;
+      } else {
+        final errorData = response.body.isNotEmpty
+            ? json.decode(response.body) as Map<String, dynamic>
+            : <String, dynamic>{};
+
+        throw SpotifyException(
+          errorData['error_description'] ?? 'Failed to refresh access token',
+          statusCode: response.statusCode,
+          errorType: errorData['error'],
+        );
+      }
+    } catch (e) {
+      if (e is SpotifyException) rethrow;
+      throw SpotifyException('Network error: ${e.toString()}');
+    }
   }
 }

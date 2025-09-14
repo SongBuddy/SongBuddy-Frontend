@@ -628,6 +628,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+
+  SliverToBoxAdapter _skeletonHeader() {
+    return SliverToBoxAdapter(
+      child: Container(
+        height: 220,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF6C63FF), Color(0xFF4C46E5)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 56, 20, 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: const [
+                _SkeletonCircle(diameter: 88),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SkeletonBox(width: 180, height: 22, radius: 6),
+                      SizedBox(height: 8),
+                      _SkeletonBox(width: 140, height: 14, radius: 6),
+                      SizedBox(height: 8),
+                      _SkeletonBox(width: 120, height: 12, radius: 6),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _StatChip extends StatelessWidget {

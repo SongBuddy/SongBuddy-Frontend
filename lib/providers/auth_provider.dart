@@ -66,11 +66,4 @@ class AuthProvider extends ChangeNotifier {
     if (!_initialized) await initialize();
     await _authService.testHandleOAuthCallback(uri);
   }
-
-  /// Cancel an in-progress authentication attempt
-  void cancelAuthentication() {
-    if (_initialized) {
-      _authService.cancelAuthentication();
-    }
-  }
 }

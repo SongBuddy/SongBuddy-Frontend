@@ -60,4 +60,10 @@ class AuthProvider extends ChangeNotifier {
       _authService.clearError();
     }
   }
+
+  /// Test-only: simulate receiving an OAuth callback deep link
+  Future<void> testHandleOAuthCallback(Uri uri) async {
+    if (!_initialized) await initialize();
+    await _authService.testHandleOAuthCallback(uri);
+  }
 }

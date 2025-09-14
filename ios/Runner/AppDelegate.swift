@@ -4,6 +4,7 @@ import UIKit
 @main
 @objc class AppDelegate: FlutterAppDelegate {
   private var oauthEventSink: FlutterEventSink?
+  private var pendingUrl: String?
   
   override func application(
     _ application: UIApplication,
@@ -25,7 +26,11 @@ import UIKit
     options: [UIApplication.OpenURLOptionsKey : Any] = [:]
   ) -> Bool {
     if url.scheme == "songbuddy" && url.host == "callback" {
-      oauthEventSink?(url.absoluteString)
+      if let sink = oauthEventSink {
+        sink(url.absoluteString)
+      } else {
+        pendingUrl = url.absoluteString
+      }
       return true
     }
     return super.application(app, open: url, options: options)
@@ -35,6 +40,10 @@ import UIKit
 extension AppDelegate: FlutterStreamHandler {
   func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
     oauthEventSink = events
+    if let url = pendingUrl {
+      oauthEventSink?(url)
+      pendingUrl = nil
+    }
     return nil
   }
   

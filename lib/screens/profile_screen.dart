@@ -34,6 +34,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final List<String> _timeRanges = const ['short_term', 'medium_term', 'long_term'];
   int _timeRangeIndex = 1; // default to medium_term
   bool _loadingTop = false; // non-blocking loading for top artists/tracks
+  static const Duration _animDur = Duration(milliseconds: 250);
 
   @override
   void initState() {
@@ -275,7 +276,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SliverToBoxAdapter(child: _buildTimeRangeToggle()),
                   _buildTopArtists(),
                   SliverToBoxAdapter(child: _buildSectionTitle('Top Tracks')),
-                  _buildTopTracks(context),
+                  (_loadingTop ? _buildTopTracksSkeleton(context) : _buildTopTracks(context)),
                   SliverToBoxAdapter(child: _buildSectionTitle('Recently Played')),
                   _buildRecentlyPlayed(),
                   if (_insufficientScopeTop)
@@ -461,53 +462,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   SliverToBoxAdapter _buildTopArtists() {
-    if (_topArtists.isEmpty) {
-      return SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _EmptyCard(
-            icon: Icons.person_outline,
-            title: 'No top artists yet',
-            subtitle: 'Listen more to build your top artists.',
-          ),
-        ),
-      );
-    }
-
     return SliverToBoxAdapter(
-      child: SizedBox(
-        height: 120,
-        child: ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          scrollDirection: Axis.horizontal,
-          itemBuilder: (context, index) {
-            final artist = _topArtists[index];
-            final images = (artist['images'] as List<dynamic>? ?? const []);
-            final url = images.isNotEmpty ? images.first['url'] as String? : null;
-            return Column(
-              children: [
-                CircleAvatar(
-                  radius: 36,
-                  backgroundImage: url != null ? NetworkImage(url) : null,
-                  child: url == null ? const Icon(Icons.person) : null,
+      child: AnimatedSwitcher(
+        duration: _animDur,
+        child: _loadingTop
+            ? _buildTopArtistsSkeletonContent(key: const ValueKey('artists-skeleton'))
+            : (_topArtists.isEmpty
+                ? Padding(
+                    key: const ValueKey('artists-empty'),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _EmptyCard(
+                      icon: Icons.person_outline,
+                      title: 'No top artists yet',
+                      subtitle: 'Listen more to build your top artists.',
+                    ),
+                  )
+                : _buildTopArtistsContent(key: const ValueKey('artists-list'))),
+      ),
+    );
+  }
+
+  Widget _buildTopArtistsContent({Key? key}) {
+    return SizedBox(
+      key: key,
+      height: 120,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemBuilder: (context, index) {
+          final artist = _topArtists[index];
+          final images = (artist['images'] as List<dynamic>? ?? const []);
+          final url = images.isNotEmpty ? images.first['url'] as String? : null;
+          return Column(
+            children: [
+              CircleAvatar(
+                radius: 36,
+                backgroundImage: url != null ? NetworkImage(url) : null,
+                child: url == null ? const Icon(Icons.person) : null,
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: 80,
+                child: Text(
+                  artist['name'] as String? ?? '',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.caption,
                 ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: 80,
-                  child: Text(
-                    artist['name'] as String? ?? '',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.caption,
-                  ),
-                )
-              ],
-            );
-          },
-          separatorBuilder: (_, __) => const SizedBox(width: 12),
-          itemCount: _topArtists.length,
-        ),
+              )
+            ],
+          );
+        },
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemCount: _topArtists.length,
+      ),
+    );
+  }
+
+  Widget _buildTopArtistsSkeletonContent({Key? key}) {
+    return SizedBox(
+      key: key,
+      height: 120,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemBuilder: (_, __) => const _SkeletonCircle(diameter: 72),
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemCount: 6,
       ),
     );
   }
@@ -533,8 +555,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ))
                 .toList(),
           ),
-          if (_loadingTop) const SizedBox(height: 8),
-          if (_loadingTop) const LinearProgressIndicator(minHeight: 2),
+          const SizedBox(height: 8),
+          AnimatedSwitcher(
+            duration: _animDur,
+            child: _loadingTop
+                ? ClipRRect(
+                    key: const ValueKey('top-loading-bar'),
+                    borderRadius: BorderRadius.circular(4),
+                    child: const LinearProgressIndicator(minHeight: 4),
+                  )
+                : const SizedBox(key: ValueKey('top-loading-none'), height: 4),
+          ),
         ],
       ),
     );
@@ -590,6 +621,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         },
         childCount: _topTracks.length,
+      ),
+    );
+  }
+
+  SliverGrid _buildTopTracksSkeleton(BuildContext context) {
+    final gridCount = _gridCountForWidth(MediaQuery.of(context).size.width);
+    return SliverGrid(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: gridCount,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.9,
+      ),
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                _SkeletonBox(width: double.infinity, height: 140, radius: 12),
+                SizedBox(height: 8),
+                _SkeletonBox(width: 120, height: 14, radius: 6),
+                SizedBox(height: 6),
+                _SkeletonBox(width: 80, height: 12, radius: 6),
+              ],
+            ),
+          );
+        },
+        childCount: gridCount * 2,
       ),
     );
   }

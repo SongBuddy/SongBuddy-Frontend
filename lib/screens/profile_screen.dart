@@ -538,35 +538,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final labels = const ['4w', '6m', 'All'];
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ToggleButtons(
-            borderRadius: BorderRadius.circular(12),
-            isSelected: List<bool>.generate(3, (i) => i == _timeRangeIndex),
-            onPressed: (int i) {
-              HapticFeedback.selectionClick();
-              _updateTimeRange(i);
-            },
-            children: labels
-                .map((t) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Text(t, style: AppTextStyles.body),
-                    ))
-                .toList(),
-          ),
-          const SizedBox(height: 8),
-          AnimatedSwitcher(
-            duration: _animDur,
-            child: _loadingTop
-                ? ClipRRect(
-                    key: const ValueKey('top-loading-bar'),
-                    borderRadius: BorderRadius.circular(4),
-                    child: const LinearProgressIndicator(minHeight: 4),
-                  )
-                : const SizedBox(key: ValueKey('top-loading-none'), height: 4),
-          ),
-        ],
+      child: ToggleButtons(
+        borderRadius: BorderRadius.circular(12),
+        isSelected: List<bool>.generate(3, (i) => i == _timeRangeIndex),
+        onPressed: (int i) {
+          HapticFeedback.selectionClick();
+          _updateTimeRange(i);
+        },
+        children: labels
+            .map((t) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Text(t, style: AppTextStyles.body),
+                ))
+            .toList(),
       ),
     );
   }
@@ -898,12 +882,14 @@ class _SkeletonBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade300,
-        borderRadius: BorderRadius.circular(radius),
+    return _Shimmer(
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(radius),
+        ),
       ),
     );
   }
@@ -915,12 +901,14 @@ class _SkeletonCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: diameter,
-      height: diameter,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade300,
-        shape: BoxShape.circle,
+    return _Shimmer(
+      child: Container(
+        width: diameter,
+        height: diameter,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          shape: BoxShape.circle,
+        ),
       ),
     );
   }
@@ -951,6 +939,57 @@ class _SkeletonTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _Shimmer extends StatefulWidget {
+  final Widget child;
+  const _Shimmer({required this.child});
+
+  @override
+  State<_Shimmer> createState() => _ShimmerState();
+}
+
+class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
+      ..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return ShaderMask(
+          shaderCallback: (Rect bounds) {
+            final gradient = LinearGradient(
+              begin: Alignment(-1.0 - 3 * _controller.value, 0.0),
+              end: Alignment(1.0 + 3 * _controller.value, 0.0),
+              colors: [
+                Colors.grey.shade300,
+                Colors.grey.shade100,
+                Colors.grey.shade300,
+              ],
+              stops: const [0.25, 0.5, 0.75],
+            );
+            return gradient.createShader(bounds);
+          },
+          blendMode: BlendMode.srcATop,
+          child: widget.child,
+        );
+      },
     );
   }
 }

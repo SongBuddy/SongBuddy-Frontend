@@ -2,49 +2,94 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:songbuddy/constants/app_colors.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
-class HomeFeedScreen extends StatelessWidget {
+class HomeFeedScreen extends StatefulWidget {
   const HomeFeedScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // richer dummy data with likes & timestamp
-    final dummyPosts = [
-      {
-        "username": "Amin",
-        "avatarUrl": "https://i.pravatar.cc/150?img=1",
-        "trackTitle": "Blinding Lights",
-        "artist": "The Weeknd",
-        "coverUrl":
-            "https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2",
-        "description": "This track always gives me a boost of energy 🚀🔥",
-        "likes": 124,
-        "time": "2h"
-      },
-      {
-        "username": "Sara",
-        "avatarUrl": "https://i.pravatar.cc/150?img=2",
-        "trackTitle": "Levitating",
-        "artist": "Dua Lipa",
-        "coverUrl":
-            "https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2",
-        "description": "",
-        "likes": 89,
-        "time": "6h"
-      },
-      {
-        "username": "John",
-        "avatarUrl": "https://i.pravatar.cc/150?img=3",
-        "trackTitle": "As It Was",
-        "artist": "Harry Styles",
-        "coverUrl":
-            "https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2",
-        "description": "Makes me feel nostalgic ✨",
-        "likes": 211,
-        "time": "1d"
-      },
-    ];
+  State<HomeFeedScreen> createState() => _HomeFeedScreenState();
+}
 
+class _HomeFeedScreenState extends State<HomeFeedScreen> {
+  // richer dummy data with likes & timestamp
+  final List<Map<String, dynamic>> _allPosts = [
+    {
+      "username": "Amin",
+      "avatarUrl": "https://i.pravatar.cc/150?img=1",
+      "trackTitle": "Blinding Lights",
+      "artist": "The Weeknd",
+      "coverUrl":
+          "https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2",
+      "description": "This track always gives me a boost of energy 🚀🔥",
+      "likes": 124,
+      "time": "2h"
+    },
+    {
+      "username": "Sara",
+      "avatarUrl": "https://i.pravatar.cc/150?img=2",
+      "trackTitle": "Levitating",
+      "artist": "Dua Lipa",
+      "coverUrl":
+          "https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2",
+      "description": "",
+      "likes": 89,
+      "time": "6h"
+    },
+    {
+      "username": "John",
+      "avatarUrl": "https://i.pravatar.cc/150?img=3",
+      "trackTitle": "As It Was",
+      "artist": "Harry Styles",
+      "coverUrl":
+          "https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2",
+      "description": "Makes me feel nostalgic ✨",
+      "likes": 211,
+      "time": "1d"
+    },
+  ];
+
+  late List<Map<String, dynamic>> _filteredPosts;
+  String _query = '';
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredPosts = List<Map<String, dynamic>>.from(_allPosts);
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onQueryChanged(String query) {
+    _query = query.trim();
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 360), _applyFilter);
+  }
+
+  void _applyFilter() {
+    if (_query.isEmpty) {
+      setState(() => _filteredPosts = List<Map<String, dynamic>>.from(_allPosts));
+      return;
+    }
+    final lower = _query.toLowerCase();
+    setState(() {
+      _filteredPosts = _allPosts.where((post) {
+        final username = (post['username'] as String).toLowerCase();
+        final title = (post['trackTitle'] as String).toLowerCase();
+        final artist = (post['artist'] as String).toLowerCase();
+        return username.contains(lower) || title.contains(lower) || artist.contains(lower);
+      }).toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       // Gradient background for depth & modern look
       body: Container(
@@ -71,7 +116,9 @@ class HomeFeedScreen extends StatelessWidget {
                     CircleAvatar(
                       radius: 18,
                       backgroundImage:
-                          NetworkImage(dummyPosts[0]["avatarUrl"] as String),
+                          NetworkImage(((_filteredPosts.isNotEmpty
+                                      ? _filteredPosts
+                                      : _allPosts)[0]["avatarUrl"]) as String),
                       backgroundColor: Colors.transparent,
                     ),
                     const Spacer(),
@@ -131,10 +178,18 @@ class HomeFeedScreen extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Column(
                   children: const [
-                    _ModernSearchBar(),
-                    SizedBox(height: 12),
+                    SizedBox(height: 0),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                child: Column(
+                  children: [
+                    _ModernSearchBar(onQueryChanged: _onQueryChanged),
+                    const SizedBox(height: 12),
                     // Suggestion chips below
-                    SizedBox(
+                    const SizedBox(
                       height: 36,
                       child: _SuggestionChipsRow(),
                     ),
@@ -146,9 +201,9 @@ class HomeFeedScreen extends StatelessWidget {
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.only(top: 6, bottom: 18),
-                  itemCount: dummyPosts.length,
+                  itemCount: _filteredPosts.length,
                   itemBuilder: (context, index) {
-                    final post = dummyPosts[index];
+                    final post = _filteredPosts[index];
                     return _MusicPostCard(
                       index: index,
                       username: post["username"] as String,
@@ -217,7 +272,8 @@ class _SuggestionChipsRow extends StatelessWidget {
 }
 
 class _ModernSearchBar extends StatefulWidget {
-  const _ModernSearchBar();
+  final void Function(String query)? onQueryChanged;
+  const _ModernSearchBar({this.onQueryChanged});
 
   @override
   State<_ModernSearchBar> createState() => _ModernSearchBarState();
@@ -228,6 +284,13 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
   late final FocusNode _focusNode;
   late final AnimationController _controller;
   late final Animation<double> _glowAnim;
+  final TextEditingController _textController = TextEditingController();
+
+  // Speech
+  final SpeechToText _speech = SpeechToText();
+  bool _hasSpeech = false;
+  bool _isListening = false;
+  String _lastError = '';
 
   @override
   void initState() {
@@ -251,9 +314,96 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
 
   @override
   void dispose() {
+    _speech.stop();
+    _textController.dispose();
     _focusNode.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _initSpeech() async {
+    final hasSpeech = await _speech.initialize(
+      onStatus: (status) {
+        if (!mounted) return;
+        if (status == 'notListening') {
+          setState(() => _isListening = false);
+        }
+      },
+      onError: (e) {
+        if (!mounted) return;
+        setState(() => _lastError = e.errorMsg);
+      },
+    );
+    if (!mounted) return;
+    setState(() => _hasSpeech = hasSpeech);
+  }
+
+  Future<void> _startListening() async {
+    if (!_hasSpeech) {
+      await _initSpeech();
+    }
+    setState(() {
+      _isListening = true;
+      _lastError = '';
+    });
+    await _speech.listen(
+      onResult: _onSpeechResult,
+      listenMode: ListenMode.search,
+      partialResults: true,
+      cancelOnError: true,
+      // Wait longer for the user to speak / pause between words
+      pauseFor: const Duration(seconds: 5),
+      listenFor: const Duration(seconds: 20),
+      localeId: null,
+    );
+  }
+
+  Future<void> _stopListening() async {
+    await _speech.stop();
+    if (!mounted) return;
+    setState(() => _isListening = false);
+  }
+
+  void _onSpeechResult(SpeechRecognitionResult result) {
+    if (!mounted) return;
+    final recognized = result.recognizedWords.trim();
+    _textController.value = _textController.value.copyWith(
+      text: recognized,
+      selection: TextSelection.collapsed(offset: recognized.length),
+    );
+    widget.onQueryChanged?.call(recognized);
+  }
+
+  Future<void> _onMicPressed() async {
+    if (_isListening) {
+      await _stopListening();
+      return;
+    }
+    if (!_hasSpeech) {
+      await _initSpeech();
+    }
+    if (!_hasSpeech) {
+      if (!mounted) return;
+      // Show a simple permission dialog
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Microphone permission'),
+            content: const Text(
+                'Voice search needs access to your microphone. Please allow microphone permission in system settings.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+    await _startListening();
   }
 
   @override
@@ -312,6 +462,7 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
                       Expanded(
                         child: TextField(
                           focusNode: _focusNode,
+                          controller: _textController,
                           style: const TextStyle(color: Colors.white),
                           cursorColor: const Color(0xFF5EEAD4),
                           decoration: InputDecoration(
@@ -327,12 +478,19 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
                             fillColor: Colors.transparent,
                             contentPadding: const EdgeInsets.symmetric(vertical: 14),
                           ),
+                          textInputAction: TextInputAction.search,
+                          onChanged: widget.onQueryChanged,
+                          onSubmitted: widget.onQueryChanged,
                         ),
                       ),
                       IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.mic_rounded,
-                            color: Colors.white70, size: 22),
+                        onPressed: _onMicPressed,
+                        icon: Icon(
+                          _isListening ? Icons.stop_circle_rounded : Icons.mic_rounded,
+                          color: _isListening ? const Color(0xFF5EEAD4) : Colors.white70,
+                          size: 22,
+                        ),
+                        tooltip: _isListening ? 'Stop listening' : 'Voice search',
                       ),
                     ],
                   ),

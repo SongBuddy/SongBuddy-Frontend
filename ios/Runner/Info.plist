@@ -45,6 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Microphone permission for voice search -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This is used to capture your voice for search.</string>
 	<!-- Deep link URL scheme for Spotify OAuth callback -->
 	<key>CFBundleURLTypes</key>
 	<array>

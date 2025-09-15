@@ -125,85 +125,18 @@ class HomeFeedScreen extends StatelessWidget {
                 ),
               ),
 
-// Search bar with premium glass effect
+// Search bar with modern glassmorphic style
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Column(
-                  children: [
-                    Focus(
-                      onFocusChange: (hasFocus) {
-                        // You could trigger animations if needed
-                      },
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(30),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.white.withOpacity(0.08),
-                                  Colors.white.withOpacity(0.02),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(30),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.12),
-                                width: 1.2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color:
-                                      const Color(0xFF5EEAD4).withOpacity(0.15),
-                                  blurRadius: 16,
-                                  spreadRadius: 1,
-                                )
-                              ],
-                            ),
-                            child: TextField(
-                              style: const TextStyle(color: Colors.black),
-                              cursorColor: const Color(0xFF5EEAD4),
-                              decoration: InputDecoration(
-                                hintText: "🔍  Search users, songs, playlists",
-                                hintStyle:
-                                    const TextStyle(color: Colors.black),
-                                prefixIcon: const Icon(Icons.search,
-                                    color: Colors.white70),
-                                suffixIcon: IconButton(
-                                  onPressed: () {},
-                                  icon: const Icon(Icons.mic_rounded,
-                                      color: Colors.white70, size: 22),
-                                ),
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 14),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Suggestion chips below (unchanged)
+                  children: const [
+                    _ModernSearchBar(),
+                    SizedBox(height: 12),
+                    // Suggestion chips below
                     SizedBox(
                       height: 36,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: const [
-                          SizedBox(width: 6),
-                          _SuggestionChip(label: "For you"),
-                          _SuggestionChip(label: "Pop"),
-                          _SuggestionChip(label: "Chill"),
-                          _SuggestionChip(label: "Trending"),
-                          _SuggestionChip(label: "New"),
-                          SizedBox(width: 6),
-                        ],
-                      ),
+                      child: _SuggestionChipsRow(),
                     ),
                   ],
                 ),
@@ -259,6 +192,156 @@ class _SuggestionChip extends StatelessWidget {
           child: Text(label, style: const TextStyle(color: Colors.white70)),
         ),
       ),
+    );
+  }
+}
+
+class _SuggestionChipsRow extends StatelessWidget {
+  const _SuggestionChipsRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      scrollDirection: Axis.horizontal,
+      children: const [
+        SizedBox(width: 6),
+        _SuggestionChip(label: "For you"),
+        _SuggestionChip(label: "Pop"),
+        _SuggestionChip(label: "Chill"),
+        _SuggestionChip(label: "Trending"),
+        _SuggestionChip(label: "New"),
+        SizedBox(width: 6),
+      ],
+    );
+  }
+}
+
+class _ModernSearchBar extends StatefulWidget {
+  const _ModernSearchBar();
+
+  @override
+  State<_ModernSearchBar> createState() => _ModernSearchBarState();
+}
+
+class _ModernSearchBarState extends State<_ModernSearchBar>
+    with SingleTickerProviderStateMixin {
+  late final FocusNode _focusNode;
+  late final AnimationController _controller;
+  late final Animation<double> _glowAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+      lowerBound: 0.0,
+      upperBound: 1.0,
+    );
+    _glowAnim = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _glowAnim,
+      builder: (context, child) {
+        return Stack(
+          children: [
+            // soft glow outline
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Opacity(
+                  opacity: _glowAnim.value * 0.35,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF5EEAD4).withOpacity(0.24),
+                          blurRadius: 28 + (8 * _glowAnim.value),
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.14),
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.white.withOpacity(0.05 + 0.03 * _glowAnim.value),
+                        Colors.white.withOpacity(0.015),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.10 + 0.05 * _glowAnim.value),
+                      width: 1.2,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 8),
+                      const Icon(Icons.search, color: Colors.white70),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          focusNode: _focusNode,
+                          style: const TextStyle(color: Colors.white),
+                          cursorColor: const Color(0xFF5EEAD4),
+                          decoration: InputDecoration(
+                            hintText: "Search users, songs, playlists",
+                            hintStyle: const TextStyle(color: Colors.white70),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            focusedErrorBorder: InputBorder.none,
+                            filled: true,
+                            fillColor: Colors.transparent,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {},
+                        icon: const Icon(Icons.mic_rounded,
+                            color: Colors.white70, size: 22),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

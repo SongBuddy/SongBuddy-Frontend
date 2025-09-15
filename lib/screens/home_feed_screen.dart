@@ -125,63 +125,86 @@ class HomeFeedScreen extends StatelessWidget {
                 ),
               ),
 
-              // Search bar with fancy glass and suggestion chips
+// Search bar with premium glass effect
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Column(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(30),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.04),
-                            borderRadius: BorderRadius.circular(30),
-                            border: Border.all(
-                                color: Colors.white.withOpacity(0.08)),
-                          ),
-                          child: TextField(
-                            style: const TextStyle(color: Colors.white),
-                            cursorColor: Colors.white70,
-                            decoration: InputDecoration(
-                              hintText: "Search users, songs, playlists",
-                              hintStyle: const TextStyle(color: Colors.white60),
-                              prefixIcon: const Icon(Icons.search,
-                                  color: Colors.white60),
-                              suffixIcon: IconButton(
-                                onPressed: () {},
-                                icon: const Icon(Icons.mic,
-                                    color: Colors.white54),
+                    Focus(
+                      onFocusChange: (hasFocus) {
+                        // You could trigger animations if needed
+                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.white.withOpacity(0.08),
+                                  Colors.white.withOpacity(0.02),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                              border: InputBorder.none,
-                              contentPadding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.12),
+                                width: 1.2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color:
+                                      const Color(0xFF5EEAD4).withOpacity(0.15),
+                                  blurRadius: 16,
+                                  spreadRadius: 1,
+                                )
+                              ],
+                            ),
+                            child: TextField(
+                              style: const TextStyle(color: Colors.black),
+                              cursorColor: const Color(0xFF5EEAD4),
+                              decoration: InputDecoration(
+                                hintText: "🔍  Search users, songs, playlists",
+                                hintStyle:
+                                    const TextStyle(color: Colors.black),
+                                prefixIcon: const Icon(Icons.search,
+                                    color: Colors.white70),
+                                suffixIcon: IconButton(
+                                  onPressed: () {},
+                                  icon: const Icon(Icons.mic_rounded,
+                                      color: Colors.white70, size: 22),
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
 
-                    // small suggestion chips
+                    // Suggestion chips below (unchanged)
                     SizedBox(
                       height: 36,
                       child: ListView(
                         scrollDirection: Axis.horizontal,
-                        children: [
-                          const SizedBox(width: 6),
+                        children: const [
+                          SizedBox(width: 6),
                           _SuggestionChip(label: "For you"),
                           _SuggestionChip(label: "Pop"),
                           _SuggestionChip(label: "Chill"),
                           _SuggestionChip(label: "Trending"),
                           _SuggestionChip(label: "New"),
-                          const SizedBox(width: 6),
+                          SizedBox(width: 6),
                         ],
                       ),
-                    )
+                    ),
                   ],
                 ),
               ),
@@ -195,7 +218,6 @@ class HomeFeedScreen extends StatelessWidget {
                     final post = dummyPosts[index];
                     return _MusicPostCard(
                       index: index,
-                  
                       username: post["username"] as String,
                       avatarUrl: post["avatarUrl"] as String,
                       trackTitle: post["trackTitle"] as String,
@@ -269,7 +291,7 @@ class _MusicPostCard extends StatefulWidget {
 }
 
 class _MusicPostCardState extends State<_MusicPostCard>
-    with TickerProviderStateMixin  {
+    with TickerProviderStateMixin {
   bool isLiked = false;
   late int likeCount;
   bool showHeartOverlay = false;
@@ -559,7 +581,7 @@ class _MusicPostCardState extends State<_MusicPostCard>
 
                               // floating small play control (glass)
                               Align(
-                               alignment: Alignment.center,
+                                alignment: Alignment.center,
                                 child: Container(
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(40),

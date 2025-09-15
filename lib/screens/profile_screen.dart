@@ -30,6 +30,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<Map<String, dynamic>> _recentlyPlayed = const [];
   bool _insufficientScopeTop = false;
 
+  // Time range state for Top Artists/Tracks: short_term (4 weeks), medium_term (6 months), long_term (all-time)
+  final List<String> _timeRanges = const ['short_term', 'medium_term', 'long_term'];
+  int _timeRangeIndex = 1; // default to medium_term
+  bool _loadingTop = false; // non-blocking loading for top artists/tracks
+
   @override
   void initState() {
     super.initState();
@@ -109,7 +114,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }(),
         () async {
           try {
-            final ta = await _spotifyService.getUserTopArtists(token, limit: 10);
+            final ta = await _spotifyService.getUserTopArtists(
+              token,
+              timeRange: _timeRanges[_timeRangeIndex],
+              limit: 10,
+            );
             _topArtists = (ta['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
           } catch (e) {
             _insufficientScopeTop = true;
@@ -118,7 +127,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }(),
         () async {
           try {
-            final tt = await _spotifyService.getUserTopTracks(token, limit: 10);
+            final tt = await _spotifyService.getUserTopTracks(
+              token,
+              timeRange: _timeRanges[_timeRangeIndex],
+              limit: 10,
+            );
             _topTracks = (tt['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
           } catch (e) {
             _insufficientScopeTop = true;
@@ -158,6 +171,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await _authProvider.login();
     if (_authProvider.isAuthenticated) {
       await _fetchAll();
+    }
+  }
+
+  Future<void> _updateTimeRange(int index) async {
+    if (index == _timeRangeIndex) return;
+    if (!_authProvider.isAuthenticated || _authProvider.accessToken == null) return;
+    setState(() {
+      _timeRangeIndex = index;
+      _loadingTop = true;
+      _insufficientScopeTop = false;
+    });
+    final token = _authProvider.accessToken!;
+    try {
+      final results = await Future.wait([
+        _spotifyService.getUserTopArtists(
+          token,
+          timeRange: _timeRanges[_timeRangeIndex],
+          limit: 10,
+        ),
+        _spotifyService.getUserTopTracks(
+          token,
+          timeRange: _timeRanges[_timeRangeIndex],
+          limit: 10,
+        ),
+      ]);
+      final topArtistsResp = results[0] as Map<String, dynamic>;
+      final topTracksResp = results[1] as Map<String, dynamic>;
+      setState(() {
+        _topArtists = (topArtistsResp['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
+        _topTracks = (topTracksResp['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
+      });
+    } catch (e) {
+      setState(() {
+        _insufficientScopeTop = true;
+        _topArtists = const [];
+        _topTracks = const [];
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loadingTop = false;
+        });
+      }
     }
   }
 
@@ -216,6 +272,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   SliverToBoxAdapter(child: _buildSectionTitle('Currently Playing')),
                   SliverToBoxAdapter(child: _buildCurrentlyPlaying()),
                   SliverToBoxAdapter(child: _buildSectionTitle('Top Artists')),
+                  SliverToBoxAdapter(child: _buildTimeRangeToggle()),
                   _buildTopArtists(),
                   SliverToBoxAdapter(child: _buildSectionTitle('Top Tracks')),
                   _buildTopTracks(context),
@@ -451,6 +508,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
           separatorBuilder: (_, __) => const SizedBox(width: 12),
           itemCount: _topArtists.length,
         ),
+      ),
+    );
+  }
+
+  Widget _buildTimeRangeToggle() {
+    final labels = const ['4w', '6m', 'All'];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ToggleButtons(
+            borderRadius: BorderRadius.circular(12),
+            isSelected: List<bool>.generate(3, (i) => i == _timeRangeIndex),
+            onPressed: (int i) {
+              HapticFeedback.selectionClick();
+              _updateTimeRange(i);
+            },
+            children: labels
+                .map((t) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Text(t, style: AppTextStyles.body),
+                    ))
+                .toList(),
+          ),
+          if (_loadingTop) const SizedBox(height: 8),
+          if (_loadingTop) const LinearProgressIndicator(minHeight: 2),
+        ],
       ),
     );
   }

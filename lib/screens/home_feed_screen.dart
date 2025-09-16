@@ -291,6 +291,7 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
   bool _hasSpeech = false;
   bool _isListening = false;
   String _lastError = '';
+  Timer? _statusPoll;
 
   @override
   void initState() {
@@ -315,6 +316,7 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
   @override
   void dispose() {
     _speech.stop();
+    _statusPoll?.cancel();
     _textController.dispose();
     _focusNode.dispose();
     _controller.dispose();
@@ -325,13 +327,16 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
     final hasSpeech = await _speech.initialize(
       onStatus: (status) {
         if (!mounted) return;
-        if (status == 'notListening') {
-          setState(() => _isListening = false);
-        }
+        // Reflect platform mic state immediately in UI
+        setState(() => _isListening = status == 'listening');
       },
       onError: (e) {
         if (!mounted) return;
-        setState(() => _lastError = e.errorMsg);
+        setState(() {
+          _lastError = e.errorMsg;
+          _isListening = false; // ensure icon reverts on any error
+        });
+        _statusPoll?.cancel();
       },
     );
     if (!mounted) return;
@@ -346,7 +351,7 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
       _isListening = true;
       _lastError = '';
     });
-    await _speech.listen(
+    final started = await _speech.listen(
       onResult: _onSpeechResult,
       listenMode: ListenMode.search,
       partialResults: true,
@@ -356,12 +361,31 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
       listenFor: const Duration(seconds: 20),
       localeId: null,
     );
+    if (!mounted) return;
+    if (started == false) {
+      // Listening failed to start; revert button immediately
+      setState(() => _isListening = false);
+      return;
+    }
+    // Poll plugin state to mirror platform mic cancellation precisely
+    _statusPoll?.cancel();
+    _statusPoll = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      final pluginListening = _speech.isListening;
+      if (!mounted) return;
+      if (_isListening != pluginListening) {
+        setState(() => _isListening = pluginListening);
+      }
+      if (!pluginListening) {
+        _statusPoll?.cancel();
+      }
+    });
   }
 
   Future<void> _stopListening() async {
     await _speech.stop();
     if (!mounted) return;
     setState(() => _isListening = false);
+    _statusPoll?.cancel();
   }
 
   void _onSpeechResult(SpeechRecognitionResult result) {
@@ -372,6 +396,10 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
       selection: TextSelection.collapsed(offset: recognized.length),
     );
     widget.onQueryChanged?.call(recognized);
+    if (result.finalResult) {
+      setState(() => _isListening = false);
+      _statusPoll?.cancel();
+    }
   }
 
   Future<void> _onMicPressed() async {

@@ -463,6 +463,7 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
                         child: TextField(
                           focusNode: _focusNode,
                           controller: _textController,
+                          magnifierConfiguration: TextMagnifierConfiguration.disabled,
                           style: const TextStyle(color: Colors.white),
                           cursorColor: const Color(0xFF5EEAD4),
                           decoration: InputDecoration(

@@ -585,6 +585,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // New: Top Tracks as a widget (no slivers)
   Widget _buildTopTracksWidget(BuildContext context) {
+    if (_topTracks.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: const _EmptyCard(
+          icon: Icons.music_note,
+          title: 'No top tracks yet',
+          subtitle: 'Listen more to build your top tracks.',
+        ),
+      );
+    }
     final cross = _gridCountForWidth(MediaQuery.of(context).size.width);
     return GridView.builder(
       shrinkWrap: true,
@@ -670,6 +680,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // New: Recently played as a widget (no slivers)
   Widget _buildRecentlyPlayedWidget() {
+    if (_recentlyPlayed.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: const _EmptyCard(
+          icon: Icons.history,
+          title: 'No recent plays',
+          subtitle: 'Play some songs to see them here.',
+        ),
+      );
+    }
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),

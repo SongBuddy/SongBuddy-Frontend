@@ -509,7 +509,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
-        itemBuilder: (_, __) => const _SkeletonCircle(diameter: 72),
+        itemBuilder: (_, __) => Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: const [
+            _SkeletonCircle(diameter: 72),
+            SizedBox(height: 8),
+            _SkeletonBox(width: 80, height: 12, radius: 6),
+          ],
+        ),
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemCount: 6,
       ),
@@ -711,10 +718,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return [
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: List.generate(4, (_) => const _SkeletonBox(width: 160, height: 54, radius: 12)),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 380;
+            final itemWidth = isNarrow
+                ? (constraints.maxWidth / 2) - 12
+                : (constraints.maxWidth / 4) - 12;
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.spaceBetween,
+              children: List.generate(4, (_) => SizedBox(
+                    width: itemWidth,
+                    child: const _StatChipSkeleton(),
+                  )),
+            );
+          },
         ),
       ),
       _buildSectionTitle('Currently Playing'),
@@ -728,7 +747,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           scrollDirection: Axis.horizontal,
-          itemBuilder: (_, __) => const _SkeletonCircle(diameter: 72),
+          itemBuilder: (_, __) => Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: const [
+              _SkeletonCircle(diameter: 72),
+              SizedBox(height: 8),
+              _SkeletonBox(width: 80, height: 12, radius: 6),
+            ],
+          ),
           separatorBuilder: (_, __) => const SizedBox(width: 12),
           itemCount: 6,
         ),
@@ -1109,6 +1135,38 @@ class _GlassCard extends StatelessWidget {
             border: Border.all(color: AppColors.onDarkPrimary.withOpacity(0.06)),
           ),
           child: child,
+        ),
+      ),
+    );
+  }
+}
+
+// Skeleton for StatChip to mirror exact layout
+class _StatChipSkeleton extends StatelessWidget {
+  const _StatChipSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return _GlassCard(
+      borderRadius: 12,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            _SkeletonBox(width: 18, height: 18, radius: 9),
+            SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SkeletonBox(width: 80, height: 14, radius: 6),
+                  SizedBox(height: 6),
+                  _SkeletonBox(width: 60, height: 12, radius: 6),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

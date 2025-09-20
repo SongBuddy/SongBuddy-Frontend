@@ -45,7 +45,8 @@ class BottomNavBar extends StatelessWidget {
             ),
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -61,11 +62,18 @@ class BottomNavBar extends StatelessWidget {
                       index: 1,
                       icon: Icons.person_outline,
                       activeIcon: Icons.person,
-                      label: 'Profile',
+                      label: 'Search',
                     ),
                     _buildNavItem(
                       context: context,
                       index: 2,
+                      icon: Icons.person_outline,
+                      activeIcon: Icons.person,
+                      label: 'Profile',
+                    ),
+                    _buildNavItem(
+                      context: context,
+                      index: 3,
                       icon: Icons.settings_outlined,
                       activeIcon: Icons.settings,
                       label: 'Settings',
@@ -88,7 +96,7 @@ class BottomNavBar extends StatelessWidget {
     required String label,
   }) {
     final isSelected = currentIndex == index;
-    
+
     return GestureDetector(
       onTap: () => onTap(index),
       child: AnimatedContainer(
@@ -96,7 +104,7 @@ class BottomNavBar extends StatelessWidget {
         curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected 
+          color: isSelected
               ? AppColors.accentMint.withOpacity(0.15)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
@@ -115,8 +123,8 @@ class BottomNavBar extends StatelessWidget {
               child: Icon(
                 isSelected ? activeIcon : icon,
                 key: ValueKey('${isSelected}_$index'),
-                color: isSelected 
-                    ? AppColors.accentMint 
+                color: isSelected
+                    ? AppColors.accentMint
                     : AppColors.onDarkSecondary,
                 size: 24,
               ),
@@ -125,8 +133,8 @@ class BottomNavBar extends StatelessWidget {
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: AppTextStyles.captionOnDark.copyWith(
-                color: isSelected 
-                    ? AppColors.accentMint 
+                color: isSelected
+                    ? AppColors.accentMint
                     : AppColors.onDarkSecondary,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 fontSize: 12,

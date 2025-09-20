@@ -289,40 +289,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
             colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
           ),
         ),
-        child: RefreshIndicator(
-          onRefresh: () async {
-            HapticFeedback.lightImpact();
-            await _fetchAll();
-            HapticFeedback.selectionClick();
-          },
-          child: CustomScrollView(
-            slivers: _loading
-                ? _buildSkeletonSlivers(context)
-                : [
-                    _buildHeader(context),
-                    SliverToBoxAdapter(child: _buildStats(context)),
-                    SliverToBoxAdapter(child: _buildSectionTitle('Currently Playing')),
-                    SliverToBoxAdapter(child: _buildCurrentlyPlaying()),
-                    SliverToBoxAdapter(child: _buildSectionTitle('Top Artists')),
-                    SliverToBoxAdapter(child: _buildTimeRangeToggle()),
-                    _buildTopArtists(),
-                    SliverToBoxAdapter(child: _buildSectionTitle('Top Tracks')),
-                    (_loadingTop ? _buildTopTracksSkeleton(context) : _buildTopTracks(context)),
-                    SliverToBoxAdapter(child: _buildSectionTitle('Recently Played')),
-                    _buildRecentlyPlayed(),
-                    if (_insufficientScopeTop)
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: _EmptyCard(
-                            icon: Icons.lock_outline,
-                            title: 'Limited data due to permissions',
-                            subtitle: 'Re-connect and grant access to Top Artists/Tracks to see more.',
-                          ),
-                        ),
-                      ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                  ],
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: _buildTopBar(context),
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    HapticFeedback.lightImpact();
+                    await _fetchAll();
+                    HapticFeedback.selectionClick();
+                  },
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: _loading
+                        ? _buildSkeletonWidgets(context)
+                        : [
+                            _buildStats(context),
+                            _buildSectionTitle('Currently Playing'),
+                            _buildCurrentlyPlaying(),
+                            _buildSectionTitle('Top Artists'),
+                            _buildTimeRangeToggle(),
+                            _buildTopArtistsWidget(),
+                            _buildSectionTitle('Top Tracks'),
+                            _loadingTop
+                                ? _buildTopTracksSkeletonWidget(context)
+                                : _buildTopTracksWidget(context),
+                            _buildSectionTitle('Recently Played'),
+                            _buildRecentlyPlayedWidget(),
+                            if (_insufficientScopeTop)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: _EmptyCard(
+                                  icon: Icons.lock_outline,
+                                  title: 'Limited data due to permissions',
+                                  subtitle: 'Re-connect and grant access to Top Artists/Tracks to see more.',
+                                ),
+                              ),
+                            const SizedBox(height: 24),
+                          ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -494,26 +506,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  SliverToBoxAdapter _buildTopArtists() {
-    return SliverToBoxAdapter(
-      child: AnimatedSwitcher(
-        duration: _animDur,
-        child: _loadingTop
-            ? _buildTopArtistsSkeletonContent(key: const ValueKey('artists-skeleton'))
-            : (_topArtists.isEmpty
-                ? Padding(
-                    key: const ValueKey('artists-empty'),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _EmptyCard(
-                      icon: Icons.person_outline,
-                      title: 'No top artists yet',
-                      subtitle: 'Listen more to build your top artists.',
-                    ),
-                  )
-                : _buildTopArtistsContent(key: const ValueKey('artists-list'))),
-      ),
-    );
-  }
+  // Deprecated sliver-based method (kept for reference)
+  // SliverToBoxAdapter _buildTopArtists() { ... }
 
   Widget _buildTopArtistsContent({Key? key}) {
     return SizedBox(
@@ -591,6 +585,259 @@ class _ProfileScreenState extends State<ProfileScreen> {
             .toList(),
       ),
     );
+  }
+
+  // New: Top bar matching HomeFeedScreen
+  Widget _buildTopBar(BuildContext context) {
+    final images = (_user?['images'] as List<dynamic>?) ?? const [];
+    final avatarUrl = images.isNotEmpty ? (images.first['url'] as String?) : null;
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 18,
+          backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+          backgroundColor: Colors.transparent,
+          child: avatarUrl == null
+              ? const Icon(Icons.person_outline, color: AppColors.onDarkSecondary)
+              : null,
+        ),
+        const Spacer(),
+        Text(
+          'Profile',
+          style: AppTextStyles.heading2OnDark.copyWith(
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+            letterSpacing: 0.6,
+            shadows: [
+              Shadow(
+                color: AppColors.onDarkPrimary.withOpacity(0.03),
+                blurRadius: 6,
+              )
+            ],
+          ),
+        ),
+        const Spacer(),
+        IconButton(
+          onPressed: () {},
+          icon: const Icon(Icons.notifications_outlined, color: AppColors.onDarkSecondary),
+        ),
+      ],
+    );
+  }
+
+  // New: Top Artists as a widget (no slivers)
+  Widget _buildTopArtistsWidget() {
+    return AnimatedSwitcher(
+      duration: _animDur,
+      child: _loadingTop
+          ? _buildTopArtistsSkeletonContent(key: const ValueKey('artists-skeleton'))
+          : (_topArtists.isEmpty
+              ? Padding(
+                  key: const ValueKey('artists-empty'),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: const _EmptyCard(
+                    icon: Icons.person_outline,
+                    title: 'No top artists yet',
+                    subtitle: 'Listen more to build your top artists.',
+                  ),
+                )
+              : _buildTopArtistsContent(key: const ValueKey('artists-list'))),
+    );
+  }
+
+  // New: Top Tracks as a widget (no slivers)
+  Widget _buildTopTracksWidget(BuildContext context) {
+    final cross = _gridCountForWidth(MediaQuery.of(context).size.width);
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: cross,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.75,
+      ),
+      itemCount: _topTracks.length,
+      itemBuilder: (context, index) {
+        if (index >= _topTracks.length) return const SizedBox.shrink();
+        final track = _topTracks[index];
+        final images = track['album']?['images'] as List<dynamic>? ?? const [];
+        final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
+        final artists = (track['artists'] as List<dynamic>? ?? const [])
+            .map((a) => a['name'] as String? ?? '')
+            .where((s) => s.isNotEmpty)
+            .join(', ');
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: imageUrl != null
+                    ? Image.network(imageUrl, fit: BoxFit.cover)
+                    : Container(
+                        color: AppColors.onDarkPrimary.withOpacity(0.12),
+                        child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              track['name'] as String? ?? '',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+            ),
+            Text(
+              artists,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.captionOnDark,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTopTracksSkeletonWidget(BuildContext context) {
+    final gridCount = _gridCountForWidth(MediaQuery.of(context).size.width);
+    final itemCount = gridCount * 2;
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: gridCount,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.75,
+      ),
+      itemCount: itemCount,
+      itemBuilder: (context, index) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Expanded(child: _SkeletonBox(width: double.infinity, height: double.infinity, radius: 12)),
+            SizedBox(height: 8),
+            _SkeletonBox(width: 120, height: 14, radius: 6),
+            SizedBox(height: 6),
+            _SkeletonBox(width: 80, height: 12, radius: 6),
+          ],
+        );
+      },
+    );
+  }
+
+  // New: Recently played as a widget (no slivers)
+  Widget _buildRecentlyPlayedWidget() {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _recentlyPlayed.length,
+      itemBuilder: (context, index) {
+        if (index >= _recentlyPlayed.length) return const SizedBox.shrink();
+        final item = _recentlyPlayed[index];
+        final track = item['track'] as Map<String, dynamic>? ?? const {};
+        final images = track['album']?['images'] as List<dynamic>? ?? const [];
+        final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
+        final artists = (track['artists'] as List<dynamic>? ?? const [])
+            .map((a) => a['name'] as String? ?? '')
+            .where((s) => s.isNotEmpty)
+            .join(', ');
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: _GlassCard(
+            borderRadius: 12,
+            child: ListTile(
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: imageUrl != null
+                    ? Image.network(imageUrl, width: 56, height: 56, fit: BoxFit.cover)
+                    : Container(
+                        width: 56,
+                        height: 56,
+                        color: AppColors.onDarkPrimary.withOpacity(0.12),
+                        child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
+                      ),
+              ),
+              title: Text(
+                track['name'] as String? ?? '',
+                style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(artists, style: AppTextStyles.captionOnDark),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // New: Skeleton widgets list used when loading
+  List<Widget> _buildSkeletonWidgets(BuildContext context) {
+    final gridCount = _gridCountForWidth(MediaQuery.of(context).size.width);
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: List.generate(4, (_) => const _SkeletonBox(width: 160, height: 54, radius: 12)),
+        ),
+      ),
+      _buildSectionTitle('Currently Playing'),
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: _SkeletonTile(),
+      ),
+      _buildSectionTitle('Top Artists'),
+      SizedBox(
+        height: 120,
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          scrollDirection: Axis.horizontal,
+          itemBuilder: (_, __) => const _SkeletonCircle(diameter: 72),
+          separatorBuilder: (_, __) => const SizedBox(width: 12),
+          itemCount: 6,
+        ),
+      ),
+      _buildSectionTitle('Top Tracks'),
+      GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: gridCount,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 0.75,
+        ),
+        itemCount: gridCount * 2,
+        itemBuilder: (context, index) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Expanded(child: _SkeletonBox(width: double.infinity, height: double.infinity, radius: 12)),
+              SizedBox(height: 8),
+              _SkeletonBox(width: 120, height: 14, radius: 6),
+              SizedBox(height: 6),
+              _SkeletonBox(width: 80, height: 12, radius: 6),
+            ],
+          );
+        },
+      ),
+      _buildSectionTitle('Recently Played'),
+      ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 6,
+        itemBuilder: (context, index) => const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: _SkeletonTile(),
+        ),
+      ),
+    ];
   }
 
   SliverGrid _buildTopTracks(BuildContext context) {

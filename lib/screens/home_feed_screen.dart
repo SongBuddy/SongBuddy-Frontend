@@ -201,7 +201,7 @@ class _BlurPostCardState extends State<_BlurPostCard> {
           // Foreground content
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12 , vertical: 5),
-            height: 165,
+            height: 160,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

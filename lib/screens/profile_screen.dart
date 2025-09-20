@@ -31,10 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<Map<String, dynamic>> _recentlyPlayed = const [];
   bool _insufficientScopeTop = false;
 
-  // Time range state for Top Artists/Tracks: short_term (4 weeks), medium_term (6 months), long_term (all-time)
-  final List<String> _timeRanges = const ['short_term', 'medium_term', 'long_term'];
-  int _timeRangeIndex = 1; // default to medium_term
-  bool _loadingTop = false; // non-blocking loading for top artists/tracks
+  bool _loadingTop = false; // non-blocking loading for top artists/tracks (kept for future use)
   static const Duration _animDur = Duration(milliseconds: 250);
 
   @override
@@ -118,7 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           try {
             final ta = await _spotifyService.getUserTopArtists(
               token,
-              timeRange: _timeRanges[_timeRangeIndex],
+              timeRange: 'medium_term',
               limit: 10,
             );
             _topArtists = (ta['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
@@ -131,7 +128,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           try {
             final tt = await _spotifyService.getUserTopTracks(
               token,
-              timeRange: _timeRanges[_timeRangeIndex],
+              timeRange: 'medium_term',
               limit: 10,
             );
             _topTracks = (tt['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
@@ -176,48 +173,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _updateTimeRange(int index) async {
-    if (index == _timeRangeIndex) return;
-    if (!_authProvider.isAuthenticated || _authProvider.accessToken == null) return;
-    setState(() {
-      _timeRangeIndex = index;
-      _loadingTop = true;
-      _insufficientScopeTop = false;
-    });
-    final token = _authProvider.accessToken!;
-    try {
-      final results = await Future.wait([
-        _spotifyService.getUserTopArtists(
-          token,
-          timeRange: _timeRanges[_timeRangeIndex],
-          limit: 10,
-        ),
-        _spotifyService.getUserTopTracks(
-          token,
-          timeRange: _timeRanges[_timeRangeIndex],
-          limit: 10,
-        ),
-      ]);
-      final topArtistsResp = results[0] as Map<String, dynamic>;
-      final topTracksResp = results[1] as Map<String, dynamic>;
-      setState(() {
-        _topArtists = (topArtistsResp['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
-        _topTracks = (topTracksResp['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
-      });
-    } catch (e) {
-      setState(() {
-        _insufficientScopeTop = true;
-        _topArtists = const [];
-        _topTracks = const [];
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loadingTop = false;
-        });
-      }
-    }
-  }
+  // Removed time range switching; always uses medium_term
 
   @override
   Widget build(BuildContext context) {
@@ -312,7 +268,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             _buildSectionTitle('Currently Playing'),
                             _buildCurrentlyPlaying(),
                             _buildSectionTitle('Top Artists'),
-                            _buildTimeRangeToggle(),
                             _buildTopArtistsWidget(),
                             _buildSectionTitle('Top Tracks'),
                             _loadingTop
@@ -561,31 +516,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildTimeRangeToggle() {
-    final labels = const ['4w', '6m', 'All'];
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: ToggleButtons(
-        borderRadius: BorderRadius.circular(12),
-        isSelected: List<bool>.generate(3, (i) => i == _timeRangeIndex),
-        onPressed: (int i) {
-          HapticFeedback.selectionClick();
-          _updateTimeRange(i);
-        },
-        color: AppColors.onDarkSecondary,
-        selectedColor: AppColors.onDarkPrimary,
-        fillColor: AppColors.onDarkPrimary.withOpacity(0.06),
-        borderColor: AppColors.onDarkPrimary.withOpacity(0.10),
-        selectedBorderColor: AppColors.accentMint.withOpacity(0.40),
-        children: labels
-            .map((t) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Text(t, style: AppTextStyles.bodyOnDark),
-                ))
-            .toList(),
-      ),
-    );
-  }
+  // Removed time range toggle UI
 
   // New: Top bar matching HomeFeedScreen
   Widget _buildTopBar(BuildContext context) {

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:songbuddy/screens/user_profile_screen.dart';
 
 class SearchFeedScreen extends StatefulWidget {
   const SearchFeedScreen({super.key});
@@ -218,7 +219,14 @@ class _SearchFeedScreenState extends State<SearchFeedScreen>
                               scrollDirection: Axis.horizontal,
                               child: Row(
                                 children: filteredUsers
-                                    .map((user) => _buildUserCard(user))
+                                    .map((user) => GestureDetector(
+                                      child: _buildUserCard(user),
+                                      onTap: (){
+                                       Navigator.push(context, MaterialPageRoute(builder: (context) => UserProfileScreen(username:user['username'] , avatarUrl: "https://i.pravatar.cc/150?img=1")));
+                                        
+                                      },
+                                      )
+                                    )
                                     .toList(),
                               ),
                             ),

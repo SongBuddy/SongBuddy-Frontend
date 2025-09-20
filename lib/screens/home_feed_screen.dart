@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:songbuddy/constants/app_colors.dart';
+import 'package:songbuddy/constants/app_text_styles.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -98,8 +99,8 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF071028), // deep navy
-              Color(0xFF0B0B0D), // near-black
+              AppColors.darkBackgroundStart,
+              AppColors.darkBackgroundEnd,
             ],
           ),
         ),
@@ -125,14 +126,13 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                     // Title with subtle glow
                     Text(
                       "SongBuddy",
-                      style: TextStyle(
-                        color: AppColors.surface,
+                      style: AppTextStyles.heading2OnDark.copyWith(
                         fontWeight: FontWeight.w800,
                         fontSize: 20,
                         letterSpacing: 0.6,
                         shadows: [
                           Shadow(
-                            color: Colors.white.withOpacity(0.03),
+                            color: AppColors.onDarkPrimary.withOpacity(0.03),
                             blurRadius: 6,
                           )
                         ],
@@ -144,8 +144,10 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                       children: [
                         IconButton(
                           onPressed: () {},
-                          icon: const Icon(Icons.notifications_outlined,
-                              color: Colors.white70),
+                          icon: const Icon(
+                            Icons.notifications_outlined,
+                            color: AppColors.onDarkSecondary,
+                          ),
                         ),
                         Positioned(
                           right: 8,
@@ -154,11 +156,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                             width: 7,
                             height: 7,
                             decoration: BoxDecoration(
-                              color: Colors.redAccent,
+                              color: AppColors.error,
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.redAccent.withOpacity(0.4),
+                                  color: AppColors.error.withOpacity(0.4),
                                   blurRadius: 8,
                                   spreadRadius: 1,
                                 )
@@ -258,15 +260,15 @@ class _SuggestionChipsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       scrollDirection: Axis.horizontal,
-      children: const [
-        SizedBox(width: 6),
-        _SuggestionChip(label: "For you"),
-        _SuggestionChip(label: "Pop"),
-        _SuggestionChip(label: "Chill"),
-        _SuggestionChip(label: "Trending"),
-        _SuggestionChip(label: "New"),
-        SizedBox(width: 6),
-      ],
+          children: const [
+            SizedBox(width: 6),
+            _SuggestionChip(label: "For you"),
+            _SuggestionChip(label: "Pop"),
+            _SuggestionChip(label: "Chill"),
+            _SuggestionChip(label: "Trending"),
+            _SuggestionChip(label: "New"),
+            SizedBox(width: 6),
+          ],
     );
   }
 }
@@ -485,18 +487,18 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
                   child: Row(
                     children: [
                       const SizedBox(width: 8),
-                      const Icon(Icons.search, color: Colors.white70),
+                      const Icon(Icons.search, color: AppColors.onDarkSecondary),
                       const SizedBox(width: 8),
                       Expanded(
                         child: TextField(
                           focusNode: _focusNode,
                           controller: _textController,
                           magnifierConfiguration: TextMagnifierConfiguration.disabled,
-                          style: const TextStyle(color: Colors.white),
-                          cursorColor: const Color(0xFF5EEAD4),
+                          style: const TextStyle(color: AppColors.onDarkPrimary),
+                          cursorColor: AppColors.accentMint,
                           decoration: InputDecoration(
                             hintText: "Search users, songs, playlists",
-                            hintStyle: const TextStyle(color: Colors.white70),
+                            hintStyle: const TextStyle(color: AppColors.onDarkSecondary),
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
@@ -516,7 +518,7 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
                         onPressed: _onMicPressed,
                         icon: Icon(
                           _isListening ? Icons.stop_circle_rounded : Icons.mic_rounded,
-                          color: _isListening ? const Color(0xFF5EEAD4) : Colors.white70,
+                          color: _isListening ? AppColors.accentMint : AppColors.onDarkSecondary,
                           size: 22,
                         ),
                         tooltip: _isListening ? 'Stop listening' : 'Voice search',
@@ -635,7 +637,7 @@ class _MusicPostCardState extends State<_MusicPostCard>
   @override
   Widget build(BuildContext context) {
     // Accent color (tweak as needed)
-    const accent = Color(0xFF5EEAD4); // mint accent — modern & readable on dark
+    final accent = AppColors.accentMint; // mint accent — from theme
     final cardRadius = 18.0;
 
     return FadeTransition(
@@ -662,7 +664,7 @@ class _MusicPostCardState extends State<_MusicPostCard>
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.6),
+                        color: AppColors.shadowBlack60,
                         blurRadius: 18,
                         offset: const Offset(0, 8),
                       ),
@@ -703,7 +705,7 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                   borderRadius: BorderRadius.circular(12),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.5),
+                                      color: AppColors.black.withOpacity(0.5),
                                       blurRadius: 8,
                                       offset: const Offset(0, 4),
                                     )
@@ -724,8 +726,7 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                       children: [
                                         Text(
                                           widget.username,
-                                          style: const TextStyle(
-                                            color: Colors.white,
+                                          style: AppTextStyles.bodyOnDark.copyWith(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 15,
                                           ),
@@ -733,9 +734,10 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                         const SizedBox(width: 8),
                                         Text(
                                           "• ${widget.timeAgo}",
-                                          style: const TextStyle(
-                                              color: Colors.white54,
-                                              fontSize: 12),
+                                          style: AppTextStyles.captionOnDark.copyWith(
+                                            color: AppColors.onDarkTertiary,
+                                            fontSize: 12,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -746,24 +748,22 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 8, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color:
-                                                Colors.white.withOpacity(0.04),
+                                            color: AppColors.onDarkPrimary.withOpacity(0.04),
                                             borderRadius:
                                                 BorderRadius.circular(12),
                                           ),
                                           child: Text(
                                             widget.artist,
-                                            style: const TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 12),
+                                            style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
                                           ),
                                         ),
                                         const SizedBox(width: 8),
-                                        const Text(
+                                        Text(
                                           "Music",
-                                          style: TextStyle(
-                                              color: Colors.white38,
-                                              fontSize: 11),
+                                          style: AppTextStyles.captionOnDark.copyWith(
+                                            color: AppColors.onDarkMuted,
+                                            fontSize: 11,
+                                          ),
                                         )
                                       ],
                                     )
@@ -775,7 +775,7 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                 style: ElevatedButton.styleFrom(
                                   elevation: 0,
                                   backgroundColor:
-                                      Colors.white.withOpacity(0.06),
+                                      AppColors.onDarkPrimary.withOpacity(0.06),
                                   foregroundColor: accent,
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 14, vertical: 8),
@@ -818,13 +818,14 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                               (context, child, progress) {
                                             if (progress == null) return child;
                                             return Container(
-                                              color: Colors.white
+                                              color: AppColors.onDarkPrimary
                                                   .withOpacity(0.03),
-                                              child: const Center(
-                                                child:
-                                                    CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                        color: Colors.white24),
+                                              child: Center(
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: AppColors.onDarkPrimary
+                                                      .withOpacity(0.24),
+                                                ),
                                               ),
                                             );
                                           },
@@ -837,7 +838,7 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                               begin: Alignment.bottomCenter,
                                               end: Alignment.topCenter,
                                               colors: [
-                                                Colors.black.withOpacity(0.6),
+                                                AppColors.shadowBlack60,
                                                 Colors.transparent,
                                               ],
                                             ),
@@ -938,9 +939,9 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                         parent: _likePopController,
                                         curve: Curves.elasticOut),
                                   ),
-                                  child: Icon(Icons.favorite,
-                                      color: Colors.white.withOpacity(0.92),
-                                      size: 86),
+                                      child: Icon(Icons.favorite,
+                                          color: AppColors.onDarkPrimary.withOpacity(0.92),
+                                          size: 86),
                                 ),
                               ),
                             ],
@@ -954,10 +955,10 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                 horizontal: 14, vertical: 12),
                             child: Text(
                               widget.description,
-                              style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontStyle: FontStyle.italic,
-                                  fontSize: 13.5),
+                              style: AppTextStyles.captionOnDark.copyWith(
+                                fontStyle: FontStyle.italic,
+                                fontSize: 13.5,
+                              ),
                             ),
                           ),
 
@@ -981,7 +982,7 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
                                       color: isLiked
-                                          ? Colors.redAccent.withOpacity(0.14)
+                                          ? AppColors.error.withOpacity(0.14)
                                           : Colors.transparent,
                                       shape: BoxShape.circle,
                                     ),
@@ -990,28 +991,33 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                           ? Icons.favorite
                                           : Icons.favorite_border,
                                       color: isLiked
-                                          ? Colors.redAccent
-                                          : Colors.white70,
+                                          ? AppColors.error
+                                          : AppColors.onDarkSecondary,
                                     ),
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              Text("$likeCount",
-                                  style:
-                                      const TextStyle(color: Colors.white70)),
+                              Text(
+                                "$likeCount",
+                                style: AppTextStyles.captionOnDark,
+                              ),
 
                               const SizedBox(width: 14),
 
                               IconButton(
                                 onPressed: () {},
-                                icon: const Icon(Icons.comment_outlined,
-                                    color: Colors.white70),
+                                icon: const Icon(
+                                  Icons.comment_outlined,
+                                  color: AppColors.onDarkSecondary,
+                                ),
                               ),
                               IconButton(
                                 onPressed: () {},
-                                icon: const Icon(Icons.share_outlined,
-                                    color: Colors.white70),
+                                icon: const Icon(
+                                  Icons.share_outlined,
+                                  color: AppColors.onDarkSecondary,
+                                ),
                               ),
 
                               const Spacer(),
@@ -1038,11 +1044,10 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                           child: Container(
                                             height: 6,
                                             decoration: BoxDecoration(
-                                              gradient: const LinearGradient(
-                                                  colors: [
-                                                    accent,
-                                                    Color(0xFF3DDC97)
-                                                  ]),
+                                              gradient: LinearGradient(colors: [
+                                                accent,
+                                                AppColors.accentGreen,
+                                              ]),
                                               borderRadius:
                                                   BorderRadius.circular(6),
                                             ),
@@ -1057,8 +1062,10 @@ class _MusicPostCardState extends State<_MusicPostCard>
                               // more menu
                               IconButton(
                                 onPressed: () {},
-                                icon: const Icon(Icons.more_vert,
-                                    color: Colors.white54),
+                                icon: const Icon(
+                                  Icons.more_vert,
+                                  color: AppColors.onDarkTertiary,
+                                ),
                               ),
                             ],
                           ),

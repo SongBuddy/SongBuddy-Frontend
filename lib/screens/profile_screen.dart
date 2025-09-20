@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
@@ -30,10 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<Map<String, dynamic>> _recentlyPlayed = const [];
   bool _insufficientScopeTop = false;
 
-  // Time range state for Top Artists/Tracks: short_term (4 weeks), medium_term (6 months), long_term (all-time)
-  final List<String> _timeRanges = const ['short_term', 'medium_term', 'long_term'];
-  int _timeRangeIndex = 1; // default to medium_term
-  bool _loadingTop = false; // non-blocking loading for top artists/tracks
+  bool _loadingTop = false; // non-blocking loading for top artists/tracks (kept for future use)
   static const Duration _animDur = Duration(milliseconds: 250);
 
   @override
@@ -117,7 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           try {
             final ta = await _spotifyService.getUserTopArtists(
               token,
-              timeRange: _timeRanges[_timeRangeIndex],
+              timeRange: 'medium_term',
               limit: 10,
             );
             _topArtists = (ta['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
@@ -130,7 +128,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           try {
             final tt = await _spotifyService.getUserTopTracks(
               token,
-              timeRange: _timeRanges[_timeRangeIndex],
+              timeRange: 'medium_term',
               limit: 10,
             );
             _topTracks = (tt['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
@@ -175,82 +173,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _updateTimeRange(int index) async {
-    if (index == _timeRangeIndex) return;
-    if (!_authProvider.isAuthenticated || _authProvider.accessToken == null) return;
-    setState(() {
-      _timeRangeIndex = index;
-      _loadingTop = true;
-      _insufficientScopeTop = false;
-    });
-    final token = _authProvider.accessToken!;
-    try {
-      final results = await Future.wait([
-        _spotifyService.getUserTopArtists(
-          token,
-          timeRange: _timeRanges[_timeRangeIndex],
-          limit: 10,
-        ),
-        _spotifyService.getUserTopTracks(
-          token,
-          timeRange: _timeRanges[_timeRangeIndex],
-          limit: 10,
-        ),
-      ]);
-      final topArtistsResp = results[0] as Map<String, dynamic>;
-      final topTracksResp = results[1] as Map<String, dynamic>;
-      setState(() {
-        _topArtists = (topArtistsResp['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
-        _topTracks = (topTracksResp['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
-      });
-    } catch (e) {
-      setState(() {
-        _insufficientScopeTop = true;
-        _topArtists = const [];
-        _topTracks = const [];
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loadingTop = false;
-        });
-      }
-    }
-  }
+  // Removed time range switching; always uses medium_term
 
   @override
   Widget build(BuildContext context) {
     if (!_initialized) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
+            ),
+          ),
+          child: const Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.onDarkSecondary,
+            ),
+          ),
+        ),
       );
     }
 
     if (!_authProvider.isAuthenticated) {
       return Scaffold(
-        appBar: AppBar(
-          title: const Text('Profile'),
-          backgroundColor: Colors.deepPurple,
-          foregroundColor: Colors.white,
-        ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.person_outline, size: 72, color: Colors.grey),
-                const SizedBox(height: 16),
-                const Text(
-                  'Connect your Spotify to see your profile',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                SpotifyLoginButton(
-                  onPressed: _handleConnect,
-                  text: 'Connect Spotify',
-                ),
-              ],
+        backgroundColor: Colors.transparent,
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
+            ),
+          ),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.person_outline, size: 72, color: AppColors.onDarkSecondary),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Connect your Spotify to see your profile',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.bodyOnDark,
+                  ),
+                  const SizedBox(height: 16),
+                  SpotifyLoginButton(
+                    onPressed: _handleConnect,
+                    text: 'Connect Spotify',
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -258,40 +236,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () async {
-          HapticFeedback.lightImpact();
-          await _fetchAll();
-          HapticFeedback.selectionClick();
-        },
-        child: CustomScrollView(
-          slivers: _loading
-              ? _buildSkeletonSlivers(context)
-              : [
-                  _buildHeader(context),
-                  SliverToBoxAdapter(child: _buildStats(context)),
-                  SliverToBoxAdapter(child: _buildSectionTitle('Currently Playing')),
-                  SliverToBoxAdapter(child: _buildCurrentlyPlaying()),
-                  SliverToBoxAdapter(child: _buildSectionTitle('Top Artists')),
-                  SliverToBoxAdapter(child: _buildTimeRangeToggle()),
-                  _buildTopArtists(),
-                  SliverToBoxAdapter(child: _buildSectionTitle('Top Tracks')),
-                  (_loadingTop ? _buildTopTracksSkeleton(context) : _buildTopTracks(context)),
-                  SliverToBoxAdapter(child: _buildSectionTitle('Recently Played')),
-                  _buildRecentlyPlayed(),
-                  if (_insufficientScopeTop)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: _EmptyCard(
-                          icon: Icons.lock_outline,
-                          title: 'Limited data due to permissions',
-                          subtitle: 'Re-connect and grant access to Top Artists/Tracks to see more.',
-                        ),
-                      ),
-                    ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                ],
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: _buildTopBar(context),
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    HapticFeedback.lightImpact();
+                    await _fetchAll();
+                    HapticFeedback.selectionClick();
+                  },
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: _loading
+                        ? _buildSkeletonWidgets(context)
+                        : [
+                            _buildStats(context),
+                            _buildSectionTitle('Currently Playing'),
+                            _buildCurrentlyPlaying(),
+                            _buildSectionTitle('Top Artists'),
+                            _buildTopArtistsWidget(),
+                            _buildSectionTitle('Top Tracks'),
+                            _loadingTop
+                                ? _buildTopTracksSkeletonWidget(context)
+                                : _buildTopTracksWidget(context),
+                            _buildSectionTitle('Recently Played'),
+                            _buildRecentlyPlayedWidget(),
+                            if (_insufficientScopeTop)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: _EmptyCard(
+                                  icon: Icons.lock_outline,
+                                  title: 'Limited data due to permissions',
+                                  subtitle: 'Re-connect and grant access to Top Artists/Tracks to see more.',
+                                ),
+                              ),
+                            const SizedBox(height: 24),
+                          ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -307,15 +306,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return SliverAppBar(
       pinned: true,
       expandedHeight: MediaQuery.of(context).size.height * 0.28,
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
+      foregroundColor: AppColors.onDarkPrimary,
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF6C63FF), Color(0xFF4C46E5)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
             ),
           ),
           child: SafeArea(
@@ -327,10 +326,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   CircleAvatar(
                     radius: MediaQuery.of(context).size.width < 360 ? 36 : 44,
-                    backgroundColor: Colors.white.withOpacity(0.2),
+                    backgroundColor: AppColors.onDarkPrimary.withOpacity(0.12),
                     backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
                     child: avatarUrl == null
-                        ? const Icon(Icons.person, color: Colors.white, size: 44)
+                        ? const Icon(Icons.person, color: AppColors.onDarkPrimary, size: 44)
                         : null,
                   ),
                   const SizedBox(width: 16),
@@ -341,7 +340,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         Text(
                           displayName,
-                          style: AppTextStyles.heading1.copyWith(color: Colors.white),
+                          style: AppTextStyles.heading1OnDark,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -349,7 +348,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 4),
                           Text(
                             email,
-                            style: AppTextStyles.caption.copyWith(color: Colors.white70),
+                            style: AppTextStyles.captionOnDark,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -358,11 +357,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              const Icon(Icons.people, size: 16, color: Colors.white70),
+                              const Icon(Icons.people, size: 16, color: AppColors.onDarkSecondary),
                               const SizedBox(width: 6),
                               Text(
                                 '$followers followers',
-                                style: AppTextStyles.caption.copyWith(color: Colors.white70),
+                                style: AppTextStyles.captionOnDark,
                               ),
                             ],
                           ),
@@ -375,7 +374,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
-        title: const Text('Profile'),
+        title: const Text('Profile', style: AppTextStyles.heading2OnDark),
       ),
     );
   }
@@ -414,7 +413,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Text(title, style: AppTextStyles.heading2),
+      child: Text(title, style: AppTextStyles.heading2OnDark),
     );
   }
 
@@ -441,7 +440,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Card(
+      child: _GlassCard(
+        borderRadius: 12,
         child: ListTile(
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(8),
@@ -450,37 +450,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 : Container(
                     width: 56,
                     height: 56,
-                    color: Colors.grey.shade300,
-                    child: const Icon(Icons.music_note),
+                    color: AppColors.onDarkPrimary.withOpacity(0.12),
+                    child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
                   ),
           ),
-          title: Text(name, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
-          subtitle: Text(artists, style: AppTextStyles.caption),
+          title: Text(name, style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600)),
+          subtitle: Text(artists, style: AppTextStyles.captionOnDark),
         ),
       ),
     );
   }
 
-  SliverToBoxAdapter _buildTopArtists() {
-    return SliverToBoxAdapter(
-      child: AnimatedSwitcher(
-        duration: _animDur,
-        child: _loadingTop
-            ? _buildTopArtistsSkeletonContent(key: const ValueKey('artists-skeleton'))
-            : (_topArtists.isEmpty
-                ? Padding(
-                    key: const ValueKey('artists-empty'),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _EmptyCard(
-                      icon: Icons.person_outline,
-                      title: 'No top artists yet',
-                      subtitle: 'Listen more to build your top artists.',
-                    ),
-                  )
-                : _buildTopArtistsContent(key: const ValueKey('artists-list'))),
-      ),
-    );
-  }
+  // Deprecated sliver-based method (kept for reference)
+  // SliverToBoxAdapter _buildTopArtists() { ... }
 
   Widget _buildTopArtistsContent({Key? key}) {
     return SizedBox(
@@ -498,7 +480,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               CircleAvatar(
                 radius: 36,
                 backgroundImage: url != null ? NetworkImage(url) : null,
-                child: url == null ? const Icon(Icons.person) : null,
+                child: url == null ? const Icon(Icons.person, color: AppColors.onDarkSecondary) : null,
               ),
               const SizedBox(height: 8),
               SizedBox(
@@ -508,7 +490,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: AppTextStyles.caption,
+                  style: AppTextStyles.captionOnDark,
                 ),
               )
             ],
@@ -527,32 +509,312 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
-        itemBuilder: (_, __) => const _SkeletonCircle(diameter: 72),
+        itemBuilder: (_, __) => Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: const [
+            _SkeletonCircle(diameter: 72),
+            SizedBox(height: 8),
+            _SkeletonBox(width: 80, height: 12, radius: 6),
+          ],
+        ),
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemCount: 6,
       ),
     );
   }
 
-  Widget _buildTimeRangeToggle() {
-    final labels = const ['4w', '6m', 'All'];
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: ToggleButtons(
-        borderRadius: BorderRadius.circular(12),
-        isSelected: List<bool>.generate(3, (i) => i == _timeRangeIndex),
-        onPressed: (int i) {
-          HapticFeedback.selectionClick();
-          _updateTimeRange(i);
-        },
-        children: labels
-            .map((t) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Text(t, style: AppTextStyles.body),
-                ))
-            .toList(),
-      ),
+  // Removed time range toggle UI
+
+  // New: Top bar matching HomeFeedScreen
+  Widget _buildTopBar(BuildContext context) {
+    final images = (_user?['images'] as List<dynamic>?) ?? const [];
+    final avatarUrl = images.isNotEmpty ? (images.first['url'] as String?) : null;
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 18,
+          backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+          backgroundColor: Colors.transparent,
+          child: avatarUrl == null
+              ? const Icon(Icons.person_outline, color: AppColors.onDarkSecondary)
+              : null,
+        ),
+        const Spacer(),
+        Text(
+          'Profile',
+          style: AppTextStyles.heading2OnDark.copyWith(
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+            letterSpacing: 0.6,
+            shadows: [
+              Shadow(
+                color: AppColors.onDarkPrimary.withOpacity(0.03),
+                blurRadius: 6,
+              )
+            ],
+          ),
+        ),
+        const Spacer(),
+        IconButton(
+          onPressed: () {},
+          icon: const Icon(Icons.notifications_outlined, color: AppColors.onDarkSecondary),
+        ),
+      ],
     );
+  }
+
+  // New: Top Artists as a widget (no slivers)
+  Widget _buildTopArtistsWidget() {
+    return AnimatedSwitcher(
+      duration: _animDur,
+      child: _loadingTop
+          ? _buildTopArtistsSkeletonContent(key: const ValueKey('artists-skeleton'))
+          : (_topArtists.isEmpty
+              ? Padding(
+                  key: const ValueKey('artists-empty'),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: const _EmptyCard(
+                    icon: Icons.person_outline,
+                    title: 'No top artists yet',
+                    subtitle: 'Listen more to build your top artists.',
+                  ),
+                )
+              : _buildTopArtistsContent(key: const ValueKey('artists-list'))),
+    );
+  }
+
+  // New: Top Tracks as a widget (no slivers)
+  Widget _buildTopTracksWidget(BuildContext context) {
+    if (_topTracks.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: const _EmptyCard(
+          icon: Icons.music_note,
+          title: 'No top tracks yet',
+          subtitle: 'Listen more to build your top tracks.',
+        ),
+      );
+    }
+    final cross = _gridCountForWidth(MediaQuery.of(context).size.width);
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: cross,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.75,
+      ),
+      itemCount: _topTracks.length,
+      itemBuilder: (context, index) {
+        if (index >= _topTracks.length) return const SizedBox.shrink();
+        final track = _topTracks[index];
+        final images = track['album']?['images'] as List<dynamic>? ?? const [];
+        final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
+        final artists = (track['artists'] as List<dynamic>? ?? const [])
+            .map((a) => a['name'] as String? ?? '')
+            .where((s) => s.isNotEmpty)
+            .join(', ');
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: imageUrl != null
+                    ? Image.network(imageUrl, fit: BoxFit.cover)
+                    : Container(
+                        color: AppColors.onDarkPrimary.withOpacity(0.12),
+                        child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              track['name'] as String? ?? '',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+            ),
+            Text(
+              artists,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.captionOnDark,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTopTracksSkeletonWidget(BuildContext context) {
+    final gridCount = _gridCountForWidth(MediaQuery.of(context).size.width);
+    final itemCount = gridCount * 2;
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: gridCount,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.75,
+      ),
+      itemCount: itemCount,
+      itemBuilder: (context, index) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Expanded(child: _SkeletonBox(width: double.infinity, height: double.infinity, radius: 12)),
+            SizedBox(height: 8),
+            _SkeletonBox(width: 120, height: 14, radius: 6),
+            SizedBox(height: 6),
+            _SkeletonBox(width: 80, height: 12, radius: 6),
+          ],
+        );
+      },
+    );
+  }
+
+  // New: Recently played as a widget (no slivers)
+  Widget _buildRecentlyPlayedWidget() {
+    if (_recentlyPlayed.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: const _EmptyCard(
+          icon: Icons.history,
+          title: 'No recent plays',
+          subtitle: 'Play some songs to see them here.',
+        ),
+      );
+    }
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _recentlyPlayed.length,
+      itemBuilder: (context, index) {
+        if (index >= _recentlyPlayed.length) return const SizedBox.shrink();
+        final item = _recentlyPlayed[index];
+        final track = item['track'] as Map<String, dynamic>? ?? const {};
+        final images = track['album']?['images'] as List<dynamic>? ?? const [];
+        final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
+        final artists = (track['artists'] as List<dynamic>? ?? const [])
+            .map((a) => a['name'] as String? ?? '')
+            .where((s) => s.isNotEmpty)
+            .join(', ');
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: _GlassCard(
+            borderRadius: 12,
+            child: ListTile(
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: imageUrl != null
+                    ? Image.network(imageUrl, width: 56, height: 56, fit: BoxFit.cover)
+                    : Container(
+                        width: 56,
+                        height: 56,
+                        color: AppColors.onDarkPrimary.withOpacity(0.12),
+                        child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
+                      ),
+              ),
+              title: Text(
+                track['name'] as String? ?? '',
+                style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(artists, style: AppTextStyles.captionOnDark),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // New: Skeleton widgets list used when loading
+  List<Widget> _buildSkeletonWidgets(BuildContext context) {
+    final gridCount = _gridCountForWidth(MediaQuery.of(context).size.width);
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 380;
+            final itemWidth = isNarrow
+                ? (constraints.maxWidth / 2) - 12
+                : (constraints.maxWidth / 4) - 12;
+            return Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.spaceBetween,
+              children: List.generate(4, (_) => SizedBox(
+                    width: itemWidth,
+                    child: const _StatChipSkeleton(),
+                  )),
+            );
+          },
+        ),
+      ),
+      _buildSectionTitle('Currently Playing'),
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: _SkeletonTile(),
+      ),
+      _buildSectionTitle('Top Artists'),
+      SizedBox(
+        height: 120,
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          scrollDirection: Axis.horizontal,
+          itemBuilder: (_, __) => Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: const [
+              _SkeletonCircle(diameter: 72),
+              SizedBox(height: 8),
+              _SkeletonBox(width: 80, height: 12, radius: 6),
+            ],
+          ),
+          separatorBuilder: (_, __) => const SizedBox(width: 12),
+          itemCount: 6,
+        ),
+      ),
+      _buildSectionTitle('Top Tracks'),
+      GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: gridCount,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 0.75,
+        ),
+        itemCount: gridCount * 2,
+        itemBuilder: (context, index) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Expanded(child: _SkeletonBox(width: double.infinity, height: double.infinity, radius: 12)),
+              SizedBox(height: 8),
+              _SkeletonBox(width: 120, height: 14, radius: 6),
+              SizedBox(height: 6),
+              _SkeletonBox(width: 80, height: 12, radius: 6),
+            ],
+          );
+        },
+      ),
+      _buildSectionTitle('Recently Played'),
+      ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 6,
+        itemBuilder: (context, index) => const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: _SkeletonTile(),
+        ),
+      ),
+    ];
   }
 
   SliverGrid _buildTopTracks(BuildContext context) {
@@ -584,7 +846,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     borderRadius: BorderRadius.circular(12),
                     child: imageUrl != null
                         ? Image.network(imageUrl!, fit: BoxFit.cover)
-                        : Container(color: Colors.grey.shade300, child: const Icon(Icons.music_note)),
+                        : Container(
+                            color: AppColors.onDarkPrimary.withOpacity(0.12),
+                            child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -592,13 +857,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   track['name'] as String? ?? '',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600),
+                  style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
                 ),
                 Text(
                   artists,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption,
+                  style: AppTextStyles.captionOnDark,
                 ),
               ],
             ),
@@ -735,7 +1000,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               .join(', ');
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: Card(
+            child: _GlassCard(
+              borderRadius: 12,
               child: ListTile(
                 leading: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
@@ -744,12 +1010,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       : Container(
                           width: 56,
                           height: 56,
-                          color: Colors.grey.shade300,
-                          child: const Icon(Icons.music_note),
+                          color: AppColors.onDarkPrimary.withOpacity(0.12),
+                          child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
                         ),
                 ),
-                title: Text(track['name'] as String? ?? ''),
-                subtitle: Text(artists, style: AppTextStyles.caption),
+                title: Text(
+                  track['name'] as String? ?? '',
+                  style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(artists, style: AppTextStyles.captionOnDark),
               ),
             ),
           );
@@ -765,9 +1034,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         height: 220,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF6C63FF), Color(0xFF4C46E5)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
           ),
         ),
         child: SafeArea(
@@ -809,34 +1078,26 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 18, color: AppColors.primary),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(value, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
-                Text(label, style: AppTextStyles.caption),
-              ],
+    return _GlassCard(
+      borderRadius: 12,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: AppColors.accentMint),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(value, style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600)),
+                  Text(label, style: AppTextStyles.captionOnDark),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -850,23 +1111,81 @@ class _EmptyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return _GlassCard(
+      borderRadius: 12,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
-            Icon(icon, size: 28, color: Colors.grey),
+            Icon(icon, size: 28, color: AppColors.onDarkSecondary),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
+                  Text(title, style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
-                  Text(subtitle, style: AppTextStyles.caption),
+                  Text(subtitle, style: AppTextStyles.captionOnDark),
                 ],
               ),
             )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Glassmorphism card helper (matching HomeFeed feel)
+class _GlassCard extends StatelessWidget {
+  final Widget child;
+  final double borderRadius;
+  const _GlassCard({required this.child, this.borderRadius = 14});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.onDarkPrimary.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: Border.all(color: AppColors.onDarkPrimary.withOpacity(0.06)),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+// Skeleton for StatChip to mirror exact layout
+class _StatChipSkeleton extends StatelessWidget {
+  const _StatChipSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return _GlassCard(
+      borderRadius: 12,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            _SkeletonBox(width: 18, height: 18, radius: 9),
+            SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _SkeletonBox(width: 80, height: 14, radius: 6),
+                  SizedBox(height: 6),
+                  _SkeletonBox(width: 60, height: 12, radius: 6),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -887,7 +1206,7 @@ class _SkeletonBox extends StatelessWidget {
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: Colors.grey.shade300,
+          color: AppColors.onDarkPrimary.withOpacity(0.12),
           borderRadius: BorderRadius.circular(radius),
         ),
       ),
@@ -906,7 +1225,7 @@ class _SkeletonCircle extends StatelessWidget {
         width: diameter,
         height: diameter,
         decoration: BoxDecoration(
-          color: Colors.grey.shade300,
+          color: AppColors.onDarkPrimary.withOpacity(0.12),
           shape: BoxShape.circle,
         ),
       ),
@@ -919,7 +1238,8 @@ class _SkeletonTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return _GlassCard(
+      borderRadius: 12,
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Row(
@@ -978,9 +1298,9 @@ class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin 
               begin: Alignment(-1.0 - 3 * _controller.value, 0.0),
               end: Alignment(1.0 + 3 * _controller.value, 0.0),
               colors: [
-                Colors.grey.shade300,
-                Colors.grey.shade100,
-                Colors.grey.shade300,
+                AppColors.onDarkPrimary.withOpacity(0.12),
+                AppColors.onDarkPrimary.withOpacity(0.05),
+                AppColors.onDarkPrimary.withOpacity(0.12),
               ],
               stops: const [0.25, 0.5, 0.75],
             );
@@ -993,4 +1313,5 @@ class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin 
     );
   }
 }
+
 

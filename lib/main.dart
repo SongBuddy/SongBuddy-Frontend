@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:songbuddy/screens/search_feed_Screen.dart';
 import 'package:songbuddy/screens/splash_screen.dart';
 import 'package:songbuddy/theme/app_theme.dart';
 import 'screens/home_feed_screen.dart';
@@ -43,6 +44,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = const [
     HomeFeedScreen(),
+    SearchFeedScreen(),
     ProfileScreen(),
     SettingsScreen(),
     DebugAuthScreen(), // Temporary debug screen

@@ -2,6 +2,8 @@
     <!-- Internet permission for API calls and URL launching -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Microphone for speech recognition -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     
     <application
         android:label="songbuddy"

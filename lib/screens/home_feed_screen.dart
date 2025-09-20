@@ -2,49 +2,95 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:songbuddy/constants/app_colors.dart';
+import 'package:songbuddy/constants/app_text_styles.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
-class HomeFeedScreen extends StatelessWidget {
+class HomeFeedScreen extends StatefulWidget {
   const HomeFeedScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // richer dummy data with likes & timestamp
-    final dummyPosts = [
-      {
-        "username": "Amin",
-        "avatarUrl": "https://i.pravatar.cc/150?img=1",
-        "trackTitle": "Blinding Lights",
-        "artist": "The Weeknd",
-        "coverUrl":
-            "https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2",
-        "description": "This track always gives me a boost of energy 🚀🔥",
-        "likes": 124,
-        "time": "2h"
-      },
-      {
-        "username": "Sara",
-        "avatarUrl": "https://i.pravatar.cc/150?img=2",
-        "trackTitle": "Levitating",
-        "artist": "Dua Lipa",
-        "coverUrl":
-            "https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2",
-        "description": "",
-        "likes": 89,
-        "time": "6h"
-      },
-      {
-        "username": "John",
-        "avatarUrl": "https://i.pravatar.cc/150?img=3",
-        "trackTitle": "As It Was",
-        "artist": "Harry Styles",
-        "coverUrl":
-            "https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2",
-        "description": "Makes me feel nostalgic ✨",
-        "likes": 211,
-        "time": "1d"
-      },
-    ];
+  State<HomeFeedScreen> createState() => _HomeFeedScreenState();
+}
 
+class _HomeFeedScreenState extends State<HomeFeedScreen> {
+  // richer dummy data with likes & timestamp
+  final List<Map<String, dynamic>> _allPosts = [
+    {
+      "username": "Amin",
+      "avatarUrl": "https://i.pravatar.cc/150?img=1",
+      "trackTitle": "Blinding Lights",
+      "artist": "The Weeknd",
+      "coverUrl":
+          "https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2",
+      "description": "This track always gives me a boost of energy 🚀🔥",
+      "likes": 124,
+      "time": "2h"
+    },
+    {
+      "username": "Sara",
+      "avatarUrl": "https://i.pravatar.cc/150?img=2",
+      "trackTitle": "Levitating",
+      "artist": "Dua Lipa",
+      "coverUrl":
+          "https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2",
+      "description": "",
+      "likes": 89,
+      "time": "6h"
+    },
+    {
+      "username": "John",
+      "avatarUrl": "https://i.pravatar.cc/150?img=3",
+      "trackTitle": "As It Was",
+      "artist": "Harry Styles",
+      "coverUrl":
+          "https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2",
+      "description": "Makes me feel nostalgic ✨",
+      "likes": 211,
+      "time": "1d"
+    },
+  ];
+
+  late List<Map<String, dynamic>> _filteredPosts;
+  String _query = '';
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredPosts = List<Map<String, dynamic>>.from(_allPosts);
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onQueryChanged(String query) {
+    _query = query.trim();
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 360), _applyFilter);
+  }
+
+  void _applyFilter() {
+    if (_query.isEmpty) {
+      setState(() => _filteredPosts = List<Map<String, dynamic>>.from(_allPosts));
+      return;
+    }
+    final lower = _query.toLowerCase();
+    setState(() {
+      _filteredPosts = _allPosts.where((post) {
+        final username = (post['username'] as String).toLowerCase();
+        final title = (post['trackTitle'] as String).toLowerCase();
+        final artist = (post['artist'] as String).toLowerCase();
+        return username.contains(lower) || title.contains(lower) || artist.contains(lower);
+      }).toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       // Gradient background for depth & modern look
       body: Container(
@@ -53,8 +99,8 @@ class HomeFeedScreen extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF071028), // deep navy
-              Color(0xFF0B0B0D), // near-black
+              AppColors.darkBackgroundStart,
+              AppColors.darkBackgroundEnd,
             ],
           ),
         ),
@@ -71,21 +117,22 @@ class HomeFeedScreen extends StatelessWidget {
                     CircleAvatar(
                       radius: 18,
                       backgroundImage:
-                          NetworkImage(dummyPosts[0]["avatarUrl"] as String),
+                          NetworkImage(((_filteredPosts.isNotEmpty
+                                      ? _filteredPosts
+                                      : _allPosts)[0]["avatarUrl"]) as String),
                       backgroundColor: Colors.transparent,
                     ),
                     const Spacer(),
                     // Title with subtle glow
                     Text(
                       "SongBuddy",
-                      style: TextStyle(
-                        color: AppColors.surface,
+                      style: AppTextStyles.heading2OnDark.copyWith(
                         fontWeight: FontWeight.w800,
                         fontSize: 20,
                         letterSpacing: 0.6,
                         shadows: [
                           Shadow(
-                            color: Colors.white.withOpacity(0.03),
+                            color: AppColors.onDarkPrimary.withOpacity(0.03),
                             blurRadius: 6,
                           )
                         ],
@@ -97,8 +144,10 @@ class HomeFeedScreen extends StatelessWidget {
                       children: [
                         IconButton(
                           onPressed: () {},
-                          icon: const Icon(Icons.notifications_outlined,
-                              color: Colors.white70),
+                          icon: const Icon(
+                            Icons.notifications_outlined,
+                            color: AppColors.onDarkSecondary,
+                          ),
                         ),
                         Positioned(
                           right: 8,
@@ -107,11 +156,11 @@ class HomeFeedScreen extends StatelessWidget {
                             width: 7,
                             height: 7,
                             decoration: BoxDecoration(
-                              color: Colors.redAccent,
+                              color: AppColors.error,
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.redAccent.withOpacity(0.4),
+                                  color: AppColors.error.withOpacity(0.4),
                                   blurRadius: 8,
                                   spreadRadius: 1,
                                 )
@@ -131,10 +180,18 @@ class HomeFeedScreen extends StatelessWidget {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Column(
                   children: const [
-                    _ModernSearchBar(),
-                    SizedBox(height: 12),
+                    SizedBox(height: 0),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                child: Column(
+                  children: [
+                    _ModernSearchBar(onQueryChanged: _onQueryChanged),
+                    const SizedBox(height: 12),
                     // Suggestion chips below
-                    SizedBox(
+                    const SizedBox(
                       height: 36,
                       child: _SuggestionChipsRow(),
                     ),
@@ -146,9 +203,9 @@ class HomeFeedScreen extends StatelessWidget {
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.only(top: 6, bottom: 18),
-                  itemCount: dummyPosts.length,
+                  itemCount: _filteredPosts.length,
                   itemBuilder: (context, index) {
-                    final post = dummyPosts[index];
+                    final post = _filteredPosts[index];
                     return _MusicPostCard(
                       index: index,
                       username: post["username"] as String,
@@ -203,21 +260,22 @@ class _SuggestionChipsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       scrollDirection: Axis.horizontal,
-      children: const [
-        SizedBox(width: 6),
-        _SuggestionChip(label: "For you"),
-        _SuggestionChip(label: "Pop"),
-        _SuggestionChip(label: "Chill"),
-        _SuggestionChip(label: "Trending"),
-        _SuggestionChip(label: "New"),
-        SizedBox(width: 6),
-      ],
+          children: const [
+            SizedBox(width: 6),
+            _SuggestionChip(label: "For you"),
+            _SuggestionChip(label: "Pop"),
+            _SuggestionChip(label: "Chill"),
+            _SuggestionChip(label: "Trending"),
+            _SuggestionChip(label: "New"),
+            SizedBox(width: 6),
+          ],
     );
   }
 }
 
 class _ModernSearchBar extends StatefulWidget {
-  const _ModernSearchBar();
+  final void Function(String query)? onQueryChanged;
+  const _ModernSearchBar({this.onQueryChanged});
 
   @override
   State<_ModernSearchBar> createState() => _ModernSearchBarState();
@@ -228,6 +286,14 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
   late final FocusNode _focusNode;
   late final AnimationController _controller;
   late final Animation<double> _glowAnim;
+  final TextEditingController _textController = TextEditingController();
+
+  // Speech
+  final SpeechToText _speech = SpeechToText();
+  bool _hasSpeech = false;
+  bool _isListening = false;
+  String _lastError = '';
+  Timer? _statusPoll;
 
   @override
   void initState() {
@@ -251,9 +317,123 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
 
   @override
   void dispose() {
+    _speech.stop();
+    _statusPoll?.cancel();
+    _textController.dispose();
     _focusNode.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _initSpeech() async {
+    final hasSpeech = await _speech.initialize(
+      onStatus: (status) {
+        if (!mounted) return;
+        // Reflect platform mic state immediately in UI
+        setState(() => _isListening = status == 'listening');
+      },
+      onError: (e) {
+        if (!mounted) return;
+        setState(() {
+          _lastError = e.errorMsg;
+          _isListening = false; // ensure icon reverts on any error
+        });
+        _statusPoll?.cancel();
+      },
+    );
+    if (!mounted) return;
+    setState(() => _hasSpeech = hasSpeech);
+  }
+
+  Future<void> _startListening() async {
+    if (!_hasSpeech) {
+      await _initSpeech();
+    }
+    setState(() {
+      _isListening = true;
+      _lastError = '';
+    });
+    final started = await _speech.listen(
+      onResult: _onSpeechResult,
+      listenMode: ListenMode.search,
+      partialResults: true,
+      cancelOnError: true,
+      // Wait longer for the user to speak / pause between words
+      pauseFor: const Duration(seconds: 5),
+      listenFor: const Duration(seconds: 20),
+      localeId: null,
+    );
+    if (!mounted) return;
+    if (started == false) {
+      // Listening failed to start; revert button immediately
+      setState(() => _isListening = false);
+      return;
+    }
+    // Poll plugin state to mirror platform mic cancellation precisely
+    _statusPoll?.cancel();
+    _statusPoll = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      final pluginListening = _speech.isListening;
+      if (!mounted) return;
+      if (_isListening != pluginListening) {
+        setState(() => _isListening = pluginListening);
+      }
+      if (!pluginListening) {
+        _statusPoll?.cancel();
+      }
+    });
+  }
+
+  Future<void> _stopListening() async {
+    await _speech.stop();
+    if (!mounted) return;
+    setState(() => _isListening = false);
+    _statusPoll?.cancel();
+  }
+
+  void _onSpeechResult(SpeechRecognitionResult result) {
+    if (!mounted) return;
+    final recognized = result.recognizedWords.trim();
+    _textController.value = _textController.value.copyWith(
+      text: recognized,
+      selection: TextSelection.collapsed(offset: recognized.length),
+    );
+    widget.onQueryChanged?.call(recognized);
+    if (result.finalResult) {
+      setState(() => _isListening = false);
+      _statusPoll?.cancel();
+    }
+  }
+
+  Future<void> _onMicPressed() async {
+    if (_isListening) {
+      await _stopListening();
+      return;
+    }
+    if (!_hasSpeech) {
+      await _initSpeech();
+    }
+    if (!_hasSpeech) {
+      if (!mounted) return;
+      // Show a simple permission dialog
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Microphone permission'),
+            content: const Text(
+                'Voice search needs access to your microphone. Please allow microphone permission in system settings.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+      return;
+    }
+    await _startListening();
   }
 
   @override
@@ -307,16 +487,18 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
                   child: Row(
                     children: [
                       const SizedBox(width: 8),
-                      const Icon(Icons.search, color: Colors.white70),
+                      const Icon(Icons.search, color: AppColors.onDarkSecondary),
                       const SizedBox(width: 8),
                       Expanded(
                         child: TextField(
                           focusNode: _focusNode,
-                          style: const TextStyle(color: Colors.white),
-                          cursorColor: const Color(0xFF5EEAD4),
+                          controller: _textController,
+                          magnifierConfiguration: TextMagnifierConfiguration.disabled,
+                          style: const TextStyle(color: AppColors.onDarkPrimary),
+                          cursorColor: AppColors.accentMint,
                           decoration: InputDecoration(
                             hintText: "Search users, songs, playlists",
-                            hintStyle: const TextStyle(color: Colors.white70),
+                            hintStyle: const TextStyle(color: AppColors.onDarkSecondary),
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
@@ -327,12 +509,19 @@ class _ModernSearchBarState extends State<_ModernSearchBar>
                             fillColor: Colors.transparent,
                             contentPadding: const EdgeInsets.symmetric(vertical: 14),
                           ),
+                          textInputAction: TextInputAction.search,
+                          onChanged: widget.onQueryChanged,
+                          onSubmitted: widget.onQueryChanged,
                         ),
                       ),
                       IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.mic_rounded,
-                            color: Colors.white70, size: 22),
+                        onPressed: _onMicPressed,
+                        icon: Icon(
+                          _isListening ? Icons.stop_circle_rounded : Icons.mic_rounded,
+                          color: _isListening ? AppColors.accentMint : AppColors.onDarkSecondary,
+                          size: 22,
+                        ),
+                        tooltip: _isListening ? 'Stop listening' : 'Voice search',
                       ),
                     ],
                   ),
@@ -448,7 +637,7 @@ class _MusicPostCardState extends State<_MusicPostCard>
   @override
   Widget build(BuildContext context) {
     // Accent color (tweak as needed)
-    const accent = Color(0xFF5EEAD4); // mint accent — modern & readable on dark
+    final accent = AppColors.accentMint; // mint accent — from theme
     final cardRadius = 18.0;
 
     return FadeTransition(
@@ -475,7 +664,7 @@ class _MusicPostCardState extends State<_MusicPostCard>
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.6),
+                        color: AppColors.shadowBlack60,
                         blurRadius: 18,
                         offset: const Offset(0, 8),
                       ),
@@ -516,7 +705,7 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                   borderRadius: BorderRadius.circular(12),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.5),
+                                      color: AppColors.black.withOpacity(0.5),
                                       blurRadius: 8,
                                       offset: const Offset(0, 4),
                                     )
@@ -537,8 +726,7 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                       children: [
                                         Text(
                                           widget.username,
-                                          style: const TextStyle(
-                                            color: Colors.white,
+                                          style: AppTextStyles.bodyOnDark.copyWith(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 15,
                                           ),
@@ -546,9 +734,10 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                         const SizedBox(width: 8),
                                         Text(
                                           "• ${widget.timeAgo}",
-                                          style: const TextStyle(
-                                              color: Colors.white54,
-                                              fontSize: 12),
+                                          style: AppTextStyles.captionOnDark.copyWith(
+                                            color: AppColors.onDarkTertiary,
+                                            fontSize: 12,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -559,24 +748,22 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 8, vertical: 4),
                                           decoration: BoxDecoration(
-                                            color:
-                                                Colors.white.withOpacity(0.04),
+                                            color: AppColors.onDarkPrimary.withOpacity(0.04),
                                             borderRadius:
                                                 BorderRadius.circular(12),
                                           ),
                                           child: Text(
                                             widget.artist,
-                                            style: const TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 12),
+                                            style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
                                           ),
                                         ),
                                         const SizedBox(width: 8),
-                                        const Text(
+                                        Text(
                                           "Music",
-                                          style: TextStyle(
-                                              color: Colors.white38,
-                                              fontSize: 11),
+                                          style: AppTextStyles.captionOnDark.copyWith(
+                                            color: AppColors.onDarkMuted,
+                                            fontSize: 11,
+                                          ),
                                         )
                                       ],
                                     )
@@ -588,7 +775,7 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                 style: ElevatedButton.styleFrom(
                                   elevation: 0,
                                   backgroundColor:
-                                      Colors.white.withOpacity(0.06),
+                                      AppColors.onDarkPrimary.withOpacity(0.06),
                                   foregroundColor: accent,
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 14, vertical: 8),
@@ -631,13 +818,14 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                               (context, child, progress) {
                                             if (progress == null) return child;
                                             return Container(
-                                              color: Colors.white
+                                              color: AppColors.onDarkPrimary
                                                   .withOpacity(0.03),
-                                              child: const Center(
-                                                child:
-                                                    CircularProgressIndicator(
-                                                        strokeWidth: 2,
-                                                        color: Colors.white24),
+                                              child: Center(
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  color: AppColors.onDarkPrimary
+                                                      .withOpacity(0.24),
+                                                ),
                                               ),
                                             );
                                           },
@@ -650,7 +838,7 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                               begin: Alignment.bottomCenter,
                                               end: Alignment.topCenter,
                                               colors: [
-                                                Colors.black.withOpacity(0.6),
+                                                AppColors.shadowBlack60,
                                                 Colors.transparent,
                                               ],
                                             ),
@@ -751,9 +939,9 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                         parent: _likePopController,
                                         curve: Curves.elasticOut),
                                   ),
-                                  child: Icon(Icons.favorite,
-                                      color: Colors.white.withOpacity(0.92),
-                                      size: 86),
+                                      child: Icon(Icons.favorite,
+                                          color: AppColors.onDarkPrimary.withOpacity(0.92),
+                                          size: 86),
                                 ),
                               ),
                             ],
@@ -767,10 +955,10 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                 horizontal: 14, vertical: 12),
                             child: Text(
                               widget.description,
-                              style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontStyle: FontStyle.italic,
-                                  fontSize: 13.5),
+                              style: AppTextStyles.captionOnDark.copyWith(
+                                fontStyle: FontStyle.italic,
+                                fontSize: 13.5,
+                              ),
                             ),
                           ),
 
@@ -794,7 +982,7 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                     padding: const EdgeInsets.all(6),
                                     decoration: BoxDecoration(
                                       color: isLiked
-                                          ? Colors.redAccent.withOpacity(0.14)
+                                          ? AppColors.error.withOpacity(0.14)
                                           : Colors.transparent,
                                       shape: BoxShape.circle,
                                     ),
@@ -803,28 +991,33 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                           ? Icons.favorite
                                           : Icons.favorite_border,
                                       color: isLiked
-                                          ? Colors.redAccent
-                                          : Colors.white70,
+                                          ? AppColors.error
+                                          : AppColors.onDarkSecondary,
                                     ),
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 6),
-                              Text("$likeCount",
-                                  style:
-                                      const TextStyle(color: Colors.white70)),
+                              Text(
+                                "$likeCount",
+                                style: AppTextStyles.captionOnDark,
+                              ),
 
                               const SizedBox(width: 14),
 
                               IconButton(
                                 onPressed: () {},
-                                icon: const Icon(Icons.comment_outlined,
-                                    color: Colors.white70),
+                                icon: const Icon(
+                                  Icons.comment_outlined,
+                                  color: AppColors.onDarkSecondary,
+                                ),
                               ),
                               IconButton(
                                 onPressed: () {},
-                                icon: const Icon(Icons.share_outlined,
-                                    color: Colors.white70),
+                                icon: const Icon(
+                                  Icons.share_outlined,
+                                  color: AppColors.onDarkSecondary,
+                                ),
                               ),
 
                               const Spacer(),
@@ -851,11 +1044,10 @@ class _MusicPostCardState extends State<_MusicPostCard>
                                           child: Container(
                                             height: 6,
                                             decoration: BoxDecoration(
-                                              gradient: const LinearGradient(
-                                                  colors: [
-                                                    accent,
-                                                    Color(0xFF3DDC97)
-                                                  ]),
+                                              gradient: LinearGradient(colors: [
+                                                accent,
+                                                AppColors.accentGreen,
+                                              ]),
                                               borderRadius:
                                                   BorderRadius.circular(6),
                                             ),
@@ -870,8 +1062,10 @@ class _MusicPostCardState extends State<_MusicPostCard>
                               // more menu
                               IconButton(
                                 onPressed: () {},
-                                icon: const Icon(Icons.more_vert,
-                                    color: Colors.white54),
+                                icon: const Icon(
+                                  Icons.more_vert,
+                                  color: AppColors.onDarkTertiary,
+                                ),
                               ),
                             ],
                           ),

@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:songbuddy/screens/user_profile_screen.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:share_plus/share_plus.dart';
 
 class SearchFeedScreen extends StatefulWidget {
   const SearchFeedScreen({super.key});
@@ -14,10 +15,13 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   String query = '';
   final TextEditingController _controller = TextEditingController();
   late final FocusNode _searchFocusNode;
-
   late stt.SpeechToText _speech;
   bool _isListening = false;
   bool _isSearching = false;
+
+  // Track likes for posts
+  final Map<int, bool> _likedPosts = {};
+  final Map<int, int> _likeCounts = {};
 
   @override
   void initState() {
@@ -35,6 +39,12 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
         });
       }
     });
+
+    // Initialize like counts
+    for (int i = 0; i < posts.length; i++) {
+      _likedPosts[i] = false;
+      _likeCounts[i] = 0;
+    }
   }
 
   void _onFocusChange() {
@@ -57,7 +67,6 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
       if (!available) return;
 
       _searchFocusNode.requestFocus();
-
       setState(() => _isListening = true);
 
       _speech.listen(
@@ -128,19 +137,15 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   Widget _buildSuggestionDropdown() {
     final suggestions = filteredUsers;
     if (suggestions.isEmpty) {
-      return Expanded(
+      return const Expanded(
         child: Center(
-          child: Text(
-            "No users found",
-            style: TextStyle(color: Colors.white54),
-          ),
+          child: Text("No users found", style: TextStyle(color: Colors.white54)),
         ),
       );
     }
 
     return Expanded(
       child: ListView.separated(
-        key: const PageStorageKey("SuggestionsList"),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         itemCount: suggestions.length,
         separatorBuilder: (_, __) =>
@@ -148,7 +153,6 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
         itemBuilder: (context, idx) {
           final u = suggestions[idx];
           return ListTile(
-            key: ValueKey(u['username']),
             leading: CircleAvatar(
               backgroundColor: Colors.purple,
               child: Icon(u['avatar'], color: Colors.white),
@@ -176,11 +180,12 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
     );
   }
 
-  Widget _buildMusicPost(Map<String, dynamic> post) {
+  Widget _buildMusicPost(Map<String, dynamic> post, int index) {
     final username = post['user'];
+    final isLiked = _likedPosts[index] ?? false;
+    final likeCount = _likeCounts[index] ?? 0;
 
     return GestureDetector(
-      key: ValueKey("${post['track']}_${username}"),
       onTap: () {
         Navigator.push(
           context,
@@ -194,10 +199,11 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
-        height: 140,
+        height: 150,
         decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
         child: Stack(
           children: [
+            // Background cover art blurred
             ClipRRect(
               borderRadius: BorderRadius.circular(20),
               child: Image.network(
@@ -215,46 +221,106 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
                 child: Container(color: Colors.black.withOpacity(0.36)),
               ),
             ),
+
+            // Post content
             Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.network(
-                      post['coverUrl'],
-                      width: 64,
-                      height: 64,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          Container(color: Colors.white12),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(post['track'],
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                  // Top row: user info + buttons
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundImage:
+                            NetworkImage("https://i.pravatar.cc/150?img=3"),
+                        radius: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(username,
                             style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 4),
-                        Text(post['artist'],
+                                fontWeight: FontWeight.w600)),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              isLiked
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: isLiked ? Colors.red : Colors.white,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _likedPosts[index] = !isLiked;
+                                _likeCounts[index] =
+                                    (likeCount + (isLiked ? -1 : 1))
+                                        .clamp(0, 9999);
+                              });
+                            },
+                          ),
+                          Text(
+                            "$likeCount",
                             style: const TextStyle(
-                                color: Colors.white70, fontSize: 13)),
-                        const SizedBox(height: 6),
-                        Text("${post['user']}: ${post['desc']}",
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: Colors.white54, fontSize: 12)),
-                      ],
-                    ),
+                                color: Colors.white70, fontSize: 12),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.share_outlined,
+                                color: Colors.white),
+                            onPressed: () {
+                              final text =
+                                  "${post['user']} shared a song: ${post['track']} by ${post['artist']}";
+                              Share.share(text);
+                            },
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Song details
+                  Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          post['coverUrl'],
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              Container(color: Colors.white12),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(post['track'],
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 4),
+                            Text(post['artist'],
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 13)),
+                            const SizedBox(height: 6),
+                            Text(post['desc'],
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: Colors.white54, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -281,6 +347,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // Search bar + cancel button
             Row(
               children: [
                 Expanded(
@@ -352,12 +419,12 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
               ],
             ),
 
+            // Suggestions or discovery feed
             if (_isSearching)
               _buildSuggestionDropdown()
             else
               Expanded(
                 child: ListView.builder(
-                  key: const PageStorageKey("DiscoveryList"),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   itemCount: posts.length + 1,
@@ -373,7 +440,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
                       );
                     }
                     final post = posts[index - 1];
-                    return _buildMusicPost(post);
+                    return _buildMusicPost(post, index - 1);
                   },
                 ),
               ),

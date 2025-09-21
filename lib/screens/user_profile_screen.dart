@@ -1,5 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:songbuddy/constants/app_colors.dart';
+import 'package:songbuddy/constants/app_text_styles.dart';
 
 class UserProfileScreen extends StatelessWidget {
   final String username;
@@ -41,182 +44,318 @@ class UserProfileScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // Profile header
-            SliverAppBar(
-              expandedHeight: 220,
-              pinned: true,
-              backgroundColor: Colors.black,
-              flexibleSpace: FlexibleSpaceBar(
-                background: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.network(
-                      avatarUrl,
-                      fit: BoxFit.cover,
-                    ),
-                    Container(color: Colors.black54),
-                  ],
-                ),
-                title: Text(username, style: const TextStyle(color: Colors.white)),
-                centerTitle: true,
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: _buildTopBar(context),
               ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.more_vert, color: Colors.white),
-                  onPressed: () {},
-                )
-              ],
-            ),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    HapticFeedback.lightImpact();
+                    // Add refresh logic here if needed
+                    HapticFeedback.selectionClick();
+                  },
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
 
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Follow button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurpleAccent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        onPressed: () {},
-                        child: const Text(
-                          "Follow",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Now playing section
-                    _buildSectionTitle("Now Playing"),
-                    if (nowPlaying.isNotEmpty)
-                      _buildGlassCard(
-                        child: ListTile(
-                          leading: const Icon(Icons.music_note, color: Colors.white),
-                          title: Text(
-                            nowPlaying['track']!,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text(
-                            nowPlaying['artist']!,
-                            style: const TextStyle(color: Colors.white70),
+                      // Follow button
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.accentMint,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            onPressed: () {},
+                            child: Text(
+                              "Follow",
+                              style: AppTextStyles.bodyOnDark.copyWith(
+                                fontSize: 16, 
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.darkBackgroundStart,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                    // Top artists
-                    _buildSectionTitle("Top Artists"),
-                    SizedBox(
-                      height: 100,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: topArtists.length,
+                      // Stats section
+                      _buildStats(context),
+                      const SizedBox(height: 24),
+
+                      // Now playing section
+                      _buildSectionTitle("Now Playing"),
+                      if (nowPlaying.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: _GlassCard(
+                            child: ListTile(
+                              leading: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
+                              title: Text(
+                                nowPlaying['track']!,
+                                style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              subtitle: Text(
+                                nowPlaying['artist']!,
+                                style: AppTextStyles.captionOnDark,
+                              ),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 24),
+
+                      // Top artists
+                      _buildSectionTitle("Top Artists"),
+                      SizedBox(
+                        height: 120,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          scrollDirection: Axis.horizontal,
+                          itemBuilder: (context, index) {
+                            return Column(
+                              children: [
+                                CircleAvatar(
+                                  radius: 36,
+                                  backgroundColor: AppColors.onDarkPrimary.withOpacity(0.12),
+                                  child: Text(
+                                    topArtists[index][0].toUpperCase(),
+                                    style: AppTextStyles.heading2OnDark.copyWith(
+                                      fontSize: 24,
+                                      color: AppColors.accentMint,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: 80,
+                                  child: Text(
+                                    topArtists[index],
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: AppTextStyles.captionOnDark,
+                                  ),
+                                )
+                              ],
+                            );
+                          },
+                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          itemCount: topArtists.length,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Top tracks
+                      _buildSectionTitle("Top Tracks"),
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: topTracks.length,
                         itemBuilder: (context, index) {
-                          return _buildGlassCard(
-                            width: 120,
-                            margin: const EdgeInsets.only(right: 12),
-                            child: Center(
-                              child: Text(
-                                topArtists[index],
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.white),
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                            child: _GlassCard(
+                              child: ListTile(
+                                leading: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
+                                title: Text(
+                                  topTracks[index],
+                                  style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+                                ),
                               ),
                             ),
                           );
                         },
                       ),
-                    ),
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                    // Top tracks
-                    _buildSectionTitle("Top Tracks"),
-                    Column(
-                      children: topTracks
-                          .map((track) => _buildGlassCard(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                child: ListTile(
-                                  leading: const Icon(Icons.music_note, color: Colors.white),
-                                  title: Text(track, style: const TextStyle(color: Colors.white)),
+                      // Posts
+                      _buildSectionTitle("Posts"),
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: userPosts.length,
+                        itemBuilder: (context, index) {
+                          final post = userPosts[index];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                            child: _GlassCard(
+                              child: ListTile(
+                                leading: const Icon(Icons.album, color: AppColors.onDarkSecondary),
+                                title: Text(
+                                  post['track']!,
+                                  style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
                                 ),
-                              ))
-                          .toList(),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Posts
-                    _buildSectionTitle("Posts"),
-                    Column(
-                      children: userPosts
-                          .map((post) => _buildGlassCard(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                child: ListTile(
-                                  leading: const Icon(Icons.album, color: Colors.white),
-                                  title: Text(
-                                    post['track']!,
-                                    style: const TextStyle(
-                                        color: Colors.white, fontWeight: FontWeight.bold),
-                                  ),
-                                  subtitle: Text(
-                                    "${post['artist']} • ${post['desc']}",
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(color: Colors.white70),
-                                  ),
+                                subtitle: Text(
+                                  "${post['artist']} • ${post['desc']}",
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.captionOnDark,
                                 ),
-                              ))
-                          .toList(),
-                    ),
-                  ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
               ),
-            )
-          ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTopBar(BuildContext context) {
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 18,
+          backgroundImage: NetworkImage(avatarUrl),
+          backgroundColor: Colors.transparent,
+          child: const Icon(Icons.person_outline, color: AppColors.onDarkSecondary),
+        ),
+        const Spacer(),
+        Text(
+          username,
+          style: AppTextStyles.heading2OnDark.copyWith(
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+            letterSpacing: 0.6,
+            shadows: [
+              Shadow(
+                color: AppColors.onDarkPrimary.withOpacity(0.03),
+                blurRadius: 6,
+              )
+            ],
+          ),
+        ),
+        const Spacer(),
+        IconButton(
+          onPressed: () {},
+          icon: const Icon(Icons.more_vert, color: AppColors.onDarkSecondary),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStats(BuildContext context) {
+    // Mock data for user profile stats
+    const savedTracksTotal = 1247;
+    const playlistsTotal = 23;
+    const country = 'US';
+    const product = 'premium';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 380;
+          final chips = [
+            _StatChip(icon: Icons.library_music, label: 'Saved', value: savedTracksTotal.toString()),
+            _StatChip(icon: Icons.queue_music, label: 'Playlists', value: playlistsTotal.toString()),
+            _StatChip(icon: Icons.flag, label: 'Country', value: country),
+            _StatChip(icon: Icons.workspace_premium, label: 'Plan', value: product),
+          ];
+          return Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.spaceBetween,
+            children: chips
+                .map((c) => SizedBox(
+                      width: isNarrow ? (constraints.maxWidth / 2) - 12 : (constraints.maxWidth / 4) - 12,
+                      child: c,
+                    ))
+                .toList(),
+          );
+        },
       ),
     );
   }
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Text(title, style: AppTextStyles.heading2OnDark),
+    );
+  }
+}
+
+// Glassmorphism card helper (matching ProfileScreen feel)
+class _GlassCard extends StatelessWidget {
+  final Widget child;
+  final double borderRadius;
+  const _GlassCard({required this.child, this.borderRadius = 14});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.onDarkPrimary.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: Border.all(color: AppColors.onDarkPrimary.withOpacity(0.06)),
+          ),
+          child: child,
         ),
       ),
     );
   }
+}
 
-  Widget _buildGlassCard({
-    required Widget child,
-    double? width,
-    EdgeInsetsGeometry? margin,
-  }) {
-    return Container(
-      width: width,
-      margin: margin,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: Colors.white.withOpacity(0.1),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
+class _StatChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _StatChip({required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return _GlassCard(
+      borderRadius: 12,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: AppColors.accentMint),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(value, style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600)),
+                  Text(label, style: AppTextStyles.captionOnDark),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      child: child,
     );
   }
 }

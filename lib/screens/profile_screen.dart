@@ -264,7 +264,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: _loading
                         ? _buildSkeletonWidgets(context)
                         : [
-                            _buildStats(context),
                             _buildSectionTitle('Currently Playing'),
                             _buildCurrentlyPlaying(),
                             _buildSectionTitle('Top Artists'),
@@ -379,36 +378,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildStats(BuildContext context) {
-    final country = _user?['country'] as String?;
-    final product = _user?['product'] as String?; // premium/free
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 380;
-          final chips = [
-            _StatChip(icon: Icons.library_music, label: 'Saved', value: _savedTracksTotal?.toString() ?? '—'),
-            _StatChip(icon: Icons.queue_music, label: 'Playlists', value: _playlistsTotal?.toString() ?? '—'),
-            _StatChip(icon: Icons.flag, label: 'Country', value: country ?? '—'),
-            _StatChip(icon: Icons.workspace_premium, label: 'Plan', value: product ?? '—'),
-          ];
-          return Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.spaceBetween,
-            children: chips
-                .map((c) => SizedBox(
-                      width: isNarrow ? (constraints.maxWidth / 2) - 12 : (constraints.maxWidth / 4) - 12,
-                      child: c,
-                    ))
-                .toList(),
-          );
-        },
-      ),
-    );
-  }
 
   Widget _buildSectionTitle(String title) {
     return Padding(
@@ -736,26 +705,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<Widget> _buildSkeletonWidgets(BuildContext context) {
     final gridCount = _gridCountForWidth(MediaQuery.of(context).size.width);
     return [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 380;
-            final itemWidth = isNarrow
-                ? (constraints.maxWidth / 2) - 12
-                : (constraints.maxWidth / 4) - 12;
-            return Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.spaceBetween,
-              children: List.generate(4, (_) => SizedBox(
-                    width: itemWidth,
-                    child: const _StatChipSkeleton(),
-                  )),
-            );
-          },
-        ),
-      ),
       _buildSectionTitle('Currently Playing'),
       const Padding(
         padding: EdgeInsets.symmetric(horizontal: 16),
@@ -1070,38 +1019,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-class _StatChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  const _StatChip({required this.icon, required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return _GlassCard(
-      borderRadius: 12,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 18, color: AppColors.accentMint),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(value, style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600)),
-                  Text(label, style: AppTextStyles.captionOnDark),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _EmptyCard extends StatelessWidget {
   final IconData icon;
@@ -1161,37 +1078,6 @@ class _GlassCard extends StatelessWidget {
   }
 }
 
-// Skeleton for StatChip to mirror exact layout
-class _StatChipSkeleton extends StatelessWidget {
-  const _StatChipSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return _GlassCard(
-      borderRadius: 12,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            _SkeletonBox(width: 18, height: 18, radius: 9),
-            SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _SkeletonBox(width: 80, height: 14, radius: 6),
-                  SizedBox(height: 6),
-                  _SkeletonBox(width: 60, height: 12, radius: 6),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _SkeletonBox extends StatelessWidget {
   final double width;

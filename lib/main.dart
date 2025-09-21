@@ -7,6 +7,7 @@ import 'screens/home_feed_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/debug_auth_screen.dart';
+import 'screens/backend_test_screen.dart';
 import 'widgets/bottom_nav_bar.dart';
 
 void main() async {
@@ -47,7 +48,7 @@ class _MainScreenState extends State<MainScreen> {
     SearchFeedScreen(),
     ProfileScreen(),
     SettingsScreen(),
-    DebugAuthScreen(), // Temporary debug screen
+    BackendTestScreen(), // Backend connection test screen
   ];
 
   void _onItemTapped(int index) {

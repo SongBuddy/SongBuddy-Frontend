@@ -31,7 +31,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
       if (t != query) {
         setState(() {
           query = t;
-          _isSearching = true; // always search mode while editing
+          _isSearching = true;
         });
       }
     });
@@ -140,6 +140,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
 
     return Expanded(
       child: ListView.separated(
+        key: const PageStorageKey("SuggestionsList"),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         itemCount: suggestions.length,
         separatorBuilder: (_, __) =>
@@ -147,6 +148,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
         itemBuilder: (context, idx) {
           final u = suggestions[idx];
           return ListTile(
+            key: ValueKey(u['username']),
             leading: CircleAvatar(
               backgroundColor: Colors.purple,
               child: Icon(u['avatar'], color: Colors.white),
@@ -175,74 +177,90 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   }
 
   Widget _buildMusicPost(Map<String, dynamic> post) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      height: 120,
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
-      child: Stack(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Image.network(
-              post['coverUrl'],
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              errorBuilder: (_, __, ___) => Container(color: Colors.white12),
+    final username = post['user'];
+
+    return GestureDetector(
+      key: ValueKey("${post['track']}_${username}"),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => UserProfileScreen(
+              username: username,
+              avatarUrl: "https://i.pravatar.cc/150?img=1",
             ),
           ),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-              child: Container(color: Colors.black.withOpacity(0.36)),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        height: 140,
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
+        child: Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.network(
+                post['coverUrl'],
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                errorBuilder: (_, __, ___) => Container(color: Colors.white12),
+              ),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
-                    post['coverUrl'],
-                    width: 64,
-                    height: 64,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        Container(color: Colors.white12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(color: Colors.black.withOpacity(0.36)),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      post['coverUrl'],
+                      width: 64,
+                      height: 64,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          Container(color: Colors.white12),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(post['track'],
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 4),
-                      Text(post['artist'],
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 13)),
-                      const SizedBox(height: 6),
-                      Text("${post['user']}: ${post['desc']}",
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: Colors.white54, fontSize: 12)),
-                    ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(post['track'],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 4),
+                        Text(post['artist'],
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 13)),
+                        const SizedBox(height: 6),
+                        Text("${post['user']}: ${post['desc']}",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.white54, fontSize: 12)),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -251,7 +269,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
     setState(() {
       query = '';
       _controller.clear();
-      _isSearching = false; // back to discovery
+      _isSearching = false;
       _searchFocusNode.unfocus();
     });
   }
@@ -268,7 +286,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
                 Expanded(
                   child: Padding(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: TextField(
                       focusNode: _searchFocusNode,
                       controller: _controller,
@@ -290,8 +308,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
                                   setState(() {
                                     query = '';
                                     _controller.clear();
-                                    _isSearching =
-                                        true; // stay in search mode
+                                    _isSearching = true;
                                   });
                                 },
                               ),
@@ -320,7 +337,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
                 ),
                 if (_isSearching)
                   Padding(
-                    padding: const EdgeInsets.only(right: 12),
+                    padding: const EdgeInsets.only(right: 16),
                     child: GestureDetector(
                       onTap: _cancelSearch,
                       child: const Text(
@@ -328,7 +345,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
                         style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
-                            fontSize: 12),
+                            fontSize: 16),
                       ),
                     ),
                   ),
@@ -339,18 +356,25 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
               _buildSuggestionDropdown()
             else
               Expanded(
-                child: ListView(
+                child: ListView.builder(
+                  key: const PageStorageKey("DiscoveryList"),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  children: [
-                    const Text('Random Discovery',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
-                    ...posts.map((p) => _buildMusicPost(p)).toList(),
-                  ],
+                  itemCount: posts.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return const Padding(
+                        padding: EdgeInsets.only(bottom: 12),
+                        child: Text('Random Discovery',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold)),
+                      );
+                    }
+                    final post = posts[index - 1];
+                    return _buildMusicPost(post);
+                  },
                 ),
               ),
           ],

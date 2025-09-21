@@ -15,7 +15,6 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   final TextEditingController _controller = TextEditingController();
   late final FocusNode _searchFocusNode;
 
-  // Speech recognition
   late stt.SpeechToText _speech;
   bool _isListening = false;
   bool _isSearching = false;
@@ -32,25 +31,20 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
       if (t != query) {
         setState(() {
           query = t;
-          _isSearching = _searchFocusNode.hasFocus || query.trim().isNotEmpty;
+          _isSearching = true; // always search mode while editing
         });
       }
     });
   }
 
   void _onFocusChange() {
-    setState(() {
-      if (_searchFocusNode.hasFocus) {
-        _isSearching = true;
-      } else {
-        _isSearching = query.trim().isNotEmpty;
-      }
-    });
+    if (_searchFocusNode.hasFocus) {
+      setState(() => _isSearching = true);
+    }
   }
 
   @override
   void dispose() {
-    _searchFocusNode.removeListener(_onFocusChange);
     _searchFocusNode.dispose();
     _controller.dispose();
     if (_isListening) _speech.stop();
@@ -64,10 +58,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
 
       _searchFocusNode.requestFocus();
 
-      setState(() {
-        _isListening = true;
-        _isSearching = true;
-      });
+      setState(() => _isListening = true);
 
       _speech.listen(
         onResult: (result) {
@@ -90,7 +81,6 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
     }
   }
 
-  // Mock data
   final List<Map<String, dynamic>> users = [
     {'username': 'Alice', 'followers': 120, 'avatar': Icons.person},
     {'username': 'Alex', 'followers': 310, 'avatar': Icons.person},
@@ -135,9 +125,57 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
         .toList();
   }
 
+  Widget _buildSuggestionDropdown() {
+    final suggestions = filteredUsers;
+    if (suggestions.isEmpty) {
+      return Expanded(
+        child: Center(
+          child: Text(
+            "No users found",
+            style: TextStyle(color: Colors.white54),
+          ),
+        ),
+      );
+    }
+
+    return Expanded(
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: suggestions.length,
+        separatorBuilder: (_, __) =>
+            Divider(color: Colors.white.withOpacity(0.08), height: 1),
+        itemBuilder: (context, idx) {
+          final u = suggestions[idx];
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.purple,
+              child: Icon(u['avatar'], color: Colors.white),
+            ),
+            title: Text(u['username'],
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w600)),
+            subtitle: Text('${u['followers']} followers',
+                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            onTap: () {
+              _searchFocusNode.unfocus();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => UserProfileScreen(
+                    username: u['username'] as String,
+                    avatarUrl: "https://i.pravatar.cc/150?img=1",
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildMusicPost(Map<String, dynamic> post) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 120),
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
       height: 120,
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
@@ -209,59 +247,13 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
     );
   }
 
-  Widget _buildSuggestionDropdown() {
-    if (!_isSearching || query.trim().isEmpty) return const SizedBox.shrink();
-
-    final suggestions = filteredUsers;
-    if (suggestions.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.03),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Text("No users found",
-              style: TextStyle(color: Colors.white54)),
-        ),
-      );
-    }
-
-    return Expanded(
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: suggestions.length,
-        separatorBuilder: (_, __) =>
-            Divider(color: Colors.white.withOpacity(0.08), height: 1),
-        itemBuilder: (context, idx) {
-          final u = suggestions[idx];
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.purple,
-              child: Icon(u['avatar'], color: Colors.white),
-            ),
-            title: Text(u['username'],
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w600)),
-            subtitle: Text('${u['followers']} followers',
-                style: const TextStyle(color: Colors.white54, fontSize: 12)),
-            onTap: () {
-              _searchFocusNode.unfocus();
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => UserProfileScreen(
-                    username: u['username'] as String,
-                    avatarUrl: "https://i.pravatar.cc/150?img=1",
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
+  void _cancelSearch() {
+    setState(() {
+      query = '';
+      _controller.clear();
+      _isSearching = false; // back to discovery
+      _searchFocusNode.unfocus();
+    });
   }
 
   @override
@@ -271,58 +263,79 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Search bar
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
-              child: TextField(
-                focusNode: _searchFocusNode,
-                controller: _controller,
-                style: const TextStyle(color: Colors.white),
-                textInputAction: TextInputAction.search,
-                decoration: InputDecoration(
-                  hintText: 'Search users...',
-                  hintStyle: const TextStyle(color: Colors.white54),
-                  prefixIcon: const Icon(Icons.search, color: Colors.white70),
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (query.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.white70),
-                          onPressed: () {
-                            setState(() {
-                              query = '';
-                              _controller.clear();
-                              _isSearching = false;
-                            });
-                          },
+            Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    child: TextField(
+                      focusNode: _searchFocusNode,
+                      controller: _controller,
+                      style: const TextStyle(color: Colors.white),
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        hintText: 'Search users...',
+                        hintStyle: const TextStyle(color: Colors.white54),
+                        prefixIcon:
+                            const Icon(Icons.search, color: Colors.white70),
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (query.isNotEmpty)
+                              IconButton(
+                                icon: const Icon(Icons.clear,
+                                    color: Colors.white70),
+                                onPressed: () {
+                                  setState(() {
+                                    query = '';
+                                    _controller.clear();
+                                    _isSearching =
+                                        true; // stay in search mode
+                                  });
+                                },
+                              ),
+                            IconButton(
+                              icon: Icon(
+                                  _isListening ? Icons.mic : Icons.mic_none,
+                                  color: Colors.white70),
+                              onPressed: _listen,
+                            ),
+                          ],
                         ),
-                      IconButton(
-                        icon: Icon(
-                            _isListening ? Icons.mic : Icons.mic_none,
-                            color: Colors.white70),
-                        onPressed: _listen,
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.06),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 14),
                       ),
-                    ],
+                      onTap: () => setState(() => _isSearching = true),
+                      onSubmitted: (_) =>
+                          setState(() => _isSearching = true),
+                    ),
                   ),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.06),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 14),
                 ),
-                onTap: () => setState(() => _isSearching = true),
-                onSubmitted: (_) =>
-                    setState(() => _isSearching = query.trim().isNotEmpty),
-              ),
+                if (_isSearching)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: GestureDetector(
+                      onTap: _cancelSearch,
+                      child: const Text(
+                        "Cancel",
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12),
+                      ),
+                    ),
+                  ),
+              ],
             ),
 
-            // If searching → dropdown list; else → discovery posts
-            if (_isSearching && query.trim().isNotEmpty)
+            if (_isSearching)
               _buildSuggestionDropdown()
             else
               Expanded(

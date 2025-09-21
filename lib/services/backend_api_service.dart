@@ -2,7 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class BackendApiService {
-  static const String baseUrl = 'http://localhost:3000';
+  // Use your Mac's IP address instead of localhost
+  // For iOS Simulator: use 127.0.0.1
+  // For Android Emulator: use 10.0.2.2
+  // For physical device: use your Mac's IP address
+  static const String baseUrl = 'http://172.20.135.128:3000';
   
   // Test connection to backend
   static Future<Map<String, dynamic>> testConnection() async {

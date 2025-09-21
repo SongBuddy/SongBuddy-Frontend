@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:songbuddy/screens/user_profile_screen.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:share_plus/share_plus.dart';
 
 class SearchFeedScreen extends StatefulWidget {
   const SearchFeedScreen({super.key});
@@ -9,16 +11,92 @@ class SearchFeedScreen extends StatefulWidget {
   State<SearchFeedScreen> createState() => _SearchFeedScreenState();
 }
 
-class _SearchFeedScreenState extends State<SearchFeedScreen>
-    with SingleTickerProviderStateMixin {
+class _SearchFeedScreenState extends State<SearchFeedScreen> {
   String query = '';
   final TextEditingController _controller = TextEditingController();
+  late final FocusNode _searchFocusNode;
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+  bool _isSearching = false;
 
-  // Mock data for demonstration
+  // Track likes for posts
+  final Map<int, bool> _likedPosts = {};
+  final Map<int, int> _likeCounts = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _speech = stt.SpeechToText();
+    _searchFocusNode = FocusNode();
+    _searchFocusNode.addListener(_onFocusChange);
+
+    _controller.addListener(() {
+      final t = _controller.text;
+      if (t != query) {
+        setState(() {
+          query = t;
+          _isSearching = true;
+        });
+      }
+    });
+
+    // Initialize like counts
+    for (int i = 0; i < posts.length; i++) {
+      _likedPosts[i] = false;
+      _likeCounts[i] = 0;
+    }
+  }
+
+  void _onFocusChange() {
+    if (_searchFocusNode.hasFocus) {
+      setState(() => _isSearching = true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchFocusNode.dispose();
+    _controller.dispose();
+    if (_isListening) _speech.stop();
+    super.dispose();
+  }
+
+  Future<void> _listen() async {
+    if (!_isListening) {
+      final available = await _speech.initialize();
+      if (!available) return;
+
+      _searchFocusNode.requestFocus();
+      setState(() => _isListening = true);
+
+      _speech.listen(
+        onResult: (result) {
+          final recognized = result.recognizedWords;
+          setState(() {
+            query = recognized;
+            _controller.text = recognized;
+            _controller.selection = TextSelection.fromPosition(
+              TextPosition(offset: _controller.text.length),
+            );
+            _isSearching = true;
+          });
+        },
+        listenMode: stt.ListenMode.search,
+        partialResults: true,
+      );
+    } else {
+      await _speech.stop();
+      setState(() => _isListening = false);
+    }
+  }
+
   final List<Map<String, dynamic>> users = [
     {'username': 'Alice', 'followers': 120, 'avatar': Icons.person},
+    {'username': 'Alex', 'followers': 310, 'avatar': Icons.person},
+    {'username': 'Adam', 'followers': 200, 'avatar': Icons.person},
     {'username': 'Bob', 'followers': 95, 'avatar': Icons.person},
     {'username': 'Charlie', 'followers': 230, 'avatar': Icons.person},
+    {'username': 'Eve', 'followers': 200, 'avatar': Icons.person},
   ];
 
   final List<Map<String, dynamic>> posts = [
@@ -28,141 +106,238 @@ class _SearchFeedScreenState extends State<SearchFeedScreen>
       'user': 'Alice',
       'desc': 'Perfect track for late night vibes.',
       'coverUrl':
-          'https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2', // Replace with real album art
+          'https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2',
     },
     {
       'track': 'Blinding Lights',
       'artist': 'The Weeknd',
       'user': 'Bob',
       'desc': 'Still one of my favorites!',
-      'coverUrl': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDTJ4AuwUIeQ-wc-z78atPgem_s9RgBtGP_A&s',
+      'coverUrl':
+          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDTJ4AuwUIeQ-wc-z78atPgem_s9RgBtGP_A&s',
     },
     {
       'track': 'Sunflower',
       'artist': 'Post Malone',
       'user': 'Charlie',
       'desc': 'Always lifts my mood.',
-      'coverUrl': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSF0Jqpe95kORYuGnJhSprCr8KG_WtwW8oS9Q&ss',
+      'coverUrl':
+          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSF0Jqpe95kORYuGnJhSprCr8KG_WtwW8oS9Q&ss',
     },
   ];
 
   List<Map<String, dynamic>> get filteredUsers {
-    if (query.isEmpty) return [];
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return [];
     return users
-        .where((u) => u['username'].toLowerCase().contains(query.toLowerCase()))
+        .where((u) => (u['username'] as String).toLowerCase().startsWith(q))
         .toList();
   }
 
-  List<Map<String, dynamic>> get filteredPosts {
-    if (query.isEmpty) return [];
-    return posts
-        .where((p) => p['track'].toLowerCase().contains(query.toLowerCase()) ||
-            p['artist'].toLowerCase().contains(query.toLowerCase()) ||
-            p['desc'].toLowerCase().contains(query.toLowerCase()))
-        .toList();
-  }
+  Widget _buildSuggestionDropdown() {
+    final suggestions = filteredUsers;
+    if (suggestions.isEmpty) {
+      return const Expanded(
+        child: Center(
+          child: Text("No users found", style: TextStyle(color: Colors.white54)),
+        ),
+      );
+    }
 
-  Widget _buildMusicPost(Map<String, dynamic> post) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 100),
-      margin: const EdgeInsets.only(bottom: 16),
-      height: 120,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+    return Expanded(
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: suggestions.length,
+        separatorBuilder: (_, __) =>
+            Divider(color: Colors.white.withOpacity(0.08), height: 1),
+        itemBuilder: (context, idx) {
+          final u = suggestions[idx];
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.purple,
+              child: Icon(u['avatar'], color: Colors.white),
+            ),
+            title: Text(u['username'],
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w600)),
+            subtitle: Text('${u['followers']} followers',
+                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            onTap: () {
+              _searchFocusNode.unfocus();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => UserProfileScreen(
+                    username: u['username'] as String,
+                    avatarUrl: "https://i.pravatar.cc/150?img=1",
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
-      child: Stack(
-        children: [
-          // Background: album art blurred
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Image.network(
-              post['coverUrl'],
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
+    );
+  }
+
+  Widget _buildMusicPost(Map<String, dynamic> post, int index) {
+    final username = post['user'];
+    final isLiked = _likedPosts[index] ?? false;
+    final likeCount = _likeCounts[index] ?? 0;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => UserProfileScreen(
+              username: username,
+              avatarUrl: "https://i.pravatar.cc/150?img=1",
             ),
           ),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-              child: Container(
-                color: Colors.black.withOpacity(0.3),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        height: 150,
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
+        child: Stack(
+          children: [
+            // Background cover art blurred
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.network(
+                post['coverUrl'],
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                errorBuilder: (_, __, ___) => Container(color: Colors.white12),
               ),
             ),
-          ),
-          // Foreground: glass card overlay
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
+            ClipRRect(
               borderRadius: BorderRadius.circular(20),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(color: Colors.black.withOpacity(0.36)),
+              ),
             ),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    post['coverUrl'],
-                    width: 60,
-                    height: 60,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
+
+            // Post content
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top row: user info + buttons
+                  Row(
                     children: [
-                      Text(post['track'],
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold)),
-                      Text(post['artist'],
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 14)),
-                      Text("${post['user']}: ${post['desc']}",
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: Colors.white54, fontSize: 12)),
+                      CircleAvatar(
+                        backgroundImage:
+                            NetworkImage("https://i.pravatar.cc/150?img=3"),
+                        radius: 16,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(username,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              isLiked
+                                  ? Icons.favorite
+                                  : Icons.favorite_border,
+                              color: isLiked ? Colors.red : Colors.white,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _likedPosts[index] = !isLiked;
+                                _likeCounts[index] =
+                                    (likeCount + (isLiked ? -1 : 1))
+                                        .clamp(0, 9999);
+                              });
+                            },
+                          ),
+                          Text(
+                            "$likeCount",
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 12),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.share_outlined,
+                                color: Colors.white),
+                            onPressed: () {
+                              final text =
+                                  "${post['user']} shared a song: ${post['track']} by ${post['artist']}";
+                              Share.share(text);
+                            },
+                          ),
+                        ],
+                      )
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 12),
+
+                  // Song details
+                  Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          post['coverUrl'],
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              Container(color: Colors.white12),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(post['track'],
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 4),
+                            Text(post['artist'],
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 13)),
+                            const SizedBox(height: 6),
+                            Text(post['desc'],
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: Colors.white54, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildUserCard(Map<String, dynamic> user) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 1000),
-      curve: Curves.linear,
-      width: 120,
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        children: [
-          CircleAvatar(
-            backgroundColor: Colors.purple,
-            radius: 28,
-            child: Icon(user['avatar'], color: Colors.white, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(user['username'], style: const TextStyle(color: Colors.white)),
-          Text('${user['followers']} followers',
-              style: const TextStyle(color: Colors.white54, fontSize: 12)),
-        ],
-      ),
-    );
+  void _cancelSearch() {
+    setState(() {
+      query = '';
+      _controller.clear();
+      _isSearching = false;
+      _searchFocusNode.unfocus();
+    });
   }
 
   @override
@@ -172,113 +347,103 @@ class _SearchFeedScreenState extends State<SearchFeedScreen>
       body: SafeArea(
         child: Column(
           children: [
-            // Search bar
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                controller: _controller,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Search users or genres...',
-                  hintStyle: const TextStyle(color: Colors.white54),
-                  prefixIcon: const Icon(Icons.search, color: Colors.white70),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.1),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(30),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                onChanged: (val) {
-                  setState(() {
-                    query = val;
-                  });
-                },
-              ),
-            ),
-
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 400),
-                child: ListView(
-                  key: ValueKey(query),
-                  children: [
-                    if (filteredUsers.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+            // Search bar + cancel button
+            Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: TextField(
+                      focusNode: _searchFocusNode,
+                      controller: _controller,
+                      style: const TextStyle(color: Colors.white),
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        hintText: 'Search users...',
+                        hintStyle: const TextStyle(color: Colors.white54),
+                        prefixIcon:
+                            const Icon(Icons.search, color: Colors.white70),
+                        suffixIcon: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text('Users',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 12),
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                children: filteredUsers
-                                    .map((user) => GestureDetector(
-                                      child: _buildUserCard(user),
-                                      onTap: (){
-                                       Navigator.push(context, MaterialPageRoute(builder: (context) => UserProfileScreen(username:user['username'] , avatarUrl: "https://i.pravatar.cc/150?img=1")));
-                                        
-                                      },
-                                      )
-                                    )
-                                    .toList(),
+                            if (query.isNotEmpty)
+                              IconButton(
+                                icon: const Icon(Icons.clear,
+                                    color: Colors.white70),
+                                onPressed: () {
+                                  setState(() {
+                                    query = '';
+                                    _controller.clear();
+                                    _isSearching = true;
+                                  });
+                                },
                               ),
+                            IconButton(
+                              icon: Icon(
+                                  _isListening ? Icons.mic : Icons.mic_none,
+                                  color: Colors.white70),
+                              onPressed: _listen,
                             ),
                           ],
                         ),
-                      ),
-
-                    if (filteredPosts.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Music Posts',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 12),
-                            Column(
-                              children: filteredPosts
-                                  .map((post) => _buildMusicPost(post))
-                                  .toList(),
-                            )
-                          ],
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.06),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
                         ),
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 14),
                       ),
+                      onTap: () => setState(() => _isSearching = true),
+                      onSubmitted: (_) =>
+                          setState(() => _isSearching = true),
+                    ),
+                  ),
+                ),
+                if (_isSearching)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: GestureDetector(
+                      onTap: _cancelSearch,
+                      child: const Text(
+                        "Cancel",
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
 
-                    // Random discovery
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Random Discovery',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 12),
-                          Column(
-                            children: posts.map((post) {
-                              return _buildMusicPost(post);
-                            }).toList(),
-                          )
-                        ],
-                      ),
-                    )
-                  ],
+            // Suggestions or discovery feed
+            if (_isSearching)
+              _buildSuggestionDropdown()
+            else
+              Expanded(
+                child: ListView.builder(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  itemCount: posts.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return const Padding(
+                        padding: EdgeInsets.only(bottom: 12),
+                        child: Text('Random Discovery',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold)),
+                      );
+                    }
+                    final post = posts[index - 1];
+                    return _buildMusicPost(post, index - 1);
+                  },
                 ),
               ),
-            )
           ],
         ),
       ),

@@ -78,6 +78,13 @@ class BottomNavBar extends StatelessWidget {
                       activeIcon: Icons.settings,
                       label: 'Settings',
                     ),
+                    _buildNavItem(
+                      context: context,
+                      index: 4,
+                      icon: Icons.api_outlined,
+                      activeIcon: Icons.api,
+                      label: 'Test',
+                    ),
                   ],
                 ),
               ),

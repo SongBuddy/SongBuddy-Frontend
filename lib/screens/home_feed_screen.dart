@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
+import 'package:songbuddy/screens/notification_screen.dart';
 
 class HomeFeedScreen extends StatefulWidget {
   const HomeFeedScreen({super.key});
@@ -89,7 +90,9 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                     ),
                     const Spacer(),
                     IconButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (context)=> NotificationScreen()));
+                      },
                       icon: const Icon(
                         Icons.notifications_outlined,
                         color: AppColors.onDarkSecondary,

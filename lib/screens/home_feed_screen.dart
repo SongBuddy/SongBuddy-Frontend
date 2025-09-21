@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
 import 'package:songbuddy/screens/notification_screen.dart';
@@ -308,7 +309,19 @@ class _BlurPostCardState extends State<_BlurPostCard> {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      onPressed: () {},
+                                            onPressed: () {
+                        final text = """
+                              🎵 ${widget.trackTitle} - ${widget.artist}
+                              Posted by ${widget.username}
+
+                              ${widget.description.isNotEmpty ? widget.description : ''}
+                              """;
+
+                        Share.share(
+                          text,
+                          subject: "Check out this song on SongBuddy!",
+                        );
+                      },
                       icon: const Icon(
                         Icons.share_outlined,
                         color: Colors.white70,

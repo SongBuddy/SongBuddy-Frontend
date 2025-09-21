@@ -107,6 +107,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
       'desc': 'Perfect track for late night vibes.',
       'coverUrl':
           'https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2',
+      'time': '7h',
     },
     {
       'track': 'Blinding Lights',
@@ -115,6 +116,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
       'desc': 'Still one of my favorites!',
       'coverUrl':
           'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDTJ4AuwUIeQ-wc-z78atPgem_s9RgBtGP_A&s',
+      'time': '12h',
     },
     {
       'track': 'Sunflower',
@@ -123,6 +125,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
       'desc': 'Always lifts my mood.',
       'coverUrl':
           'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSF0Jqpe95kORYuGnJhSprCr8KG_WtwW8oS9Q&ss',
+      'time': '1d',
     },
   ];
 
@@ -199,7 +202,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
-        height: 150,
+        height: 190,
         decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
         child: Stack(
           children: [
@@ -228,7 +231,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top row: user info + buttons
+                  // Top row: user info + follow + time
                   Row(
                     children: [
                       CircleAvatar(
@@ -243,43 +246,29 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600)),
                       ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              isLiked
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-                              color: isLiked ? Colors.red : Colors.white,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _likedPosts[index] = !isLiked;
-                                _likeCounts[index] =
-                                    (likeCount + (isLiked ? -1 : 1))
-                                        .clamp(0, 9999);
-                              });
-                            },
-                          ),
-                          Text(
-                            "$likeCount",
-                            style: const TextStyle(
-                                color: Colors.white70, fontSize: 12),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.share_outlined,
-                                color: Colors.white),
-                            onPressed: () {
-                              final text =
-                                  "${post['user']} shared a song: ${post['track']} by ${post['artist']}";
-                              Share.share(text);
-                            },
-                          ),
-                        ],
-                      )
+                      Text(
+                        post['time'],
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 11),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: () {},
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.15),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 4),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20)),
+                        ),
+                        child: const Text(
+                          "Follow",
+                          style: TextStyle(color: Colors.white, fontSize: 12),
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
 
                   // Song details
                   Row(
@@ -319,6 +308,43 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
                                     color: Colors.white54, fontSize: 12)),
                           ],
                         ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+
+                  // Bottom row: like + share nicely aligned
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          isLiked ? Icons.favorite : Icons.favorite_border,
+                          color: isLiked ? Colors.red : Colors.white,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _likedPosts[index] = !isLiked;
+                            _likeCounts[index] =
+                                (likeCount + (isLiked ? -1 : 1))
+                                    .clamp(0, 9999);
+                          });
+                        },
+                      ),
+                      Text(
+                        "$likeCount",
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12),
+                      ),
+                      const SizedBox(width: 12),
+                      IconButton(
+                        icon: const Icon(Icons.share_outlined,
+                            color: Colors.white),
+                        onPressed: () {
+                          final text =
+                              "${post['user']} shared a song: ${post['track']} by ${post['artist']}";
+                          Share.share(text);
+                        },
                       ),
                     ],
                   ),

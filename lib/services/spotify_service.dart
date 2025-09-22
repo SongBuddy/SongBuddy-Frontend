@@ -50,7 +50,6 @@ class SpotifyService {
       );
     }
   }
-
   /// Dispose the HTTP client
   void dispose() {
     _client.close();
@@ -256,6 +255,7 @@ class SpotifyService {
         if (response.body.isEmpty) {
           return {};
         }
+       
         return json.decode(response.body) as Map<String, dynamic>;
       } else {
         final errorData = response.body.isNotEmpty 

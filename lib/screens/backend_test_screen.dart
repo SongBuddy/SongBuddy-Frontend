@@ -13,6 +13,26 @@ class _BackendTestScreenState extends State<BackendTestScreen> {
   String _status = 'Not tested';
   bool _isLoading = false;
   Map<String, dynamic>? _lastResponse;
+  String _backendUrl = 'Discovering...';
+
+  @override
+  void initState() {
+    super.initState();
+    _discoverBackend();
+  }
+
+  Future<void> _discoverBackend() async {
+    try {
+      final url = await BackendApiService.getCurrentBackendUrl();
+      setState(() {
+        _backendUrl = url;
+      });
+    } catch (e) {
+      setState(() {
+        _backendUrl = 'Discovery failed';
+      });
+    }
+  }
 
   Future<void> _testConnection() async {
     setState(() {
@@ -86,6 +106,29 @@ class _BackendTestScreenState extends State<BackendTestScreen> {
     }
   }
 
+  Future<void> _rediscoverBackend() async {
+    setState(() {
+      _isLoading = true;
+      _status = 'Rediscovering backend...';
+    });
+
+    try {
+      BackendApiService.clearBackendCache();
+      await _discoverBackend();
+      setState(() {
+        _status = '✅ Backend rediscovered!';
+      });
+    } catch (e) {
+      setState(() {
+        _status = '❌ Rediscovery failed: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -108,6 +151,15 @@ class _BackendTestScreenState extends State<BackendTestScreen> {
                     Text(
                       'Connection Status',
                       style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Backend URL: $_backendUrl',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue,
+                        fontFamily: 'monospace',
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -146,6 +198,13 @@ class _BackendTestScreenState extends State<BackendTestScreen> {
             ElevatedButton(
               onPressed: _isLoading ? null : _getHealthStatus,
               child: const Text('Get Health Status'),
+            ),
+            
+            const SizedBox(height: 8),
+            
+            ElevatedButton(
+              onPressed: _isLoading ? null : _rediscoverBackend,
+              child: const Text('Rediscover Backend'),
             ),
             
             const SizedBox(height: 16),

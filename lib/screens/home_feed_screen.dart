@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
 import 'package:songbuddy/screens/notification_screen.dart';
+import 'package:songbuddy/widgets/music_post_card.dart';
 
 class HomeFeedScreen extends StatefulWidget {
   const HomeFeedScreen({super.key});
@@ -116,7 +117,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final post = _posts[index];
-                    return _BlurPostCard(
+                    return MusicPostCard(
                       username: post['username'] as String,
                       avatarUrl: post['avatarUrl'] as String,
                       trackTitle: post['trackTitle'] as String,
@@ -125,6 +126,20 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
                       description: post['description'] as String,
                       initialLikes: post['likes'] as int,
                       timeAgo: post['time'] as String,
+                      height: 180,
+                      avatarVerticalPadding: 6,
+                      onShare: () {
+                        final text = """
+                              🎵 ${post['trackTitle']} - ${post['artist']}
+                              Posted by ${post['username']}
+
+                              ${post['description'].isNotEmpty ? post['description'] : ''}
+                              """;
+                        Share.share(
+                          text,
+                          subject: "Check out this song on SongBuddy!",
+                        );
+                      },
                     );
                   },
                 ),
@@ -137,204 +152,4 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   }
 }
 
-class _BlurPostCard extends StatefulWidget {
-  final String username;
-  final String avatarUrl;
-  final String trackTitle;
-  final String artist;
-  final String coverUrl;
-  final String description;
-  final int initialLikes;
-  final String timeAgo;
-
-  const _BlurPostCard({
-    required this.username,
-    required this.avatarUrl,
-    required this.trackTitle,
-    required this.artist,
-    required this.coverUrl,
-    required this.description,
-    required this.initialLikes,
-    required this.timeAgo,
-  });
-
-  @override
-  State<_BlurPostCard> createState() => _BlurPostCardState();
-}
-
-class _BlurPostCardState extends State<_BlurPostCard> {
-  bool isLiked = false;
-  late int likes;
-
-  @override
-  void initState() {
-    super.initState();
-    likes = widget.initialLikes;
-  }
-
-  void _toggleLike() {
-    setState(() {
-      isLiked = !isLiked;
-      likes = isLiked ? likes + 1 : likes - 1;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: Stack(
-        children: [
-          // Background blurred cover art
-          Image.network(
-            widget.coverUrl,
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: 165,
-          ),
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              height: 165,
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.35),
-              ),
-            ),
-          ),
-
-          // Foreground content
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12 , vertical: 5),
-            height: 160,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Top row: avatar + username | time
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 14,
-                      backgroundImage: NetworkImage(widget.avatarUrl),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        widget.username,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Text(
-                      widget.timeAgo,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                // Middle row: cover art + song info
-                Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(15),
-                      child: Image.network(
-                        widget.coverUrl,
-                        width: 60,
-                        height: 60,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.trackTitle,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            widget.artist,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (widget.description.isNotEmpty)
-                            Text(
-                              widget.description,
-                              style: const TextStyle(
-                                color: Colors.white60,
-                                fontSize: 11,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-
-                // Bottom row: like + share
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    IconButton(
-                      onPressed: _toggleLike,
-                      icon: Icon(
-                        isLiked ? Icons.favorite : Icons.favorite_border,
-                        color: isLiked ? Colors.red : Colors.white70,
-                        size: 18,
-                      ),
-                    ),
-                    Text(
-                      "$likes",
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                                            onPressed: () {
-                        final text = """
-                              🎵 ${widget.trackTitle} - ${widget.artist}
-                              Posted by ${widget.username}
-
-                              ${widget.description.isNotEmpty ? widget.description : ''}
-                              """;
-
-                        Share.share(
-                          text,
-                          subject: "Check out this song on SongBuddy!",
-                        );
-                      },
-                      icon: const Icon(
-                        Icons.share_outlined,
-                        color: Colors.white70,
-                        size: 18,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// Removed old _BlurPostCard in favor of reusable MusicPostCard

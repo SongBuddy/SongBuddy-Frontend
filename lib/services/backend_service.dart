@@ -4,54 +4,94 @@ import 'package:songbuddy/models/AppUser.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'backend_api_service.dart';
 
+// Simple HTTP client with basic configuration
+class SimpleHttpClient {
+  static Future<http.Response> delete(Uri url, {Map<String, String>? headers}) async {
+    return await http.delete(url, headers: headers);
+  }
+  
+  static Future<http.Response> post(Uri url, {Map<String, String>? headers, Object? body}) async {
+    return await http.post(url, headers: headers, body: body);
+  }
+  
+  static Future<http.Response> get(Uri url, {Map<String, String>? headers}) async {
+    return await http.get(url, headers: headers);
+  }
+  
+  static Future<http.Response> put(Uri url, {Map<String, String>? headers, Object? body}) async {
+    return await http.put(url, headers: headers, body: body);
+  }
+}
+
 
 class BackendService {
+  // Constant base URL for backend - using computer's IP for mobile debugging
+  static const String baseUrl = 'http://192.168.227.108:3000';
  
   /// Clear any cached backend URLs to force rediscovery
   static void clearCache() {
     BackendApiService.clearBackendCache();
   }
 
+  /// Test backend connection before making requests
+  Future<bool> testConnection() async {
+    try {
+      final response = await SimpleHttpClient.get(
+        Uri.parse("$baseUrl/health"),
+        headers: {"Content-Type": "application/json"},
+      );
+      
+      return response.statusCode == 200;
+    } catch (e) {
+      print('❌ Backend connection test failed: $e');
+      return false;
+    }
+  }
+
   Future<AppUser?> saveUser(AppUser user) async {
-    // Use dynamic backend discovery to get the correct URL
-    final baseUrl = await BackendApiService.getCurrentBackendUrl();
     final url = "$baseUrl/api/users/save";
     print('🔗 BackendService: Attempting to save user to: $url');
     
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(user.toJson()),
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return AppUser(
-        id: data['id'] ?? '',
-        displayName: data['displayName'] ?? '',
-        email: data['email'] ?? '',
-        profilePicture: data['profilePicture'] ?? '',
-        country: data['country'] ?? 'US',
-        currentlyPlaying: data['currentlyPlaying'],
-        topArtists: data['topArtists'] != null 
-            ? List<Map<String, dynamic>>.from(data['topArtists'])
-            : [],
-        topTracks: data['topTracks'] != null 
-            ? List<Map<String, dynamic>>.from(data['topTracks'])
-            : [],
-        recentlyPlayed: data['recentlyPlayed'] != null 
-            ? List<Map<String, dynamic>>.from(data['recentlyPlayed'])
-            : [],
+    try {
+      final response = await SimpleHttpClient.post(
+        Uri.parse(url),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(user.toJson()),
       );
-    } else {
-      throw Exception("Failed to save user: ${response.body}");
+
+      print('📡 BackendService: Save user response - Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return AppUser(
+          id: data['id'] ?? '',
+          displayName: data['displayName'] ?? '',
+          email: data['email'] ?? '',
+          profilePicture: data['profilePicture'] ?? '',
+          country: data['country'] ?? 'US',
+          currentlyPlaying: data['currentlyPlaying'],
+          topArtists: data['topArtists'] != null 
+              ? List<Map<String, dynamic>>.from(data['topArtists'])
+              : [],
+          topTracks: data['topTracks'] != null 
+              ? List<Map<String, dynamic>>.from(data['topTracks'])
+              : [],
+          recentlyPlayed: data['recentlyPlayed'] != null 
+              ? List<Map<String, dynamic>>.from(data['recentlyPlayed'])
+              : [],
+        );
+      } else {
+        throw Exception("Failed to save user: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      print('❌ BackendService: Save user error: $e');
+      throw Exception("Failed to save user: $e");
     }
   }
 
   /// Update user fields (all fields except id are updatable)
   Future<AppUser?> updateUser(String userId, Map<String, dynamic> updates) async {
-    final baseUrl = await BackendApiService.getCurrentBackendUrl();
-    final response = await http.put(
+    final response = await SimpleHttpClient.put(
       Uri.parse("$baseUrl/api/users/$userId"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode(updates),
@@ -83,23 +123,43 @@ class BackendService {
 
   /// Delete user from backend
   Future<bool> deleteUser(String userId) async {
-    final baseUrl = await BackendApiService.getCurrentBackendUrl();
-    final response = await http.delete(
-      Uri.parse("$baseUrl/api/users/$userId"),
-      headers: {"Content-Type": "application/json"},
-    );
+    try {
+      print('🔗 BackendService: Deleting user $userId from: $baseUrl/api/users/$userId');
+      
+      final response = await SimpleHttpClient.delete(
+        Uri.parse("$baseUrl/api/users/$userId"),
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Connection": "keep-alive",
+        },
+      );
 
-    if (response.statusCode == 200 || response.statusCode == 204) {
-      return true;
-    } else {
-      throw Exception("Failed to delete user: ${response.body}");
+      print('📡 BackendService: Delete response - Status: ${response.statusCode}, Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return true;
+      } else {
+        throw Exception("Failed to delete user: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      print('❌ BackendService: Delete user error: $e');
+      
+      if (e.toString().contains("Connection closed before full header was received")) {
+        throw Exception("Connection lost: Backend server may have closed the connection. Please try again.");
+      } else if (e.toString().contains("Connection refused")) {
+        throw Exception("Cannot connect to backend server. Please check if the server is running.");
+      } else if (e.toString().contains("Request timeout")) {
+        throw Exception("Request timeout: Backend took too long to respond. Please try again.");
+      } else {
+        throw Exception("Failed to delete user: $e");
+      }
     }
   }
 
   /// Get user information from backend
   Future<AppUser?> getUser(String userId) async {
-    final baseUrl = await BackendApiService.getCurrentBackendUrl();
-    final response = await http.get(
+    final response = await SimpleHttpClient.get(
       Uri.parse("$baseUrl/api/users/$userId"),
       headers: {"Content-Type": "application/json"},
     );
@@ -139,31 +199,70 @@ class BackendService {
 
   /// Create a new post
   Future<Post> createPost(Post post) async {
-    final baseUrl = await BackendApiService.getCurrentBackendUrl();
     final url = "$baseUrl/api/posts/create";
     print('🔗 BackendService: Creating post at: $url');
     
-    final response = await http.post(
-      Uri.parse(url),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(post.toJson()),
-    );
-
-    if (response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-      return Post.fromJson(data);
+    // Debug: Print the JSON being sent
+    final postJson = post.toJson();
+    print('🔍 BackendService: Sending JSON: ${jsonEncode(postJson)}');
+    
+    // Debug: Check if username field exists and is not empty
+    if (postJson['username'] == null) {
+      print('❌ BackendService: Username field is NULL in JSON');
+    } else if (postJson['username'].toString().isEmpty) {
+      print('❌ BackendService: Username field is EMPTY in JSON');
     } else {
-      throw Exception("Failed to create post: ${response.body}");
+      print('✅ BackendService: Username field exists: "${postJson['username']}"');
+    }
+    
+    try {
+      final response = await SimpleHttpClient.post(
+        Uri.parse(url),
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Connection": "keep-alive",
+        },
+        body: jsonEncode(postJson),
+      );
+
+      print('📡 BackendService: Create post response - Status: ${response.statusCode}, Body: ${response.body}');
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        print('🔍 BackendService: Backend returned data: $data');
+        
+        try {
+          return Post.fromJson(data);
+        } catch (e) {
+          print('❌ BackendService: Error parsing Post.fromJson: $e');
+          print('❌ BackendService: Data that failed to parse: $data');
+          throw Exception("Failed to parse post data from backend: $e");
+        }
+      } else {
+        throw Exception("Failed to create post: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      print('❌ BackendService: Create post error: $e');
+      
+      if (e.toString().contains("Connection closed before full header was received")) {
+        throw Exception("Connection lost: Backend server may have closed the connection. Please try again.");
+      } else if (e.toString().contains("Connection refused")) {
+        throw Exception("Cannot connect to backend server. Please check if the server is running.");
+      } else if (e.toString().contains("Request timeout")) {
+        throw Exception("Request timeout: Backend took too long to respond. Please try again.");
+      } else {
+        throw Exception("Failed to create post: $e");
+      }
     }
   }
 
   /// Get posts from users that the current user follows (for home feed)
   Future<List<Post>> getFollowingPosts(String userId, {int limit = 20, int offset = 0}) async {
-    final baseUrl = await BackendApiService.getCurrentBackendUrl();
     final url = "$baseUrl/api/posts/following/$userId?limit=$limit&offset=$offset";
     print('🔗 BackendService: Getting following posts from: $url');
     
-    final response = await http.get(
+    final response = await SimpleHttpClient.get(
       Uri.parse(url),
       headers: {"Content-Type": "application/json"},
     );
@@ -181,11 +280,10 @@ class BackendService {
 
   /// Get random recent posts (for search/discovery feed)
   Future<List<Post>> getRandomRecentPosts({int limit = 20, int offset = 0}) async {
-    final baseUrl = await BackendApiService.getCurrentBackendUrl();
     final url = "$baseUrl/api/posts/random?limit=$limit&offset=$offset";
     print('🔗 BackendService: Getting random posts from: $url');
     
-    final response = await http.get(
+    final response = await SimpleHttpClient.get(
       Uri.parse(url),
       headers: {"Content-Type": "application/json"},
     );
@@ -203,11 +301,10 @@ class BackendService {
 
   /// Like/unlike a post
   Future<bool> togglePostLike(String postId, String userId) async {
-    final baseUrl = await BackendApiService.getCurrentBackendUrl();
     final url = "$baseUrl/api/posts/$postId/like";
     print('🔗 BackendService: Toggling like for post: $postId');
     
-    final response = await http.post(
+    final response = await SimpleHttpClient.post(
       Uri.parse(url),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"userId": userId}),
@@ -223,11 +320,10 @@ class BackendService {
 
   /// Follow/unfollow a user
   Future<bool> toggleFollow(String currentUserId, String targetUserId) async {
-    final baseUrl = await BackendApiService.getCurrentBackendUrl();
     final url = "$baseUrl/api/users/follow";
     print('🔗 BackendService: Toggling follow: $currentUserId -> $targetUserId');
     
-    final response = await http.post(
+    final response = await SimpleHttpClient.post(
       Uri.parse(url),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({

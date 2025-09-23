@@ -6,7 +6,7 @@ class Post {
   final String songName;
   final String artistName;
   final String songImage;
-  final String description;
+  final String? description;
   final int likeCount;
   final DateTime createdAt;
   final String timeline; // e.g., "8h", "2d", "1w"
@@ -20,7 +20,7 @@ class Post {
     required this.songName,
     required this.artistName,
     required this.songImage,
-    required this.description,
+    this.description,
     required this.likeCount,
     required this.createdAt,
     required this.timeline,
@@ -29,17 +29,19 @@ class Post {
 
   factory Post.fromJson(Map<String, dynamic> json) {
     return Post(
-      id: json['id'] as String,
-      userId: json['userId'] as String,
-      username: json['username'] as String,
+      id: json['id'] as String? ?? '',
+      userId: json['userId'] as String? ?? '',
+      username: json['username'] as String? ?? 'Unknown User',
       userProfilePicture: json['userProfilePicture'] as String? ?? '',
-      songName: json['songName'] as String,
-      artistName: json['artistName'] as String,
+      songName: json['songName'] as String? ?? 'Unknown Song',
+      artistName: json['artistName'] as String? ?? 'Unknown Artist',
       songImage: json['songImage'] as String? ?? '',
-      description: json['description'] as String,
+      description: json['description'] as String?,
       likeCount: json['likeCount'] as int? ?? 0,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      timeline: json['timeline'] as String,
+      createdAt: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
+      timeline: json['timeline'] as String? ?? 'now',
       isLikedByCurrentUser: json['isLikedByCurrentUser'] as bool? ?? false,
     );
   }

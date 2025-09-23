@@ -1,15 +1,24 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:songbuddy/constants/UrlConstant.dart';
 import 'package:songbuddy/models/AppUser.dart';
+import 'backend_api_service.dart';
 
 
 class BackendService {
  
+  /// Clear any cached backend URLs to force rediscovery
+  static void clearCache() {
+    BackendApiService.clearBackendCache();
+  }
 
   Future<AppUser?> saveUser(AppUser user) async {
+    // Use dynamic backend discovery to get the correct URL
+    final baseUrl = await BackendApiService.getCurrentBackendUrl();
+    final url = "$baseUrl/api/users/save";
+    print('🔗 BackendService: Attempting to save user to: $url');
+    
     final response = await http.post(
-      Uri.parse("${Url.baseUrl}/users/save"),
+      Uri.parse(url),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode(user.toJson()),
     );
@@ -40,8 +49,9 @@ class BackendService {
 
   /// Update user fields (all fields except id are updatable)
   Future<AppUser?> updateUser(String userId, Map<String, dynamic> updates) async {
+    final baseUrl = await BackendApiService.getCurrentBackendUrl();
     final response = await http.put(
-      Uri.parse("${Url.baseUrl}/users/$userId"),
+      Uri.parse("$baseUrl/api/users/$userId"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode(updates),
     );
@@ -72,8 +82,9 @@ class BackendService {
 
   /// Delete user from backend
   Future<bool> deleteUser(String userId) async {
+    final baseUrl = await BackendApiService.getCurrentBackendUrl();
     final response = await http.delete(
-      Uri.parse("${Url.baseUrl}/users/$userId"),
+      Uri.parse("$baseUrl/api/users/$userId"),
       headers: {"Content-Type": "application/json"},
     );
 
@@ -86,8 +97,9 @@ class BackendService {
 
   /// Get user information from backend
   Future<AppUser?> getUser(String userId) async {
+    final baseUrl = await BackendApiService.getCurrentBackendUrl();
     final response = await http.get(
-      Uri.parse("${Url.baseUrl}/users/$userId"),
+      Uri.parse("$baseUrl/api/users/$userId"),
       headers: {"Content-Type": "application/json"},
     );
 

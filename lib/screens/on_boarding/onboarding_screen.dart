@@ -56,6 +56,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   void _onAuthStateChanged() {
     if (_authProvider.isAuthenticated) {
+      
       // Show success animation before navigating
       _showSuccessAnimation();
     } else if (_authProvider.state == AuthState.error) {
@@ -71,6 +72,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       );
     }
   }
+
 
   void _showSuccessAnimation() {
     // Show success dialog with animation

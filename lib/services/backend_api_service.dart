@@ -8,7 +8,7 @@ class BackendApiService {
   
   // Fallback URLs if discovery fails
   static const List<String> fallbackUrls = [
-    'http://172.20.135.128:3000',  // Your Mac's IP
+    'http://localhost:3000',  // Your Mac's IP
     'http://127.0.0.1:3000',       // Localhost
     'http://10.0.2.2:3000',        // Android Emulator
   ];

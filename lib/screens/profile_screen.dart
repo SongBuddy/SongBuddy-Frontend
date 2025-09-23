@@ -20,16 +20,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool _initialized = false;
   bool _loading = false;
-  String? _error;
 
   Map<String, dynamic>? _user;
   Map<String, dynamic>? _currentlyPlaying; // can be null when 204
-  int? _savedTracksTotal;
-  int? _playlistsTotal;
   List<Map<String, dynamic>> _topArtists = const [];
   List<Map<String, dynamic>> _topTracks = const [];
   List<Map<String, dynamic>> _recentlyPlayed = const [];
   bool _insufficientScopeTop = false;
+  
+  // Track selection for posts
+  Set<String> _selectedTracks = <String>{};
+  bool _isSelectionMode = false;
 
   bool _loadingTop = false; // non-blocking loading for top artists/tracks (kept for future use)
   static const Duration _animDur = Duration(milliseconds: 250);
@@ -45,7 +46,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _initialize() async {
     setState(() {
       _loading = true;
-      _error = null;
     });
     try {
       await _authProvider.initialize();
@@ -55,7 +55,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await _fetchAll();
       }
     } catch (e) {
-      _error = e.toString();
+      // Handle error silently
     } finally {
       if (mounted) {
         setState(() {
@@ -82,9 +82,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!_authProvider.isAuthenticated || _authProvider.accessToken == null) return;
     setState(() {
       _loading = true;
-      _error = null;
     });
-    final token = _authProvider.accessToken!;
+    final token = _authProvider.accessToken;
+    if (token == null) return;
+    
     // ignore: avoid_print
     print('[Profile] Fetch start');
     try {
@@ -98,18 +99,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           } catch (e) {
             // ignore
           }
-        }(),
-        () async {
-          try {
-            final saved = await _spotifyService.getUserSavedTracks(token, limit: 1);
-            _savedTracksTotal = saved['total'] as int?;
-          } catch (e) {}
-        }(),
-        () async {
-          try {
-            final pls = await _spotifyService.getUserPlaylists(token, limit: 1);
-            _playlistsTotal = pls['total'] as int?;
-          } catch (e) {}
         }(),
         () async {
           try {
@@ -152,9 +141,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // ignore: avoid_print
       print('[Profile] Fetch success: user=${user['id']} topArtists=${_topArtists.length} topTracks=${_topTracks.length} recently=${_recentlyPlayed.length}');
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-      });
       // ignore: avoid_print
       print('[Profile] Fetch error: $e');
     } finally {
@@ -172,6 +158,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _fetchAll();
     }
   }
+
+  void _toggleSelectionMode() {
+    setState(() {
+      _isSelectionMode = !_isSelectionMode;
+      if (!_isSelectionMode) {
+        _selectedTracks.clear();
+      }
+    });
+  }
+
+  void _toggleTrackSelection(String trackId) {
+    setState(() {
+      if (_selectedTracks.contains(trackId)) {
+        _selectedTracks.remove(trackId);
+      } else {
+        _selectedTracks.add(trackId);
+      }
+    });
+  }
+
+  void _createPost() {
+    if (_selectedTracks.isEmpty) return;
+    
+    // TODO: Implement post creation with selected tracks
+    // For now, just show a dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create Post'),
+        content: Text('Selected ${_selectedTracks.length} track(s) for your post.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _toggleSelectionMode();
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   // Removed time range switching; always uses medium_term
 
@@ -382,7 +415,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Text(title, style: AppTextStyles.heading2OnDark),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(title, style: AppTextStyles.heading2OnDark),
+          ),
+          if (title == 'Recently Played' && _recentlyPlayed.isNotEmpty)
+            TextButton.icon(
+              onPressed: _toggleSelectionMode,
+              icon: Icon(
+                _isSelectionMode ? Icons.close : Icons.checklist,
+                size: 16,
+              ),
+              label: Text(_isSelectionMode ? 'Cancel' : 'Select'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -415,7 +467,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: imageUrl != null
-                ? Image.network(imageUrl!, width: 56, height: 56, fit: BoxFit.cover)
+                ? Image.network(imageUrl, width: 56, height: 56, fit: BoxFit.cover)
                 : Container(
                     width: 56,
                     height: 56,
@@ -659,45 +711,121 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     }
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: _recentlyPlayed.length,
-      itemBuilder: (context, index) {
-        if (index >= _recentlyPlayed.length) return const SizedBox.shrink();
-        final item = _recentlyPlayed[index];
-        final track = item['track'] as Map<String, dynamic>? ?? const {};
-        final images = track['album']?['images'] as List<dynamic>? ?? const [];
-        final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
-        final artists = (track['artists'] as List<dynamic>? ?? const [])
-            .map((a) => a['name'] as String? ?? '')
-            .where((s) => s.isNotEmpty)
-            .join(', ');
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          child: _GlassCard(
-            borderRadius: 12,
-            child: ListTile(
-              leading: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: imageUrl != null
-                    ? Image.network(imageUrl, width: 56, height: 56, fit: BoxFit.cover)
-                    : Container(
-                        width: 56,
-                        height: 56,
-                        color: AppColors.onDarkPrimary.withOpacity(0.12),
-                        child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
-                      ),
-              ),
-              title: Text(
-                track['name'] as String? ?? '',
-                style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
-              ),
-              subtitle: Text(artists, style: AppTextStyles.captionOnDark),
+    
+    return Column(
+      children: [
+        // Selection mode controls
+        if (_isSelectionMode)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${_selectedTracks.length} track(s) selected',
+                    style: AppTextStyles.captionOnDark,
+                  ),
+                ),
+                if (_selectedTracks.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: _createPost,
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Create Post'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                    ),
+                  ),
+                TextButton(
+                  onPressed: _toggleSelectionMode,
+                  child: const Text('Cancel'),
+                ),
+              ],
             ),
           ),
-        );
-      },
+        
+        // Track list
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _recentlyPlayed.length,
+          itemBuilder: (context, index) {
+            if (index >= _recentlyPlayed.length) return const SizedBox.shrink();
+            final item = _recentlyPlayed[index];
+            final track = item['track'] as Map<String, dynamic>? ?? const {};
+            final trackId = track['id'] as String? ?? '';
+            final images = track['album']?['images'] as List<dynamic>? ?? const [];
+            final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
+            final artists = (track['artists'] as List<dynamic>? ?? const [])
+                .map((a) => a['name'] as String? ?? '')
+                .where((s) => s.isNotEmpty)
+                .join(', ');
+            final isSelected = _selectedTracks.contains(trackId);
+            
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: _GlassCard(
+                borderRadius: 12,
+                child: ListTile(
+                  leading: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: imageUrl != null
+                            ? Image.network(imageUrl, width: 56, height: 56, fit: BoxFit.cover)
+                            : Container(
+                                width: 56,
+                                height: 56,
+                                color: AppColors.onDarkPrimary.withOpacity(0.12),
+                                child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
+                              ),
+                      ),
+                      if (_isSelectionMode)
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: GestureDetector(
+                            onTap: () => _toggleTrackSelection(trackId),
+                            child: Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppColors.primary : Colors.transparent,
+                                border: Border.all(
+                                  color: isSelected ? AppColors.primary : AppColors.onDarkSecondary,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: isSelected
+                                  ? const Icon(Icons.check, size: 12, color: Colors.white)
+                                  : null,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  title: Text(
+                    track['name'] as String? ?? '',
+                    style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(artists, style: AppTextStyles.captionOnDark),
+                  onTap: _isSelectionMode 
+                      ? () => _toggleTrackSelection(trackId)
+                      : null,
+                  trailing: !_isSelectionMode
+                      ? IconButton(
+                          icon: const Icon(Icons.more_vert, color: AppColors.onDarkSecondary),
+                          onPressed: () {
+                            // TODO: Show track options menu
+                          },
+                        )
+                      : null,
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -794,7 +922,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: imageUrl != null
-                        ? Image.network(imageUrl!, fit: BoxFit.cover)
+                        ? Image.network(imageUrl, fit: BoxFit.cover)
                         : Container(
                             color: AppColors.onDarkPrimary.withOpacity(0.12),
                             child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
@@ -955,7 +1083,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 leading: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: imageUrl != null
-                      ? Image.network(imageUrl!, width: 56, height: 56, fit: BoxFit.cover)
+                      ? Image.network(imageUrl, width: 56, height: 56, fit: BoxFit.cover)
                       : Container(
                           width: 56,
                           height: 56,

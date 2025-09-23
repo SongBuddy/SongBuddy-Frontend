@@ -1,0 +1,26 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "SongBuddy (Flutter SM G780F)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "args": [],
+            "deviceId": "RF8R110D5LN"
+        },
+        {
+            "name": "SongBuddy (Flutter Debug)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart"
+        },
+        {
+            "name": "SongBuddy (Flutter Release)",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart",
+            "flutterMode": "release"
+        }
+    ]
+}

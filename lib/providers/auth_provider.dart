@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:songbuddy/models/AppUser.dart';
 import '../services/auth_service.dart';
 
 /// Global authentication provider that can be used throughout the app
@@ -13,7 +14,7 @@ class AuthProvider extends ChangeNotifier {
   /// Initialize the auth provider
   Future<void> initialize() async {
     if (_initialized) return;
-    
+
     _authService = AuthService();
     _authService.addListener(_onAuthStateChanged);
     _initialized = true;
@@ -41,6 +42,8 @@ class AuthProvider extends ChangeNotifier {
   String? get userId => _authService.userId;
   String? get errorMessage => _authService.errorMessage;
   bool get isAuthenticated => _authService.isAuthenticated;
+  // Expose saved AppUser for consumers after login
+  AppUser? get appUser => _authService.appUser;
 
   /// Login with Spotify
   Future<void> login() async {
@@ -52,6 +55,12 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     if (!_initialized) await initialize();
     await _authService.logout();
+  }
+
+  /// Delete user account and logout
+  Future<void> deleteAccount() async {
+    if (!_initialized) await initialize();
+    await _authService.deleteAccount();
   }
 
   /// Clear authentication error

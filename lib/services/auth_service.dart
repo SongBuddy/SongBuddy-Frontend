@@ -5,6 +5,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'spotify_service.dart';
+import 'package:songbuddy/models/AppUser.dart';
+import 'package:songbuddy/services/backend_service.dart';
+import 'package:songbuddy/services/AuthFlow.dart';
 
 /// Authentication state enum
 enum AuthState {
@@ -32,6 +35,7 @@ class AuthService extends ChangeNotifier {
   DateTime? _expiresAt;
   String? _userId;
   String? _errorMessage;
+  AppUser? _appUser;
 
   AuthService({
     SpotifyService? spotifyService,
@@ -49,6 +53,7 @@ class AuthService extends ChangeNotifier {
   String? get userId => _userId;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _state == AuthState.authenticated && _accessToken != null;
+  AppUser? get appUser => _appUser;
 
   /// Initialize authentication state from stored tokens
   Future<void> _initializeAuth() async {
@@ -273,11 +278,38 @@ class AuthService extends ChangeNotifier {
       // Store tokens securely
       await _storeTokens();
 
+      // After successful Spotify auth, fetch profile and save to backend
+      try {
+        debugPrint('Attempting to save user to backend...');
+        final backendService = BackendService();
+        final authFlow = AuthFlow(_spotifyService, backendService);
+        _appUser = await authFlow.loginAndSave(_accessToken!);
+        debugPrint('✅ User successfully saved to backend!');
+      } catch (e) {
+        // Backend save failure - show specific error message
+        debugPrint('❌ Backend save failed: $e');
+        
+        String errorMessage;
+        if (e.toString().contains('Connection refused') || e.toString().contains('Failed to connect')) {
+          errorMessage = 'Backend server is not running. Please start your backend server on localhost:3000';
+        } else if (e.toString().contains('404')) {
+          errorMessage = 'Backend endpoint not found. Check if /api/users/save exists';
+        } else if (e.toString().contains('500')) {
+          errorMessage = 'Backend server error. Check your backend logs';
+        } else {
+          errorMessage = 'Backend connection failed: ${e.toString()}';
+        }
+        
+        _state = AuthState.error;
+        _errorMessage = errorMessage;
+        notifyListeners();
+        return;
+      }
+
       _state = AuthState.authenticated;
       notifyListeners();
     } catch (e) {
       _state = AuthState.error;
-      _errorMessage = _friendlyMessage(e);
       _errorMessage = _friendlyMessage(e);
       notifyListeners();
     }
@@ -385,6 +417,42 @@ class AuthService extends ChangeNotifier {
     _refreshToken = null;
     _expiresAt = null;
     _userId = null;
+    _appUser = null;
+    _errorMessage = null;
+    _state = AuthState.unauthenticated;
+    
+    notifyListeners();
+  }
+
+  /// Delete user account and logout
+  Future<void> deleteAccount() async {
+    try {
+      // Delete user from backend if we have user info
+      if (_userId != null) {
+        try {
+          final backendService = BackendService();
+          await backendService.deleteUser(_userId!);
+          debugPrint('✅ User account deleted from backend');
+        } catch (e) {
+          debugPrint('⚠️ Failed to delete user from backend: $e');
+          // Continue with account deletion even if backend deletion fails
+        }
+      }
+
+      // Clear all stored data
+      await _secureStorage.delete(key: _accessTokenKey);
+      await _secureStorage.delete(key: _refreshTokenKey);
+      await _secureStorage.delete(key: _expiresAtKey);
+      await _secureStorage.delete(key: _userIdKey);
+    } catch (e) {
+      debugPrint('Error during account deletion: $e');
+    }
+
+    _accessToken = null;
+    _refreshToken = null;
+    _expiresAt = null;
+    _userId = null;
+    _appUser = null;
     _errorMessage = null;
     _state = AuthState.unauthenticated;
     

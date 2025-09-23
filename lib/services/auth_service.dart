@@ -417,6 +417,42 @@ class AuthService extends ChangeNotifier {
     _refreshToken = null;
     _expiresAt = null;
     _userId = null;
+    _appUser = null;
+    _errorMessage = null;
+    _state = AuthState.unauthenticated;
+    
+    notifyListeners();
+  }
+
+  /// Delete user account and logout
+  Future<void> deleteAccount() async {
+    try {
+      // Delete user from backend if we have user info
+      if (_userId != null) {
+        try {
+          final backendService = BackendService();
+          await backendService.deleteUser(_userId!);
+          debugPrint('✅ User account deleted from backend');
+        } catch (e) {
+          debugPrint('⚠️ Failed to delete user from backend: $e');
+          // Continue with account deletion even if backend deletion fails
+        }
+      }
+
+      // Clear all stored data
+      await _secureStorage.delete(key: _accessTokenKey);
+      await _secureStorage.delete(key: _refreshTokenKey);
+      await _secureStorage.delete(key: _expiresAtKey);
+      await _secureStorage.delete(key: _userIdKey);
+    } catch (e) {
+      debugPrint('Error during account deletion: $e');
+    }
+
+    _accessToken = null;
+    _refreshToken = null;
+    _expiresAt = null;
+    _userId = null;
+    _appUser = null;
     _errorMessage = null;
     _state = AuthState.unauthenticated;
     

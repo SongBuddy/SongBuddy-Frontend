@@ -57,6 +57,12 @@ class AuthProvider extends ChangeNotifier {
     await _authService.logout();
   }
 
+  /// Delete user account and logout
+  Future<void> deleteAccount() async {
+    if (!_initialized) await initialize();
+    await _authService.deleteAccount();
+  }
+
   /// Clear authentication error
   void clearError() {
     if (_initialized) {

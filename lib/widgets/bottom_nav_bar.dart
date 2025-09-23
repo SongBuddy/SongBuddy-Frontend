@@ -60,8 +60,8 @@ class BottomNavBar extends StatelessWidget {
                     _buildNavItem(
                       context: context,
                       index: 1,
-                      icon: Icons.person_outline,
-                      activeIcon: Icons.person,
+                      icon: Icons.search_outlined,
+                      activeIcon: Icons.search,
                       label: 'Search',
                     ),
                     _buildNavItem(

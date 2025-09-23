@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:songbuddy/screens/user_profile_screen.dart';
+import 'package:songbuddy/widgets/music_post_card.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:share_plus/share_plus.dart';
 
@@ -184,175 +185,49 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   }
 
   Widget _buildMusicPost(Map<String, dynamic> post, int index) {
-    final username = post['user'];
-    final isLiked = _likedPosts[index] ?? false;
+    final username = post['user'] as String;
     final likeCount = _likeCounts[index] ?? 0;
+    final isLiked = _likedPosts[index] ?? false;
 
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => UserProfileScreen(
-              username: username,
-              avatarUrl: "https://i.pravatar.cc/150?img=1",
-            ),
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: MusicPostCard(
+        username: username,
+        avatarUrl: "https://i.pravatar.cc/150?img=3",
+        trackTitle: post['track'] as String,
+        artist: post['artist'] as String,
+        coverUrl: post['coverUrl'] as String,
+        timeAgo: post['time'] as String,
+        description: post['desc'] as String,
         height: 190,
-        decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
-        child: Stack(
-          children: [
-            // Background cover art blurred
-            ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Image.network(
-                post['coverUrl'],
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-                errorBuilder: (_, __, ___) => Container(color: Colors.white12),
+        borderRadius: 20,
+        overlayOpacity: 0.36,
+        initialLikes: likeCount,
+        isInitiallyLiked: isLiked,
+        showFollowButton: true,
+        onCardTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => UserProfileScreen(
+                username: username,
+                avatarUrl: "https://i.pravatar.cc/150?img=1",
               ),
             ),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Container(color: Colors.black.withOpacity(0.36)),
-              ),
-            ),
-
-            // Post content
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top row: user info + follow + time
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundImage:
-                            NetworkImage("https://i.pravatar.cc/150?img=3"),
-                        radius: 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(username,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600)),
-                      ),
-                      Text(
-                        post['time'],
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 11),
-                      ),
-                      const SizedBox(width: 8),
-                      TextButton(
-                        onPressed: () {},
-                        style: TextButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.15),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 4),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20)),
-                        ),
-                        child: const Text(
-                          "Follow",
-                          style: TextStyle(color: Colors.white, fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Song details
-                  Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.network(
-                          post['coverUrl'],
-                          width: 64,
-                          height: 64,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              Container(color: Colors.white12),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(post['track'],
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700)),
-                            const SizedBox(height: 4),
-                            Text(post['artist'],
-                                style: const TextStyle(
-                                    color: Colors.white70, fontSize: 13)),
-                            const SizedBox(height: 6),
-                            Text(post['desc'],
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    color: Colors.white54, fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-
-                  // Bottom row: like + share nicely aligned
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      IconButton(
-                        icon: Icon(
-                          isLiked ? Icons.favorite : Icons.favorite_border,
-                          color: isLiked ? Colors.red : Colors.white,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _likedPosts[index] = !isLiked;
-                            _likeCounts[index] =
-                                (likeCount + (isLiked ? -1 : 1))
-                                    .clamp(0, 9999);
-                          });
-                        },
-                      ),
-                      Text(
-                        "$likeCount",
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 12),
-                      ),
-                      const SizedBox(width: 12),
-                      IconButton(
-                        icon: const Icon(Icons.share_outlined,
-                            color: Colors.white),
-                        onPressed: () {
-                          final text =
-                              "${post['user']} shared a song: ${post['track']} by ${post['artist']}";
-                          Share.share(text);
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          );
+        },
+        onLikeChanged: (newLiked, newLikes) {
+          setState(() {
+            _likedPosts[index] = newLiked;
+            _likeCounts[index] = newLikes;
+          });
+        },
+        onShare: () {
+          final text =
+              "$username shared a song: ${post['track']} by ${post['artist']}";
+          Share.share(text);
+        },
+        onFollowPressed: () {},
       ),
     );
   }

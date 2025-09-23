@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:songbuddy/screens/on_boarding/onboarding_screen.dart';
 import '../main.dart';
 import '../providers/auth_provider.dart';
+import 'package:songbuddy/constants/app_colors.dart';
+import 'package:songbuddy/constants/app_text_styles.dart';
 
 
 class SplashScreen extends StatefulWidget {
@@ -88,28 +90,74 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.deepPurple,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // App logo/icon
-            const Icon(Icons.music_note, size: 100, color: Colors.white),
-            const SizedBox(height: 20),
-            const Text(
-              "SongBuddy",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.darkBackgroundStart,
+              AppColors.darkBackgroundEnd,
+            ],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Logo with subtle glow
+              Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.accentMint.withOpacity(0.25),
+                      blurRadius: 30,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.accentMint.withOpacity(0.18),
+                      AppColors.accentGreen.withOpacity(0.18),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.music_note,
+                  size: 60,
+                  color: Colors.white,
+                ),
               ),
-            ),
-            const SizedBox(height: 40),
-            // Loading animation
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-            ),
-          ],
+              const SizedBox(height: 20),
+              Text(
+                "SongBuddy",
+                style: AppTextStyles.heading1OnDark.copyWith(
+                  letterSpacing: 0.6,
+                ),
+              ),
+              const SizedBox(height: 28),
+              // Modern loading indicator
+              SizedBox(
+                width: 120,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: LinearProgressIndicator(
+                    minHeight: 6,
+                    backgroundColor: Colors.white.withOpacity(0.08),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.accentMint,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

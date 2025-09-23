@@ -79,6 +79,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.6),
       builder: (context) => const SuccessDialog(),
     );
 

@@ -173,6 +173,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (_selectedTracks.contains(trackId)) {
         _selectedTracks.remove(trackId);
       } else {
+        // Clear any existing selection and select only this track
+        _selectedTracks.clear();
         _selectedTracks.add(trackId);
       }
     });
@@ -576,10 +578,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         const Spacer(),
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(Icons.notifications_outlined, color: AppColors.onDarkSecondary),
-        ),
       ],
     );
   }
@@ -722,7 +720,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    '${_selectedTracks.length} track(s) selected',
+                    _selectedTracks.length == 1 
+                        ? '1 track selected' 
+                        : 'No track selected',
                     style: AppTextStyles.captionOnDark,
                   ),
                 ),
@@ -766,43 +766,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: _GlassCard(
                 borderRadius: 12,
                 child: ListTile(
-                  leading: Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: imageUrl != null
-                            ? Image.network(imageUrl, width: 56, height: 56, fit: BoxFit.cover)
-                            : Container(
-                                width: 56,
-                                height: 56,
-                                color: AppColors.onDarkPrimary.withOpacity(0.12),
-                                child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
-                              ),
-                      ),
-                      if (_isSelectionMode)
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: GestureDetector(
-                            onTap: () => _toggleTrackSelection(trackId),
-                            child: Container(
-                              width: 20,
-                              height: 20,
-                              decoration: BoxDecoration(
-                                color: isSelected ? AppColors.primary : Colors.transparent,
-                                border: Border.all(
-                                  color: isSelected ? AppColors.primary : AppColors.onDarkSecondary,
-                                  width: 2,
-                                ),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: isSelected
-                                  ? const Icon(Icons.check, size: 12, color: Colors.white)
-                                  : null,
-                            ),
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: imageUrl != null
+                        ? Image.network(imageUrl, width: 56, height: 56, fit: BoxFit.cover)
+                        : Container(
+                            width: 56,
+                            height: 56,
+                            color: AppColors.onDarkPrimary.withOpacity(0.12),
+                            child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
                           ),
-                        ),
-                    ],
                   ),
                   title: Text(
                     track['name'] as String? ?? '',
@@ -812,12 +785,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onTap: _isSelectionMode 
                       ? () => _toggleTrackSelection(trackId)
                       : null,
-                  trailing: !_isSelectionMode
-                      ? IconButton(
-                          icon: const Icon(Icons.more_vert, color: AppColors.onDarkSecondary),
-                          onPressed: () {
-                            // TODO: Show track options menu
-                          },
+                  trailing: _isSelectionMode
+                      ? GestureDetector(
+                          onTap: () => _toggleTrackSelection(trackId),
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: isSelected ? AppColors.primary : Colors.transparent,
+                              border: Border.all(
+                                color: isSelected ? AppColors.primary : AppColors.onDarkSecondary,
+                                width: 2,
+                              ),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: isSelected
+                                ? const Icon(Icons.check, size: 16, color: Colors.white)
+                                : null,
+                          ),
                         )
                       : null,
                 ),

@@ -36,6 +36,7 @@ class AuthService extends ChangeNotifier {
   String? _userId;
   String? _errorMessage;
   AppUser? _appUser;
+  bool _loadingUserData = false;
 
   AuthService({
     SpotifyService? spotifyService,
@@ -54,6 +55,7 @@ class AuthService extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _state == AuthState.authenticated && _accessToken != null;
   AppUser? get appUser => _appUser;
+  bool get isLoadingUserData => _loadingUserData;
 
   /// Initialize authentication state from stored tokens
   Future<void> _initializeAuth() async {
@@ -71,6 +73,8 @@ class AuthService extends ChangeNotifier {
           _userId = storedUserId;
           _state = AuthState.authenticated;
           notifyListeners();
+          // Load user data and wait for it to complete
+          await _loadUserData();
           return;
         } else {
           // Token expired, try to refresh
@@ -285,25 +289,40 @@ class AuthService extends ChangeNotifier {
         final authFlow = AuthFlow(_spotifyService, backendService);
         _appUser = await authFlow.loginAndSave(_accessToken!);
         debugPrint('✅ User successfully saved to backend!');
-      } catch (e) {
-        // Backend save failure - show specific error message
-        debugPrint('❌ Backend save failed: $e');
         
-        String errorMessage;
-        if (e.toString().contains('Connection refused') || e.toString().contains('Failed to connect')) {
-          errorMessage = 'Backend server is not running. Please start your backend server on localhost:3000';
-        } else if (e.toString().contains('404')) {
-          errorMessage = 'Backend endpoint not found. Check if /api/users/save exists';
-        } else if (e.toString().contains('500')) {
-          errorMessage = 'Backend server error. Check your backend logs';
-        } else {
-          errorMessage = 'Backend connection failed: ${e.toString()}';
+        // Ensure user data is properly loaded
+        if (_appUser == null) {
+          debugPrint('⚠️ AppUser is null after backend save, loading from Spotify...');
+          await _loadUserData();
         }
+      } catch (e) {
+        // Backend save failure - fallback to loading user data directly from Spotify
+        debugPrint('❌ Backend save failed: $e');
+        debugPrint('🔄 Falling back to loading user data directly from Spotify...');
         
-        _state = AuthState.error;
-        _errorMessage = errorMessage;
-        notifyListeners();
-        return;
+        try {
+          // Load user data directly from Spotify as fallback
+          await _loadUserData();
+          debugPrint('✅ User data loaded from Spotify as fallback');
+        } catch (spotifyError) {
+          debugPrint('❌ Failed to load user data from Spotify: $spotifyError');
+          
+          String errorMessage;
+          if (e.toString().contains('Connection refused') || e.toString().contains('Failed to connect')) {
+            errorMessage = 'Backend server is not running. Please start your backend server on localhost:3000';
+          } else if (e.toString().contains('404')) {
+            errorMessage = 'Backend endpoint not found. Check if /api/users/save exists';
+          } else if (e.toString().contains('500')) {
+            errorMessage = 'Backend server error. Check your backend logs';
+          } else {
+            errorMessage = 'Backend connection failed: ${e.toString()}';
+          }
+          
+          _state = AuthState.error;
+          _errorMessage = errorMessage;
+          notifyListeners();
+          return;
+        }
       }
 
       _state = AuthState.authenticated;
@@ -457,6 +476,62 @@ class AuthService extends ChangeNotifier {
     _state = AuthState.unauthenticated;
     
     notifyListeners();
+  }
+
+  /// Load user data directly from Spotify
+  Future<void> _loadUserData() async {
+    if (_accessToken == null) return;
+    
+    _loadingUserData = true;
+    notifyListeners();
+    
+    int retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        // Get user data directly from Spotify API
+        final spotifyUserData = await _spotifyService.getCurrentUser(_accessToken!);
+        
+        // Create AppUser from Spotify data
+        _appUser = AppUser(
+          id: spotifyUserData['id'] ?? '',
+          country: spotifyUserData['country'] ?? 'US',
+          displayName: spotifyUserData['display_name'] ?? '',
+          email: spotifyUserData['email'] ?? '',
+          profilePicture: (spotifyUserData['images'] != null && spotifyUserData['images'].isNotEmpty)
+              ? spotifyUserData['images'][0]['url'] ?? ''
+              : '',
+        );
+        
+        debugPrint('✅ User data loaded from Spotify: ${_appUser!.displayName}');
+        break; // Success, exit retry loop
+      } catch (e) {
+        retryCount++;
+        debugPrint('Failed to load user data from Spotify (attempt $retryCount): $e');
+        
+        if (retryCount < maxRetries) {
+          // Wait before retrying
+          await Future.delayed(Duration(milliseconds: 500 * retryCount));
+        }
+      }
+    }
+    
+    _loadingUserData = false;
+    notifyListeners();
+  }
+
+  /// Manually load user data (public method)
+  Future<void> loadUserData() async {
+    await _loadUserData();
+  }
+
+  /// Force refresh user data (useful after login)
+  Future<void> refreshUserData() async {
+    if (_accessToken == null) return;
+    
+    debugPrint('🔄 Force refreshing user data...');
+    await _loadUserData();
   }
 
   /// Clear error state

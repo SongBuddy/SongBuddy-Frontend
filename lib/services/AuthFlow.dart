@@ -14,8 +14,26 @@ class AuthFlow {
     try {
       // 1. Get Spotify profile
       final profileJson = await spotifyService.getCurrentUser(accessToken);
+      final spotifyUserId = profileJson['id'] as String?;
+      
+      if (spotifyUserId == null) {
+        throw Exception('Unable to retrieve user ID from Spotify');
+      }
 
-      // 2. Get additional user data in parallel
+      // 2. Check if user already exists in backend
+      try {
+        final existingUser = await backendService.getUser(spotifyUserId);
+        if (existingUser != null) {
+          // User exists, just return the existing user
+          return existingUser;
+        }
+      } catch (e) {
+        // User doesn't exist or error occurred, continue with registration
+        // This is expected for new users
+      }
+
+      // 3. User doesn't exist, proceed with registration
+      // Get additional user data in parallel
       final futures = await Future.wait([
         spotifyService.getCurrentlyPlaying(accessToken).catchError((e) => null),
         spotifyService.getUserTopArtists(accessToken, limit: 10).catchError((e) => {'items': []}),
@@ -28,7 +46,7 @@ class AuthFlow {
       final topTracksResponse = futures[2] as Map<String, dynamic>;
       final recentlyPlayedResponse = futures[3] as Map<String, dynamic>;
 
-      // 3. Extract items from responses
+      // 4. Extract items from responses
       final topArtists = (topArtistsResponse['items'] as List<dynamic>?)
           ?.cast<Map<String, dynamic>>() ?? [];
       final topTracks = (topTracksResponse['items'] as List<dynamic>?)
@@ -36,9 +54,9 @@ class AuthFlow {
       final recentlyPlayed = (recentlyPlayedResponse['items'] as List<dynamic>?)
           ?.cast<Map<String, dynamic>>() ?? [];
 
-      // 4. Create enhanced user object
+      // 5. Create enhanced user object
       final user = AppUser(
-        id: profileJson['id'] ?? '',
+        id: spotifyUserId,
         country: profileJson['country'] ?? 'US',
         displayName: profileJson['display_name'] ?? '',
         email: profileJson['email'] ?? '',
@@ -51,10 +69,10 @@ class AuthFlow {
         recentlyPlayed: recentlyPlayed,
       );
 
-      // 5. Save user to backend
+      // 6. Save new user to backend
       final savedUser = await backendService.saveUser(user);
 
-      // 6. Return the saved user (with backend confirmation)
+      // 7. Return the saved user (with backend confirmation)
       if (savedUser == null) {
         throw Exception('Failed to save user to backend: received null response');
       }

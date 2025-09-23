@@ -6,6 +6,7 @@ import 'package:songbuddy/constants/app_text_styles.dart';
 import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/services/spotify_service.dart';
 import 'package:songbuddy/widgets/spotify_login_button.dart';
+import 'package:songbuddy/screens/create_post_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -183,28 +184,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _createPost() {
     if (_selectedTracks.isEmpty) return;
     
-    // TODO: Implement post creation with selected tracks
-    // For now, just show a dialog
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create Post'),
-        content: Text('Selected ${_selectedTracks.length} track(s) for your post.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _toggleSelectionMode();
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
+    // Find the selected track from recently played
+    final selectedTrackId = _selectedTracks.first;
+    final selectedTrack = _recentlyPlayed.firstWhere(
+      (track) => track['track']['id'] == selectedTrackId,
+      orElse: () => _recentlyPlayed.first,
     );
+    
+    // Navigate to create post screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreatePostScreen(
+          selectedTrack: selectedTrack['track'],
+          selectedTrackId: selectedTrackId,
+        ),
+      ),
+    ).then((success) {
+      if (success == true) {
+        // Post created successfully, exit selection mode
+        _toggleSelectionMode();
+        HapticFeedback.lightImpact();
+      }
+    });
   }
 
 

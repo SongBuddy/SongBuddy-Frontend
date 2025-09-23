@@ -4,6 +4,7 @@ import '../providers/auth_provider.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../screens/on_boarding/onboarding_screen.dart';
+import '../services/spotify_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -14,11 +15,16 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late final AuthProvider _authProvider;
+  late final SpotifyService _spotifyService;
+  
+  bool _loading = false;
+  Map<String, dynamic>? _user;
 
   @override
   void initState() {
     super.initState();
     _authProvider = AuthProvider();
+    _spotifyService = SpotifyService();
     _initializeAuth();
   }
 
@@ -29,17 +35,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _initializeAuth() async {
-    await _authProvider.initialize();
-    _authProvider.addListener(_onAuthStateChanged);
-    if (mounted) {
-      setState(() {});
+    setState(() {
+      _loading = true;
+    });
+    try {
+      await _authProvider.initialize();
+      _authProvider.addListener(_onAuthStateChanged);
+      if (_authProvider.isAuthenticated) {
+        await _fetchUserData();
+      }
+    } catch (e) {
+      // Handle error silently
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
     }
   }
 
   void _onAuthStateChanged() {
-    if (mounted) {
-      setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    
+    // If user just logged in, fetch user data
+    if (_authProvider.isAuthenticated && _user == null) {
+      _fetchUserData();
     }
+  }
+
+  Future<void> _fetchUserData() async {
+    if (!_authProvider.isAuthenticated || _authProvider.accessToken == null) return;
+    setState(() {
+      _loading = true;
+    });
+    final token = _authProvider.accessToken;
+    if (token == null) return;
+    
+    try {
+      // Get user data directly from Spotify API (same as profile screen)
+      final user = await _spotifyService.getCurrentUser(token);
+      setState(() {
+        _user = user;
+      });
+    } catch (e) {
+      // Handle error silently
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  String _getDisplayName() {
+    return _user?['display_name'] as String? ?? 'Spotify Account';
+  }
+
+  String _getUserEmail() {
+    return _user?['email'] as String? ?? _authProvider.userId ?? 'Connected';
+  }
+
+  NetworkImage? _getProfileImage() {
+    final images = (_user?['images'] as List<dynamic>?) ?? const [];
+    if (images.isNotEmpty && images.first['url'] != null) {
+      return NetworkImage(images.first['url'] as String);
+    }
+    return null;
   }
 
   Future<void> _handleLogout() async {
@@ -63,6 +127,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (confirmed == true) {
       await _authProvider.logout();
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+          (route) => false,
+        );
+      }
     }
   }
 
@@ -221,26 +292,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
       child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.person,
-            color: AppColors.primary,
-          ),
+        leading: _loading
+            ? const _SkeletonCircle(diameter: 40)
+            : CircleAvatar(
+                radius: 20,
+                backgroundImage: _getProfileImage(),
+                backgroundColor: AppColors.primary.withOpacity(0.1),
+                child: _getProfileImage() == null
+                    ? const Icon(
+                        Icons.person,
+                        color: AppColors.primary,
+                        size: 20,
+                      )
+                    : null,
+              ),
+        title: _loading
+            ? const _SkeletonBox(width: 120, height: 16, radius: 4)
+            : Text(
+                _getDisplayName(),
+                style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+              ),
+        subtitle: _loading
+            ? const _SkeletonBox(width: 180, height: 12, radius: 4)
+            : Text(
+                _getUserEmail(),
+                style: AppTextStyles.captionOnDark,
+              ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_user == null && !_loading)
+              IconButton(
+                onPressed: () async {
+                  try {
+                    await _fetchUserData();
+                  } catch (e) {
+                    // Ignore errors
+                  }
+                },
+                icon: const Icon(Icons.refresh, color: AppColors.primary, size: 20),
+              ),
+            const Icon(Icons.check_circle, color: AppColors.primary),
+          ],
         ),
-        title: Text(
-          'Spotify Account',
-          style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          _authProvider.userId ?? 'Connected',
-          style: AppTextStyles.captionOnDark,
-        ),
-        trailing: const Icon(Icons.check_circle, color: AppColors.primary),
       ),
     );
   }
@@ -353,3 +447,450 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
+
+// Shimmer effect components (copied from profile screen)
+class _SkeletonBox extends StatelessWidget {
+  final double width;
+  final double height;
+  final double radius;
+  const _SkeletonBox({required this.width, required this.height, this.radius = 8});
+
+  @override
+  Widget build(BuildContext context) {
+    return _Shimmer(
+      child: Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: AppColors.onDarkPrimary.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(radius),
+        ),
+      ),
+    );
+  }
+}
+
+class _SkeletonCircle extends StatelessWidget {
+  final double diameter;
+  const _SkeletonCircle({required this.diameter});
+
+  @override
+  Widget build(BuildContext context) {
+    return _Shimmer(
+      child: Container(
+        width: diameter,
+        height: diameter,
+        decoration: BoxDecoration(
+          color: AppColors.onDarkPrimary.withOpacity(0.12),
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
+  }
+}
+
+class _Shimmer extends StatefulWidget {
+  final Widget child;
+  const _Shimmer({required this.child});
+
+  @override
+  State<_Shimmer> createState() => _ShimmerState();
+}
+
+class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
+      ..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return ShaderMask(
+          shaderCallback: (Rect bounds) {
+            final gradient = LinearGradient(
+              begin: Alignment(-1.0 - 3 * _controller.value, 0.0),
+              end: Alignment(1.0 + 3 * _controller.value, 0.0),
+              colors: [
+                AppColors.onDarkPrimary.withOpacity(0.12),
+                AppColors.onDarkPrimary.withOpacity(0.05),
+                AppColors.onDarkPrimary.withOpacity(0.12),
+              ],
+              stops: const [0.25, 0.5, 0.75],
+            );
+            return gradient.createShader(bounds);
+          },
+          blendMode: BlendMode.srcATop,
+          child: widget.child,
+        );
+      },
+    );
+  }
+}
+
+
+        const SizedBox(width: 4),
+
+        Text(
+
+          'Settings',
+
+          style: AppTextStyles.heading2OnDark.copyWith(
+
+            fontWeight: FontWeight.w800,
+
+            fontSize: 20,
+
+            letterSpacing: 0.6,
+
+            shadows: [
+
+              Shadow(
+
+                color: AppColors.onDarkPrimary.withOpacity(0.03),
+
+                blurRadius: 6,
+
+              )
+
+            ],
+
+          ),
+
+        ),
+
+        const Spacer(),
+
+      ],
+
+    );
+
+  }
+
+
+
+  Widget _buildSectionTitle(String title) {
+
+    return Padding(
+
+      padding: const EdgeInsets.only(bottom: 8),
+
+      child: Text(
+
+        title,
+
+        style: AppTextStyles.heading2OnDark.copyWith(
+
+          fontWeight: FontWeight.w600,
+
+          fontSize: 18,
+
+        ),
+
+      ),
+
+    );
+
+  }
+
+
+
+  Widget _buildAccountCard() {
+
+    return Container(
+
+      decoration: BoxDecoration(
+
+        color: AppColors.onDarkPrimary.withOpacity(0.05),
+
+        borderRadius: BorderRadius.circular(12),
+
+        border: Border.all(
+
+          color: AppColors.onDarkPrimary.withOpacity(0.1),
+
+          width: 1,
+
+        ),
+
+      ),
+
+      child: ListTile(
+
+        leading: Container(
+
+          padding: const EdgeInsets.all(8),
+
+          decoration: BoxDecoration(
+
+            color: AppColors.primary.withOpacity(0.1),
+
+            shape: BoxShape.circle,
+
+          ),
+
+          child: const Icon(
+
+            Icons.person,
+
+            color: AppColors.primary,
+
+          ),
+
+        ),
+
+        title: Text(
+
+          'Spotify Account',
+
+          style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+
+        ),
+
+        subtitle: Text(
+
+          _authProvider.userId ?? 'Connected',
+
+          style: AppTextStyles.captionOnDark,
+
+        ),
+
+        trailing: const Icon(Icons.check_circle, color: AppColors.primary),
+
+      ),
+
+    );
+
+  }
+
+
+
+  Widget _buildNotConnectedCard() {
+
+    return Container(
+
+      decoration: BoxDecoration(
+
+        color: AppColors.onDarkPrimary.withOpacity(0.05),
+
+        borderRadius: BorderRadius.circular(12),
+
+        border: Border.all(
+
+          color: AppColors.onDarkPrimary.withOpacity(0.1),
+
+          width: 1,
+
+        ),
+
+      ),
+
+      child: ListTile(
+
+        leading: Container(
+
+          padding: const EdgeInsets.all(8),
+
+          decoration: BoxDecoration(
+
+            color: Colors.orange.withOpacity(0.1),
+
+            shape: BoxShape.circle,
+
+          ),
+
+          child: const Icon(
+
+            Icons.person_off,
+
+            color: Colors.orange,
+
+          ),
+
+        ),
+
+        title: Text(
+
+          'Not Connected',
+
+          style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+
+        ),
+
+        subtitle: Text(
+
+          'Connect your Spotify account',
+
+          style: AppTextStyles.captionOnDark,
+
+        ),
+
+        trailing: const Icon(Icons.warning, color: Colors.orange),
+
+      ),
+
+    );
+
+  }
+
+
+
+  Widget _buildActionButton({
+
+    required IconData icon,
+
+    required String title,
+
+    required String subtitle,
+
+    required VoidCallback onTap,
+
+    required Color color,
+
+  }) {
+
+    return Container(
+
+      decoration: BoxDecoration(
+
+        color: AppColors.onDarkPrimary.withOpacity(0.05),
+
+        borderRadius: BorderRadius.circular(12),
+
+        border: Border.all(
+
+          color: AppColors.onDarkPrimary.withOpacity(0.1),
+
+          width: 1,
+
+        ),
+
+      ),
+
+      child: ListTile(
+
+        leading: Container(
+
+          padding: const EdgeInsets.all(8),
+
+          decoration: BoxDecoration(
+
+            color: color.withOpacity(0.1),
+
+            shape: BoxShape.circle,
+
+          ),
+
+          child: Icon(icon, color: color),
+
+        ),
+
+        title: Text(
+
+          title,
+
+          style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+
+        ),
+
+        subtitle: Text(
+
+          subtitle,
+
+          style: AppTextStyles.captionOnDark,
+
+        ),
+
+        trailing: Icon(Icons.arrow_forward_ios, color: AppColors.onDarkSecondary, size: 16),
+
+        onTap: onTap,
+
+      ),
+
+    );
+
+  }
+
+
+
+  Widget _buildInfoCard() {
+
+    return Container(
+
+      decoration: BoxDecoration(
+
+        color: AppColors.onDarkPrimary.withOpacity(0.05),
+
+        borderRadius: BorderRadius.circular(12),
+
+        border: Border.all(
+
+          color: AppColors.onDarkPrimary.withOpacity(0.1),
+
+          width: 1,
+
+        ),
+
+      ),
+
+      child: ListTile(
+
+        leading: Container(
+
+          padding: const EdgeInsets.all(8),
+
+          decoration: BoxDecoration(
+
+            color: AppColors.onDarkSecondary.withOpacity(0.1),
+
+            shape: BoxShape.circle,
+
+          ),
+
+          child: const Icon(
+
+            Icons.info,
+
+            color: AppColors.onDarkSecondary,
+
+          ),
+
+        ),
+
+        title: Text(
+
+          'Version',
+
+          style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+
+        ),
+
+        subtitle: Text(
+
+          '1.0.0',
+
+          style: AppTextStyles.captionOnDark,
+
+        ),
+
+      ),
+
+    );
+
+  }
+
+}
+
+

@@ -147,9 +147,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
  
   void _skip() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const MainScreen()),
+    // Navigate to the last page (Spotify login page)
+    _controller.animateToPage(
+      _pages.length - 1,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOutCubic,
     );
   }
 
@@ -177,43 +179,44 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             child: SafeArea(
               child: Column(
                 children: [
-                  // Modern skip button with glassmorphism
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.2),
+                  // Modern skip button with glassmorphism (hide on last page)
+                  if (_currentPage < _pages.length - 1)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.2),
+                                  ),
                                 ),
-                              ),
-                              child: TextButton(
-                                onPressed: _skip,
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                ),
-                                child: Text(
-                                  "Skip",
-                                  style: AppTextStyles.captionOnDark.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.onDarkSecondary,
+                                child: TextButton(
+                                  onPressed: _skip,
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                  ),
+                                  child: Text(
+                                    "Skip",
+                                    style: AppTextStyles.captionOnDark.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.onDarkSecondary,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
 
                   // PageView with enhanced styling
                   Expanded(

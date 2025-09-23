@@ -44,6 +44,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isAuthenticated => _authService.isAuthenticated;
   // Expose saved AppUser for consumers after login
   AppUser? get appUser => _authService.appUser;
+  bool get isLoadingUserData => _authService.isLoadingUserData;
 
   /// Login with Spotify
   Future<void> login() async {
@@ -61,6 +62,18 @@ class AuthProvider extends ChangeNotifier {
   Future<void> deleteAccount() async {
     if (!_initialized) await initialize();
     await _authService.deleteAccount();
+  }
+
+  /// Load user data manually
+  Future<void> loadUserData() async {
+    if (!_initialized) await initialize();
+    await _authService.loadUserData();
+  }
+
+  /// Force refresh user data
+  Future<void> refreshUserData() async {
+    if (!_initialized) await initialize();
+    await _authService.refreshUserData();
   }
 
   /// Clear authentication error

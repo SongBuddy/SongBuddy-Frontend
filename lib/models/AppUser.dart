@@ -31,6 +31,7 @@ class AppUser {
       "displayName": displayName,
       "email": email,
       "profilePicture": profilePicture,
+      "country": country,
     };
   }
 }

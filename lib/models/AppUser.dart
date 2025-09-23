@@ -15,12 +15,12 @@ class AppUser {
 
   factory AppUser.fromSpotify(Map<String, dynamic> json) {
     return AppUser(
-      id: json['id'],
-      country: json['country'],
+      id: json['id'] ?? '',
+      country: json['country'] ?? 'US',
       displayName: json['display_name'] ?? '',
       email: json['email'] ?? '',
       profilePicture: (json['images'] != null && json['images'].isNotEmpty)
-          ? json['images'][0]['url']
+          ? json['images'][0]['url'] ?? ''
           : '',
     );
   }

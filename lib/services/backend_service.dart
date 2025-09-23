@@ -339,4 +339,98 @@ class BackendService {
       throw Exception("Failed to toggle follow: ${response.body}");
     }
   }
+
+  /// Get posts by a specific user
+  Future<List<Post>> getUserPosts(String userId, {int limit = 20, int offset = 0}) async {
+    final url = "$baseUrl/api/posts/user/$userId?limit=$limit&offset=$offset";
+    print('🔗 BackendService: Getting user posts from: $url');
+    print('🔍 BackendService: User ID: $userId');
+    
+    try {
+      final response = await SimpleHttpClient.get(
+        Uri.parse(url),
+        headers: {"Content-Type": "application/json"},
+      );
+
+      print('📡 BackendService: Get user posts response - Status: ${response.statusCode}');
+      print('📡 BackendService: Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('🔍 BackendService: Parsed data: $data');
+        
+        // Check if data is null or empty
+        if (data == null) {
+          print('❌ BackendService: Data is null');
+          return [];
+        }
+        
+        // Check for posts in either 'data' or 'posts' field (backend compatibility)
+        List<dynamic>? postsList;
+        if (data.containsKey('data')) {
+          postsList = data['data'] as List<dynamic>?;
+          print('🔍 BackendService: Found posts in "data" field');
+        } else if (data.containsKey('posts')) {
+          postsList = data['posts'] as List<dynamic>?;
+          print('🔍 BackendService: Found posts in "posts" field');
+        } else {
+          print('❌ BackendService: No "data" or "posts" field in response');
+          print('🔍 BackendService: Available keys: ${data.keys.toList()}');
+          return [];
+        }
+        print('🔍 BackendService: Posts list: $postsList');
+        
+        if (postsList == null) {
+          print('❌ BackendService: Posts list is null');
+          return [];
+        }
+        
+        if (postsList.isEmpty) {
+          print('✅ BackendService: Posts list is empty (no posts found)');
+          return [];
+        }
+        
+        final posts = postsList
+            .map((post) {
+              print('🔍 BackendService: Processing post: $post');
+              try {
+                return Post.fromJson(post);
+              } catch (e) {
+                print('❌ BackendService: Error parsing post: $e');
+                print('❌ BackendService: Problematic post data: $post');
+                return null;
+              }
+            })
+            .where((post) => post != null)
+            .cast<Post>()
+            .toList();
+            
+        print('✅ BackendService: Successfully parsed ${posts.length} posts');
+        return posts;
+      } else {
+        print('❌ BackendService: HTTP error ${response.statusCode}: ${response.body}');
+        throw Exception("Failed to get user posts: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      print('❌ BackendService: Get user posts error: $e');
+      throw Exception("Failed to get user posts: $e");
+    }
+  }
+
+  /// Delete a post
+  Future<bool> deletePost(String postId) async {
+    final url = "$baseUrl/api/posts/$postId";
+    print('🔗 BackendService: Deleting post: $postId');
+    
+    final response = await SimpleHttpClient.delete(
+      Uri.parse(url),
+      headers: {"Content-Type": "application/json"},
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      return true;
+    } else {
+      throw Exception("Failed to delete post: ${response.body}");
+    }
+  }
 }

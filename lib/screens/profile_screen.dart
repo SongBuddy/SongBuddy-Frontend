@@ -5,7 +5,10 @@ import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
 import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/services/spotify_service.dart';
+import 'package:songbuddy/services/backend_service.dart';
+import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/widgets/spotify_login_button.dart';
+import 'package:songbuddy/widgets/music_post_card.dart';
 import 'package:songbuddy/screens/create_post_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -18,6 +21,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   late final AuthProvider _authProvider;
   late final SpotifyService _spotifyService;
+  late final BackendService _backendService;
 
   bool _initialized = false;
   bool _loading = false;
@@ -33,6 +37,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Set<String> _selectedTracks = <String>{};
   bool _isSelectionMode = false;
 
+  // User posts
+  List<Post> _userPosts = [];
+  bool _loadingPosts = false;
+
   bool _loadingTop = false; // non-blocking loading for top artists/tracks (kept for future use)
   static const Duration _animDur = Duration(milliseconds: 250);
 
@@ -41,6 +49,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _authProvider = AuthProvider();
     _spotifyService = SpotifyService();
+    _backendService = BackendService();
     _initialize();
   }
 
@@ -139,6 +148,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _user = user;
       });
+      
+      // Fetch user posts after getting user data
+      _fetchUserPosts();
+      
       // ignore: avoid_print
       print('[Profile] Fetch success: user=${user['id']} topArtists=${_topArtists.length} topTracks=${_topTracks.length} recently=${_recentlyPlayed.length}');
     } catch (e) {
@@ -202,11 +215,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     ).then((success) {
       if (success == true) {
-        // Post created successfully, exit selection mode
+        // Post created successfully, exit selection mode and refresh posts
         _toggleSelectionMode();
+        _fetchUserPosts();
         HapticFeedback.lightImpact();
       }
     });
+  }
+
+  /// Fetch user posts from backend
+  Future<void> _fetchUserPosts() async {
+    if (_authProvider.userId == null) {
+      print('❌ ProfileScreen: User ID is null, cannot fetch posts');
+      return;
+    }
+    
+    print('🔍 ProfileScreen: Fetching posts for user: ${_authProvider.userId}');
+    
+    setState(() {
+      _loadingPosts = true;
+    });
+
+    try {
+      final posts = await _backendService.getUserPosts(_authProvider.userId!);
+      print('🔍 ProfileScreen: Received ${posts.length} posts from backend');
+      print('🔍 ProfileScreen: Posts: $posts');
+      
+      setState(() {
+        _userPosts = posts;
+      });
+      
+      print('✅ ProfileScreen: Successfully updated _userPosts with ${_userPosts.length} posts');
+    } catch (e) {
+      print('❌ ProfileScreen: Failed to fetch user posts: $e');
+    } finally {
+      setState(() {
+        _loadingPosts = false;
+      });
+    }
+  }
+
+  /// Delete a post
+  Future<void> _deletePost(String postId) async {
+    try {
+      await _backendService.deletePost(postId);
+      setState(() {
+        _userPosts.removeWhere((post) => post.id == postId);
+      });
+      HapticFeedback.lightImpact();
+    } catch (e) {
+      print('❌ ProfileScreen: Failed to delete post: $e');
+      // Show error message to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete post: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
 
@@ -311,6 +377,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 : _buildTopTracksWidget(context),
                             _buildSectionTitle('Recently Played'),
                             _buildRecentlyPlayedWidget(),
+                            _buildSectionTitle('My Posts'),
+                            _buildUserPostsWidget(),
                             if (_insufficientScopeTop)
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -492,7 +560,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildTopArtistsContent({Key? key}) {
     return SizedBox(
       key: key,
-      height: 120,
+      height: 80,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
@@ -503,13 +571,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return Column(
             children: [
               CircleAvatar(
-                radius: 36,
+                radius: 24,
                 backgroundImage: url != null ? NetworkImage(url) : null,
-                child: url == null ? const Icon(Icons.person, color: AppColors.onDarkSecondary) : null,
+                child: url == null ? const Icon(Icons.person, color: AppColors.onDarkSecondary, size: 20) : null,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               SizedBox(
-                width: 80,
+                width: 60,
                 child: Text(
                   artist['name'] as String? ?? '',
                   maxLines: 2,
@@ -522,7 +590,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         },
         separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemCount: _topArtists.length,
+        itemCount: _topArtists.length > 5 ? 5 : _topArtists.length,
       ),
     );
   }
@@ -616,86 +684,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     }
-    final cross = _gridCountForWidth(MediaQuery.of(context).size.width);
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: cross,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.75,
-      ),
-      itemCount: _topTracks.length,
-      itemBuilder: (context, index) {
-        if (index >= _topTracks.length) return const SizedBox.shrink();
-        final track = _topTracks[index];
-        final images = track['album']?['images'] as List<dynamic>? ?? const [];
-        final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
-        final artists = (track['artists'] as List<dynamic>? ?? const [])
-            .map((a) => a['name'] as String? ?? '')
-            .where((s) => s.isNotEmpty)
-            .join(', ');
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: imageUrl != null
-                    ? Image.network(imageUrl, fit: BoxFit.cover)
-                    : Container(
-                        color: AppColors.onDarkPrimary.withOpacity(0.12),
-                        child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
-                      ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              track['name'] as String? ?? '',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
-            ),
-            Text(
-              artists,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.captionOnDark,
-            ),
-          ],
-        );
-      },
-    );
+     return SizedBox(
+       height: 80,
+       child: ListView.separated(
+         padding: const EdgeInsets.symmetric(horizontal: 16),
+         scrollDirection: Axis.horizontal,
+         itemBuilder: (context, index) {
+           if (index >= _topTracks.length) return const SizedBox.shrink();
+           final track = _topTracks[index];
+           final images = track['album']?['images'] as List<dynamic>? ?? const [];
+           final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
+           return Column(
+             children: [
+               ClipRRect(
+                 borderRadius: BorderRadius.circular(8),
+                 child: imageUrl != null
+                     ? Image.network(
+                         imageUrl, 
+                         width: 48, 
+                         height: 48, 
+                         fit: BoxFit.cover,
+                       )
+                     : Container(
+                         width: 48,
+                         height: 48,
+                         color: AppColors.onDarkPrimary.withOpacity(0.12),
+                         child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary, size: 20),
+                       ),
+               ),
+               const SizedBox(height: 6),
+               SizedBox(
+                 width: 60,
+                 child: Text(
+                   track['name'] as String? ?? '',
+                   maxLines: 2,
+                   overflow: TextOverflow.ellipsis,
+                   textAlign: TextAlign.center,
+                   style: AppTextStyles.captionOnDark.copyWith(fontSize: 10),
+                 ),
+               )
+             ],
+           );
+         },
+         separatorBuilder: (_, __) => const SizedBox(width: 12),
+         itemCount: _topTracks.length > 5 ? 5 : _topTracks.length,
+       ),
+     );
   }
 
   Widget _buildTopTracksSkeletonWidget(BuildContext context) {
-    final gridCount = _gridCountForWidth(MediaQuery.of(context).size.width);
-    final itemCount = gridCount * 2;
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: gridCount,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.75,
-      ),
-      itemCount: itemCount,
-      itemBuilder: (context, index) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return SizedBox(
+      height: 80,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemBuilder: (_, __) => Column(
+          mainAxisAlignment: MainAxisAlignment.start,
           children: const [
-            Expanded(child: _SkeletonBox(width: double.infinity, height: double.infinity, radius: 12)),
-            SizedBox(height: 8),
-            _SkeletonBox(width: 120, height: 14, radius: 6),
+            _SkeletonBox(width: 48, height: 48, radius: 8),
             SizedBox(height: 6),
-            _SkeletonBox(width: 80, height: 12, radius: 6),
+            _SkeletonBox(width: 60, height: 10, radius: 6),
           ],
-        );
-      },
+        ),
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemCount: 5,
+      ),
     );
   }
 
@@ -816,9 +869,141 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // User posts widget
+  Widget _buildUserPostsWidget() {
+    if (_loadingPosts) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          children: List.generate(3, (index) => const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: _SkeletonTile(),
+          )),
+        ),
+      );
+    }
+
+    if (_userPosts.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: _EmptyCard(
+          icon: Icons.post_add,
+          title: 'No posts yet',
+          subtitle: 'Create your first post by selecting a track from Recently Played.',
+        ),
+      );
+    }
+
+    return Column(
+      children: _userPosts.map((post) => _buildPostCard(post)).toList(),
+    );
+  }
+
+  // Build individual post card using MusicPostCard
+  Widget _buildPostCard(Post post) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Stack(
+        children: [
+          // Main post card
+          MusicPostCard(
+            username: post.username,
+            avatarUrl: post.userProfilePicture,
+            trackTitle: post.songName,
+            artist: post.artistName,
+            coverUrl: post.songImage,
+            timeAgo: post.timeline,
+            description: post.description,
+            initialLikes: post.likeCount,
+            isInitiallyLiked: post.isLikedByCurrentUser,
+            onLikeChanged: (isLiked, likes) {
+              // TODO: Implement like functionality
+              print('Like changed: $isLiked, likes: $likes');
+            },
+            onCardTap: () {
+              // TODO: Implement post tap functionality
+              print('Post tapped: ${post.id}');
+            },
+            showFollowButton: false,
+          ),
+          // Delete button overlay
+          Positioned(
+            top: 8,
+            right: 8,
+            child: PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'delete') {
+                  _showDeleteConfirmation(post);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, color: Colors.red, size: 20),
+                      SizedBox(width: 8),
+                      Text('Delete'),
+                    ],
+                  ),
+                ),
+              ],
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(
+                  Icons.more_vert,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+  // Show delete confirmation dialog
+  void _showDeleteConfirmation(Post post) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.onDarkPrimary.withOpacity(0.9),
+        title: const Text(
+          'Delete Post',
+          style: TextStyle(color: AppColors.onDarkPrimary),
+        ),
+        content: const Text(
+          'Are you sure you want to delete this post? This action cannot be undone.',
+          style: TextStyle(color: AppColors.onDarkSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deletePost(post.id);
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // New: Skeleton widgets list used when loading
   List<Widget> _buildSkeletonWidgets(BuildContext context) {
-    final gridCount = _gridCountForWidth(MediaQuery.of(context).size.width);
     return [
       _buildSectionTitle('Currently Playing'),
       const Padding(
@@ -843,31 +1028,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
           itemCount: 6,
         ),
       ),
-      _buildSectionTitle('Top Tracks'),
-      GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: gridCount,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 0.75,
-        ),
-        itemCount: gridCount * 2,
-        itemBuilder: (context, index) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Expanded(child: _SkeletonBox(width: double.infinity, height: double.infinity, radius: 12)),
-              SizedBox(height: 8),
-              _SkeletonBox(width: 120, height: 14, radius: 6),
-              SizedBox(height: 6),
-              _SkeletonBox(width: 80, height: 12, radius: 6),
-            ],
-          );
-        },
-      ),
+       _buildSectionTitle('Top Tracks'),
+       SizedBox(
+         height: 80,
+         child: ListView.separated(
+           padding: const EdgeInsets.symmetric(horizontal: 16),
+           scrollDirection: Axis.horizontal,
+           itemBuilder: (_, __) => Column(
+             mainAxisAlignment: MainAxisAlignment.start,
+             children: const [
+               _SkeletonBox(width: 48, height: 48, radius: 8),
+               SizedBox(height: 6),
+               _SkeletonBox(width: 60, height: 10, radius: 6),
+             ],
+           ),
+           separatorBuilder: (_, __) => const SizedBox(width: 12),
+           itemCount: 5,
+         ),
+       ),
       _buildSectionTitle('Recently Played'),
       ListView.builder(
         shrinkWrap: true,

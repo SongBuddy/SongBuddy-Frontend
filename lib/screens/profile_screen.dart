@@ -548,21 +548,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // Removed time range toggle UI
 
-  // New: Top bar matching HomeFeedScreen
+  // New: Top bar with title on the left
   Widget _buildTopBar(BuildContext context) {
-    final images = (_user?['images'] as List<dynamic>?) ?? const [];
-    final avatarUrl = images.isNotEmpty ? (images.first['url'] as String?) : null;
+    // final images = (_user?['images'] as List<dynamic>?) ?? const [];
+    // final avatarUrl = images.isNotEmpty ? (images.first['url'] as String?) : null;
     return Row(
       children: [
-        CircleAvatar(
-          radius: 18,
-          backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-          backgroundColor: Colors.transparent,
-          child: avatarUrl == null
-              ? const Icon(Icons.person_outline, color: AppColors.onDarkSecondary)
-              : null,
-        ),
-        const Spacer(),
         Text(
           'Profile',
           style: AppTextStyles.heading2OnDark.copyWith(
@@ -578,6 +569,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         const Spacer(),
+        // Commented out profile picture section
+        // CircleAvatar(
+        //   radius: 18,
+        //   backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+        //   backgroundColor: Colors.transparent,
+        //   child: avatarUrl == null
+        //       ? const Icon(Icons.person_outline, color: AppColors.onDarkSecondary)
+        //       : null,
+        // ),
       ],
     );
   }

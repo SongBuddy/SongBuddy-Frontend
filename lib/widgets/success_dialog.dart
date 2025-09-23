@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
+import 'package:songbuddy/constants/app_colors.dart';
+import 'package:songbuddy/constants/app_text_styles.dart';
 
 class SuccessDialog extends StatefulWidget {
   const SuccessDialog({super.key});
@@ -60,20 +63,28 @@ class _SuccessDialogState extends State<SuccessDialog>
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: Colors.transparent,
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.darkBackgroundStart.withOpacity(0.92),
+                  AppColors.darkBackgroundEnd.withOpacity(0.92),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.accentMint.withOpacity(0.25),
+                width: 1,
+              ),
             ),
-          ],
-        ),
-        child: Column(
+            child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // Animated success icon
@@ -88,13 +99,27 @@ class _SuccessDialogState extends State<SuccessDialog>
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1DB954).withOpacity(0.1),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.accentMint.withOpacity(0.14),
+                            AppColors.accentGreen.withOpacity(0.10),
+                          ],
+                        ),
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.accentMint.withOpacity(0.28),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: const Icon(
                         Icons.check_circle,
                         size: 50,
-                        color: Color(0xFF1DB954),
+                        color: AppColors.accentMint,
                       ),
                     ),
                   ),
@@ -113,23 +138,16 @@ class _SuccessDialogState extends State<SuccessDialog>
                   opacity: value,
                   child: Transform.translate(
                     offset: Offset(0, 20 * (1 - value)),
-                    child: const Column(
+                    child: Column(
                       children: [
                         Text(
                           'Success!',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1DB954),
-                          ),
+                          style: AppTextStyles.heading2OnDark,
                         ),
-                        SizedBox(height: 8),
-                        Text(
+                        const SizedBox(height: 8),
+                        const Text(
                           'Connected to Spotify',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey,
-                          ),
+                          style: AppTextStyles.captionOnDark,
                         ),
                       ],
                     ),
@@ -152,13 +170,15 @@ class _SuccessDialogState extends State<SuccessDialog>
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1DB954)),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentMint),
                     ),
                   ),
                 );
               },
             ),
           ],
+            ),
+          ),
         ),
       ),
     );

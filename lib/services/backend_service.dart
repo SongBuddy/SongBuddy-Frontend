@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:songbuddy/models/AppUser.dart';
 import 'package:songbuddy/models/Post.dart';
+import 'package:songbuddy/models/ProfileData.dart';
 import 'backend_api_service.dart';
 
 // Simple HTTP client with basic configuration
@@ -430,7 +431,56 @@ class BackendService {
     }
   }
 
-  /// Get posts by a specific user
+  /// Get user profile with posts (NEW EFFICIENT API)
+  Future<ProfileData> getUserProfile(String userId, {String? currentUserId}) async {
+    final url = "$baseUrl/api/users/$userId/profile${currentUserId != null ? '?currentUserId=$currentUserId' : ''}";
+    print('🔗 BackendService: Getting user profile from: $url');
+    print('🔍 BackendService: User ID: $userId, Current User ID: $currentUserId');
+    
+    // Test connection first
+    print('🔍 BackendService: Testing connection to backend...');
+    final connectionTest = await testConnection();
+    if (!connectionTest) {
+      print('❌ BackendService: Primary URL failed, trying alternatives...');
+      final workingUrl = await findWorkingBackendUrl();
+      if (workingUrl == null) {
+        throw Exception('Cannot connect to backend server. Please check your network connection and ensure the backend is running.');
+      }
+      print('✅ BackendService: Using alternative URL: $workingUrl');
+    }
+    
+    try {
+      final response = await SimpleHttpClient.get(
+        Uri.parse(url),
+        headers: {"Content-Type": "application/json"},
+      );
+
+      print('📡 BackendService: Get user profile response - Status: ${response.statusCode}');
+      print('📡 BackendService: Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('🔍 BackendService: Parsed data: $data');
+        
+        if (data['success'] == true && data['data'] != null) {
+          final profileData = ProfileData.fromJson(data['data']);
+          print('✅ BackendService: Successfully parsed profile data');
+          print('🔍 BackendService: User: ${profileData.user.displayName}, Posts: ${profileData.posts.length}');
+          return profileData;
+        } else {
+          throw Exception("Invalid response format: ${response.body}");
+        }
+      } else {
+        print('❌ BackendService: HTTP error ${response.statusCode}: ${response.body}');
+        throw Exception("Failed to get user profile: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      print('❌ BackendService: Get user profile error: $e');
+      rethrow;
+    }
+  }
+
+  /// Get posts by a specific user (LEGACY - kept for backward compatibility)
   Future<List<Post>> getUserPosts(String userId, {int limit = 20, int offset = 0, String? currentUserId}) async {
     final url = "$baseUrl/api/posts/user/$userId?limit=$limit&offset=$offset${currentUserId != null ? '&currentUserId=$currentUserId' : ''}";
     print('🔗 BackendService: Getting user posts from: $url');

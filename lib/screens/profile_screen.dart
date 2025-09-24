@@ -149,8 +149,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _user = user;
       });
       
-      // Fetch user posts after getting user data
-      _fetchUserPosts();
+      // Fetch user profile after getting user data
+      _fetchUserProfile();
       
       // ignore: avoid_print
       print('[Profile] Fetch success: user=${user['id']} topArtists=${_topArtists.length} topTracks=${_topTracks.length} recently=${_recentlyPlayed.length}');
@@ -217,68 +217,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (success == true) {
         // Post created successfully, exit selection mode and refresh posts
         _toggleSelectionMode();
-        _fetchUserPosts();
+        _fetchUserProfile();
         HapticFeedback.lightImpact();
       }
     });
   }
 
-  /// Fetch user posts from backend
-  Future<void> _fetchUserPosts() async {
+  /// Fetch user profile with posts (NEW EFFICIENT API)
+  Future<void> _fetchUserProfile() async {
     if (_authProvider.userId == null) {
-      print('❌ ProfileScreen: User ID is null, cannot fetch posts');
+      print('❌ ProfileScreen: User ID is null, cannot fetch profile');
       return;
     }
     
-    print('🔍 ProfileScreen: Fetching posts for user: ${_authProvider.userId}');
+    print('🔍 ProfileScreen: Fetching profile for user: ${_authProvider.userId}');
     
     setState(() {
       _loadingPosts = true;
     });
 
     try {
-      final posts = await _backendService.getUserPosts(_authProvider.userId!, currentUserId: _authProvider.userId);
-      print('🔍 ProfileScreen: Received ${posts.length} posts from backend');
-      print('🔍 ProfileScreen: Posts: $posts');
+      final profileData = await _backendService.getUserProfile(_authProvider.userId!, currentUserId: _authProvider.userId);
+      print('🔍 ProfileScreen: Received profile data');
+      print('🔍 ProfileScreen: User: ${profileData.user.displayName}, Posts: ${profileData.posts.length}');
       
-      // Debug: Check if posts are empty
-      if (posts.isEmpty) {
-        print('❌ ProfileScreen: No posts received from backend');
-        return;
-      }
-      
-      // Debug: Check each post
-      for (int i = 0; i < posts.length; i++) {
-        final post = posts[i];
-        print('🔍 ProfileScreen: Post $i: id=${post.id}, title=${post.songName}, description=${post.description}');
-      }
-      
-      // Preserve like state from current posts and fix like state conflicts
-      final updatedPosts = posts.map((newPost) {
-        final existingPost = _userPosts.firstWhere(
-          (existing) => existing.id == newPost.id,
-          orElse: () => newPost,
-        );
-        
-        // If we have an existing post, preserve its like state
-        if (existingPost.id == newPost.id) {
-          print('🔍 ProfileScreen: Preserving like state for post ${newPost.id}: ${existingPost.isLikedByCurrentUser} (count: ${newPost.likeCount})');
-          return newPost.copyWith(
-            isLikedByCurrentUser: existingPost.isLikedByCurrentUser,
-            likeCount: newPost.likeCount, // Use the new like count from backend
-          );
-        }
-        
-        // For new posts, we'll keep the backend's like state
-        // The backend should return the correct like state, but if it doesn't,
-        // we'll rely on the user's interaction to correct it
-        print('🔍 ProfileScreen: New post ${newPost.id} - like state: ${newPost.isLikedByCurrentUser}, count: ${newPost.likeCount}');
-        
-        return newPost;
-      }).toList();
-      
+      // Update posts from the profile data
       setState(() {
-        _userPosts = updatedPosts;
+        _userPosts = profileData.posts;
       });
       
       print('✅ ProfileScreen: Successfully updated _userPosts with ${_userPosts.length} posts');
@@ -299,7 +264,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         print('🔍 ProfileScreen: Post ${post.id} - liked: ${post.isLikedByCurrentUser}, count: ${post.likeCount}');
       }
     } catch (e) {
-      print('❌ ProfileScreen: Failed to fetch user posts: $e');
+      print('❌ ProfileScreen: Failed to fetch user profile: $e');
       
       // Show user-friendly error message
       if (e.toString().contains('Connection timed out') || e.toString().contains('SocketException')) {
@@ -313,7 +278,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to load posts: $e'),
+            content: Text('Failed to load profile: $e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -1081,7 +1046,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         
         // Refresh the profile screen to get updated post information
         print('🔄 ProfileScreen: Refreshing profile screen after post update');
-        await _fetchUserPosts();
+        await _fetchUserProfile();
         
         HapticFeedback.lightImpact();
         

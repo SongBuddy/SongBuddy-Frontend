@@ -8,7 +8,7 @@ import 'package:songbuddy/services/spotify_service.dart';
 import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/widgets/spotify_login_button.dart';
-import 'package:songbuddy/widgets/music_post_card.dart';
+import 'package:songbuddy/widgets/swipeable_post_card.dart';
 import 'package:songbuddy/screens/create_post_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -237,17 +237,88 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
 
     try {
-      final posts = await _backendService.getUserPosts(_authProvider.userId!);
+      final posts = await _backendService.getUserPosts(_authProvider.userId!, currentUserId: _authProvider.userId);
       print('🔍 ProfileScreen: Received ${posts.length} posts from backend');
       print('🔍 ProfileScreen: Posts: $posts');
       
+      // Debug: Check if posts are empty
+      if (posts.isEmpty) {
+        print('❌ ProfileScreen: No posts received from backend');
+        return;
+      }
+      
+      // Debug: Check each post
+      for (int i = 0; i < posts.length; i++) {
+        final post = posts[i];
+        print('🔍 ProfileScreen: Post $i: id=${post.id}, title=${post.songName}, description=${post.description}');
+      }
+      
+      // Preserve like state from current posts and fix like state conflicts
+      final updatedPosts = posts.map((newPost) {
+        final existingPost = _userPosts.firstWhere(
+          (existing) => existing.id == newPost.id,
+          orElse: () => newPost,
+        );
+        
+        // If we have an existing post, preserve its like state
+        if (existingPost.id == newPost.id) {
+          print('🔍 ProfileScreen: Preserving like state for post ${newPost.id}: ${existingPost.isLikedByCurrentUser} (count: ${newPost.likeCount})');
+          return newPost.copyWith(
+            isLikedByCurrentUser: existingPost.isLikedByCurrentUser,
+            likeCount: newPost.likeCount, // Use the new like count from backend
+          );
+        }
+        
+        // For new posts, we'll keep the backend's like state
+        // The backend should return the correct like state, but if it doesn't,
+        // we'll rely on the user's interaction to correct it
+        print('🔍 ProfileScreen: New post ${newPost.id} - like state: ${newPost.isLikedByCurrentUser}, count: ${newPost.likeCount}');
+        
+        return newPost;
+      }).toList();
+      
       setState(() {
-        _userPosts = posts;
+        _userPosts = updatedPosts;
       });
       
       print('✅ ProfileScreen: Successfully updated _userPosts with ${_userPosts.length} posts');
+      
+      // Debug: Check final posts state
+      if (_userPosts.isEmpty) {
+        print('❌ ProfileScreen: _userPosts is empty after processing!');
+      } else {
+        print('✅ ProfileScreen: _userPosts has ${_userPosts.length} posts');
+        for (int i = 0; i < _userPosts.length; i++) {
+          final post = _userPosts[i];
+          print('🔍 ProfileScreen: Final post $i: id=${post.id}, title=${post.songName}');
+        }
+      }
+      
+      // Log like states for debugging
+      for (final post in _userPosts) {
+        print('🔍 ProfileScreen: Post ${post.id} - liked: ${post.isLikedByCurrentUser}, count: ${post.likeCount}');
+      }
     } catch (e) {
       print('❌ ProfileScreen: Failed to fetch user posts: $e');
+      
+      // Show user-friendly error message
+      if (e.toString().contains('Connection timed out') || e.toString().contains('SocketException')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot connect to server. Please check your network connection.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load posts: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     } finally {
       setState(() {
         _loadingPosts = false;
@@ -258,11 +329,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
   /// Delete a post
   Future<void> _deletePost(String postId) async {
     try {
-      await _backendService.deletePost(postId);
+      // Get the current user ID
+      final userId = _authProvider.userId;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+      
+      // Debug: Print the post being deleted and userId
+      final postToDelete = _userPosts.firstWhere((post) => post.id == postId);
+      print('🔍 ProfileScreen: Deleting post: $postId');
+      print('🔍 ProfileScreen: Post owner userId: ${postToDelete.userId}');
+      print('🔍 ProfileScreen: Current user userId: $userId');
+      print('🔍 ProfileScreen: UserIds match: ${postToDelete.userId == userId}');
+      
+      await _backendService.deletePost(postId, userId: userId);
       setState(() {
         _userPosts.removeWhere((post) => post.id == postId);
       });
       HapticFeedback.lightImpact();
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Post deleted successfully'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
     } catch (e) {
       print('❌ ProfileScreen: Failed to delete post: $e');
       // Show error message to user
@@ -883,7 +976,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
+    print('🔍 ProfileScreen: UI rendering - _userPosts.length = ${_userPosts.length}');
+
     if (_userPosts.isEmpty) {
+      print('🔍 ProfileScreen: Showing empty state - no posts to display');
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: _EmptyCard(
@@ -894,112 +990,119 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
+    print('🔍 ProfileScreen: Rendering ${_userPosts.length} posts');
     return Column(
       children: _userPosts.map((post) => _buildPostCard(post)).toList(),
     );
   }
 
-  // Build individual post card using MusicPostCard
+  // Build individual post card using SwipeablePostCard
   Widget _buildPostCard(Post post) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Stack(
-        children: [
-          // Main post card
-          MusicPostCard(
-            username: post.username,
-            avatarUrl: post.userProfilePicture,
-            trackTitle: post.songName,
-            artist: post.artistName,
-            coverUrl: post.songImage,
-            timeAgo: post.timeline,
-            description: post.description,
-            initialLikes: post.likeCount,
-            isInitiallyLiked: post.isLikedByCurrentUser,
-            onLikeChanged: (isLiked, likes) {
-              // TODO: Implement like functionality
-              print('Like changed: $isLiked, likes: $likes');
+      child: SwipeablePostCard(
+        post: post,
+        showUserInfo: false, // Hide username and avatar in profile screen
+        onDelete: () => _deletePost(post.id),
+        onEditDescription: (newDescription) => _editPost(post, newDescription: newDescription),
+        onLikeChanged: (isLiked, likes) async {
+          try {
+            final userId = _authProvider.userId;
+            if (userId == null) {
+              print('❌ ProfileScreen: User not authenticated for like');
+              return;
+            }
+            
+            print('🔍 ProfileScreen: Toggling like for post: ${post.id}, isLiked: $isLiked');
+            final result = await _backendService.togglePostLike(post.id, userId, !isLiked);
+            print('✅ ProfileScreen: Like toggled successfully, result: $result');
+            
+            // Update the post in the list with new like count
+            setState(() {
+              final postIndex = _userPosts.indexWhere((p) => p.id == post.id);
+              if (postIndex != -1) {
+                _userPosts[postIndex] = _userPosts[postIndex].copyWith(
+                  likeCount: likes,
+                  isLikedByCurrentUser: isLiked,
+                );
+                print('✅ ProfileScreen: Updated like state for post ${post.id}: liked=$isLiked, count=$likes');
+              } else {
+                print('❌ ProfileScreen: Post ${post.id} not found for like update');
+              }
+            });
+            
+            HapticFeedback.lightImpact();
+          } catch (e) {
+            print('❌ ProfileScreen: Failed to toggle like: $e');
+            // Show error message to user
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to update like: $e'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
             },
             onCardTap: () {
               // TODO: Implement post tap functionality
               print('Post tapped: ${post.id}');
             },
-            showFollowButton: false,
-          ),
-          // Delete button overlay
-          Positioned(
-            top: 8,
-            right: 8,
-            child: PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'delete') {
-                  _showDeleteConfirmation(post);
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, color: Colors.red, size: 20),
-                      SizedBox(width: 8),
-                      Text('Delete'),
-                    ],
-                  ),
-                ),
-              ],
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(
-                  Icons.more_vert,
-                  color: Colors.white,
-                  size: 16,
-                ),
-              ),
-            ),
-          ),
-        ],
+        onShare: () {
+          // TODO: Implement share functionality
+          print('Share post: ${post.id}');
+        },
       ),
     );
   }
 
 
-  // Show delete confirmation dialog
-  void _showDeleteConfirmation(Post post) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.onDarkPrimary.withOpacity(0.9),
-        title: const Text(
-          'Delete Post',
-          style: TextStyle(color: AppColors.onDarkPrimary),
-        ),
-        content: const Text(
-          'Are you sure you want to delete this post? This action cannot be undone.',
-          style: TextStyle(color: AppColors.onDarkSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+  /// Edit a post
+  Future<void> _editPost(Post post, {String? newDescription}) async {
+    try {
+      final userId = _authProvider.userId;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      if (newDescription != null) {
+        print('🔍 ProfileScreen: Updating post: ${post.id} with new description');
+        print('🔍 ProfileScreen: Original post ID: ${post.id}');
+        
+        final updatedPost = await _backendService.updatePost(post.id, userId, newDescription);
+        print('🔍 ProfileScreen: Updated post ID: ${updatedPost.id}');
+        
+        // Handle case where backend doesn't return ID in response
+        final finalUpdatedPost = updatedPost.id.isEmpty 
+            ? updatedPost.copyWith(id: post.id) // Preserve original ID
+            : updatedPost;
+        
+        print('🔍 ProfileScreen: Final post ID: ${finalUpdatedPost.id}');
+        
+        // Refresh the profile screen to get updated post information
+        print('🔄 ProfileScreen: Refreshing profile screen after post update');
+        await _fetchUserPosts();
+        
+        HapticFeedback.lightImpact();
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Post updated successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _deletePost(post.id);
-            },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
-      ),
-    );
+        );
+      }
+    } catch (e) {
+      print('❌ ProfileScreen: Failed to update post: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update post: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   // New: Skeleton widgets list used when loading

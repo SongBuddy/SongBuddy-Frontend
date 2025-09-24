@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
+import 'package:songbuddy/widgets/music_post_card.dart';
 
 class UserProfileScreen extends StatelessWidget {
   final String username;
@@ -29,17 +30,29 @@ class UserProfileScreen extends StatelessWidget {
       {
         'track': 'Midnight City',
         'artist': 'M83',
-        'desc': 'Perfect track for late night vibes.'
+        'desc': 'Perfect track for late night vibes.',
+        'cover': 'https://i.scdn.co/image/ab67616d0000b2734f1b5b0b8b8b8b8b8b8b8b8b8',
+        'timeAgo': '2h ago',
+        'likes': 12,
+        'isLiked': false,
       },
       {
         'track': 'Sunflower',
         'artist': 'Post Malone',
-        'desc': 'Always lifts my mood.'
+        'desc': 'Always lifts my mood.',
+        'cover': 'https://i.scdn.co/image/ab67616d0000b2734f1b5b0b8b8b8b8b8b8b8b8b8',
+        'timeAgo': '5h ago',
+        'likes': 8,
+        'isLiked': true,
       },
       {
         'track': 'Heat Waves',
         'artist': 'Glass Animals',
-        'desc': 'Such a vibe 🔥'
+        'desc': 'Such a vibe 🔥',
+        'cover': 'https://i.scdn.co/image/ab67616d0000b2734f1b5b0b8b8b8b8b8b8b8b8b8',
+        'timeAgo': '1d ago',
+        'likes': 24,
+        'isLiked': false,
       },
     ];
 
@@ -197,20 +210,29 @@ class UserProfileScreen extends StatelessWidget {
                           final post = userPosts[index];
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                            child: _GlassCard(
-                              child: ListTile(
-                                leading: const Icon(Icons.album, color: AppColors.onDarkSecondary),
-                                title: Text(
-                                  post['track']!,
-                                  style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
-                                ),
-                                subtitle: Text(
-                                  "${post['artist']} • ${post['desc']}",
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTextStyles.captionOnDark,
-                                ),
-                              ),
+                            child: MusicPostCard(
+                              username: '', // Empty username to hide user info
+                              avatarUrl: '', // Empty avatar URL to hide user info
+                              trackTitle: post['track'] as String,
+                              artist: post['artist'] as String,
+                              coverUrl: post['cover'] as String,
+                              timeAgo: post['timeAgo'] as String,
+                              description: post['desc'] as String?,
+                              initialLikes: post['likes'] as int,
+                              isInitiallyLiked: post['isLiked'] as bool,
+                              showUserInfo: false, // Hide username and avatar
+                              onLikeChanged: (isLiked, likes) {
+                                // TODO: Implement like functionality
+                                print('Like changed: $isLiked, likes: $likes');
+                              },
+                              onCardTap: () {
+                                // TODO: Implement post tap functionality
+                                print('Post tapped: ${post['track']}');
+                              },
+                              onShare: () {
+                                // TODO: Implement share functionality
+                                print('Share post: ${post['track']}');
+                              },
                             ),
                           );
                         },

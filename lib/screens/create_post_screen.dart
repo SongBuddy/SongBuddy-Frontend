@@ -393,7 +393,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             controller: _descriptionController,
             maxLines: 3,
             maxLength: _maxDescriptionLength,
-            style: AppTextStyles.bodyOnDark.copyWith(fontSize: 14),
+            style: AppTextStyles.bodyOnDark.copyWith(fontSize: 14, color: Colors.black),
             decoration: InputDecoration(
               hintText: 'Share your thoughts about this song...',
               hintStyle: AppTextStyles.captionOnDark.copyWith(

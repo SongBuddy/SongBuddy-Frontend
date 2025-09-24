@@ -6,8 +6,8 @@ import 'backend_api_service.dart';
 
 // Simple HTTP client with basic configuration
 class SimpleHttpClient {
-  static Future<http.Response> delete(Uri url, {Map<String, String>? headers}) async {
-    return await http.delete(url, headers: headers);
+  static Future<http.Response> delete(Uri url, {Map<String, String>? headers, Object? body}) async {
+    return await http.delete(url, headers: headers, body: body);
   }
   
   static Future<http.Response> post(Uri url, {Map<String, String>? headers, Object? body}) async {
@@ -26,7 +26,17 @@ class SimpleHttpClient {
 
 class BackendService {
   // Constant base URL for backend - using computer's IP for mobile debugging
-  static const String baseUrl = 'http://192.168.227.108:3000';
+  // Update this IP address whenever your computer's IP changes
+  static const String baseUrl = 'http://192.168.83.108:3000';
+  
+  // Alternative IPs to try if the main one fails
+  static const List<String> alternativeUrls = [
+    'http://192.168.83.108:3000',  // Current IP
+    'http://192.168.227.108:3000', // Previous IP
+    'http://192.168.1.108:3000',   // Common home network
+    'http://10.0.2.2:3000',        // Android emulator
+    'http://localhost:3000',        // Local development
+  ];
  
   /// Clear any cached backend URLs to force rediscovery
   static void clearCache() {
@@ -46,6 +56,32 @@ class BackendService {
       print('❌ Backend connection test failed: $e');
       return false;
     }
+  }
+
+  /// Find working backend URL by trying alternatives
+  Future<String?> findWorkingBackendUrl() async {
+    print('🔍 BackendService: Trying to find working backend URL...');
+    
+    for (String url in alternativeUrls) {
+      try {
+        print('🔍 BackendService: Trying URL: $url');
+        final response = await SimpleHttpClient.get(
+          Uri.parse("$url/health"),
+          headers: {"Content-Type": "application/json"},
+        );
+        
+        if (response.statusCode == 200) {
+          print('✅ BackendService: Found working URL: $url');
+          return url;
+        }
+      } catch (e) {
+        print('❌ BackendService: URL $url failed: $e');
+        continue;
+      }
+    }
+    
+    print('❌ BackendService: No working backend URL found');
+    return null;
   }
 
   Future<AppUser?> saveUser(AppUser user) async {
@@ -258,8 +294,8 @@ class BackendService {
   }
 
   /// Get posts from users that the current user follows (for home feed)
-  Future<List<Post>> getFollowingPosts(String userId, {int limit = 20, int offset = 0}) async {
-    final url = "$baseUrl/api/posts/following/$userId?limit=$limit&offset=$offset";
+  Future<List<Post>> getFollowingPosts(String userId, {int limit = 20, int offset = 0, String? currentUserId}) async {
+    final url = "$baseUrl/api/posts/following/$userId?limit=$limit&offset=$offset${currentUserId != null ? '&currentUserId=$currentUserId' : ''}";
     print('🔗 BackendService: Getting following posts from: $url');
     
     final response = await SimpleHttpClient.get(
@@ -279,8 +315,8 @@ class BackendService {
   }
 
   /// Get random recent posts (for search/discovery feed)
-  Future<List<Post>> getRandomRecentPosts({int limit = 20, int offset = 0}) async {
-    final url = "$baseUrl/api/posts/random?limit=$limit&offset=$offset";
+  Future<List<Post>> getRandomRecentPosts({int limit = 20, int offset = 0, String? currentUserId}) async {
+    final url = "$baseUrl/api/posts/random?limit=$limit&offset=$offset${currentUserId != null ? '&currentUserId=$currentUserId' : ''}";
     print('🔗 BackendService: Getting random posts from: $url');
     
     final response = await SimpleHttpClient.get(
@@ -299,10 +335,10 @@ class BackendService {
     }
   }
 
-  /// Like/unlike a post
-  Future<bool> togglePostLike(String postId, String userId) async {
+  /// Like a post
+  Future<bool> likePost(String postId, String userId) async {
     final url = "$baseUrl/api/posts/$postId/like";
-    print('🔗 BackendService: Toggling like for post: $postId');
+    print('🔗 BackendService: Liking post: $postId');
     
     final response = await SimpleHttpClient.post(
       Uri.parse(url),
@@ -314,7 +350,61 @@ class BackendService {
       final data = jsonDecode(response.body);
       return data['liked'] as bool? ?? false;
     } else {
-      throw Exception("Failed to toggle like: ${response.body}");
+      throw Exception("Failed to like post: ${response.body}");
+    }
+  }
+
+  /// Unlike a post
+  Future<bool> unlikePost(String postId, String userId) async {
+    final url = "$baseUrl/api/posts/$postId/like";
+    print('🔗 BackendService: Unliking post: $postId');
+    
+    final response = await SimpleHttpClient.delete(
+      Uri.parse(url),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"userId": userId}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['liked'] as bool? ?? false;
+    } else {
+      throw Exception("Failed to unlike post: ${response.body}");
+    }
+  }
+
+  /// Toggle like/unlike a post (smart method that determines action based on current state)
+  Future<bool> togglePostLike(String postId, String userId, bool currentLikeState) async {
+    if (currentLikeState) {
+      // Currently liked, so unlike
+      return await unlikePost(postId, userId);
+    } else {
+      // Currently not liked, so like
+      return await likePost(postId, userId);
+    }
+  }
+
+  /// Update a post (edit description)
+  Future<Post> updatePost(String postId, String userId, String description) async {
+    final url = "$baseUrl/api/posts/$postId";
+    print('🔗 BackendService: Updating post: $postId with description: $description');
+    
+    final response = await SimpleHttpClient.put(
+      Uri.parse(url),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "userId": userId,
+        "description": description,
+      }),
+    );
+
+    print('📡 BackendService: Update response - Status: ${response.statusCode}, Body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return Post.fromJson(data);
+    } else {
+      throw Exception("Failed to update post: ${response.body}");
     }
   }
 
@@ -341,10 +431,22 @@ class BackendService {
   }
 
   /// Get posts by a specific user
-  Future<List<Post>> getUserPosts(String userId, {int limit = 20, int offset = 0}) async {
-    final url = "$baseUrl/api/posts/user/$userId?limit=$limit&offset=$offset";
+  Future<List<Post>> getUserPosts(String userId, {int limit = 20, int offset = 0, String? currentUserId}) async {
+    final url = "$baseUrl/api/posts/user/$userId?limit=$limit&offset=$offset${currentUserId != null ? '&currentUserId=$currentUserId' : ''}";
     print('🔗 BackendService: Getting user posts from: $url');
-    print('🔍 BackendService: User ID: $userId');
+    print('🔍 BackendService: User ID: $userId, Current User ID: $currentUserId');
+    
+    // Test connection first
+    print('🔍 BackendService: Testing connection to backend...');
+    final connectionTest = await testConnection();
+    if (!connectionTest) {
+      print('❌ BackendService: Primary URL failed, trying alternatives...');
+      final workingUrl = await findWorkingBackendUrl();
+      if (workingUrl == null) {
+        throw Exception('Cannot connect to backend server. Please check your network connection and ensure the backend is running.');
+      }
+      print('✅ BackendService: Using alternative URL: $workingUrl');
+    }
     
     try {
       final response = await SimpleHttpClient.get(
@@ -418,14 +520,21 @@ class BackendService {
   }
 
   /// Delete a post
-  Future<bool> deletePost(String postId) async {
+  Future<bool> deletePost(String postId, {String? userId}) async {
     final url = "$baseUrl/api/posts/$postId";
-    print('🔗 BackendService: Deleting post: $postId');
+    print('🔗 BackendService: Deleting post: $postId with userId: $userId');
+    
+    // Prepare request body with userId
+    final requestBody = userId != null ? jsonEncode({"userId": userId}) : null;
+    print('🔍 BackendService: Request body: $requestBody');
     
     final response = await SimpleHttpClient.delete(
       Uri.parse(url),
       headers: {"Content-Type": "application/json"},
+      body: requestBody,
     );
+
+    print('📡 BackendService: Delete response - Status: ${response.statusCode}, Body: ${response.body}');
 
     if (response.statusCode == 200 || response.statusCode == 204) {
       return true;

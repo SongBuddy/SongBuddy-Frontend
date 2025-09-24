@@ -28,8 +28,18 @@ class Post {
   });
 
   factory Post.fromJson(Map<String, dynamic> json) {
+    // Debug: Print the JSON to see what fields are available
+    print('🔍 Post.fromJson: Received JSON: $json');
+    
+    final id = json['id'] as String?;
+    if (id == null || id.isEmpty) {
+      print('⚠️ Post.fromJson: Missing ID in response, this might be expected for update operations');
+      // For update operations, the backend might not return the ID
+      // We'll handle this in the calling code
+    }
+    
     return Post(
-      id: json['id'] as String? ?? '',
+      id: id ?? '', // Use empty string as fallback, will be handled by calling code
       userId: json['userId'] as String? ?? '',
       username: json['username'] as String? ?? 'Unknown User',
       userProfilePicture: json['userProfilePicture'] as String? ?? '',

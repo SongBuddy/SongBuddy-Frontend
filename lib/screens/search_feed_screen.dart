@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -22,10 +23,19 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   late stt.SpeechToText _speech;
   bool _isListening = false;
   bool _isSearching = false;
+  bool _isLoadingUsers = false;
+  String? _searchError;
 
   // Backend services
   late final BackendService _backendService;
   late final AuthProvider _authProvider;
+
+  // Search debouncing
+  Timer? _debounceTimer;
+  static const Duration _debounceDelay = Duration(milliseconds: 500);
+
+  // Real search results
+  List<Map<String, dynamic>> _searchResults = [];
 
   // Track likes for posts
   final Map<int, bool> _likedPosts = {};
@@ -46,7 +56,9 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
         setState(() {
           query = t;
           _isSearching = true;
+          _searchError = null;
         });
+        _performSearch(t);
       }
     });
 
@@ -65,10 +77,75 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchFocusNode.dispose();
     _controller.dispose();
     if (_isListening) _speech.stop();
     super.dispose();
+  }
+
+  /// Perform debounced search
+  void _performSearch(String searchQuery) {
+    _debounceTimer?.cancel();
+    
+    if (searchQuery.trim().isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isLoadingUsers = false;
+        _searchError = null;
+      });
+      _onSearchComplete();
+      return;
+    }
+
+    if (searchQuery.trim().isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isLoadingUsers = false;
+        _searchError = null;
+      });
+      return;
+    }
+
+    _debounceTimer = Timer(_debounceDelay, () {
+      _searchUsers(searchQuery.trim());
+    });
+  }
+
+  /// Search users from backend
+  Future<void> _searchUsers(String searchQuery) async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingUsers = true;
+      _searchError = null;
+    });
+
+    try {
+      print('🔍 SearchFeedScreen: Searching users with query: "$searchQuery"');
+      final results = await _backendService.searchUsers(searchQuery, limit: 20);
+      
+      if (!mounted) return;
+
+      setState(() {
+        _searchResults = results;
+        _isLoadingUsers = false;
+        _searchError = null;
+      });
+
+      print('✅ SearchFeedScreen: Found ${results.length} users');
+      _onSearchComplete();
+    } catch (e) {
+      if (!mounted) return;
+
+      print('❌ SearchFeedScreen: Search error: $e');
+      setState(() {
+        _searchResults = [];
+        _isLoadingUsers = false;
+        _searchError = 'Failed to search users: ${e.toString()}';
+      });
+      _onSearchComplete();
+    }
   }
 
   Future<void> _listen() async {
@@ -100,14 +177,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
     }
   }
 
-  final List<Map<String, dynamic>> users = [
-    {'username': 'Alice', 'followers': 120, 'avatar': Icons.person},
-    {'username': 'Alex', 'followers': 310, 'avatar': Icons.person},
-    {'username': 'Adam', 'followers': 200, 'avatar': Icons.person},
-    {'username': 'Bob', 'followers': 95, 'avatar': Icons.person},
-    {'username': 'Charlie', 'followers': 230, 'avatar': Icons.person},
-    {'username': 'Eve', 'followers': 200, 'avatar': Icons.person},
-  ];
+  // Removed hardcoded users - now using real backend search
 
   final List<Map<String, dynamic>> posts = [
     {
@@ -139,50 +209,123 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
     },
   ];
 
-  List<Map<String, dynamic>> get filteredUsers {
-    final q = query.trim().toLowerCase();
-    if (q.isEmpty) return [];
-    return users
-        .where((u) => (u['username'] as String).toLowerCase().startsWith(q))
-        .toList();
-  }
+  // Removed filteredUsers getter - now using _searchResults from backend
 
   Widget _buildSuggestionDropdown() {
-    final suggestions = filteredUsers;
-    if (suggestions.isEmpty) {
+    // Show loading state
+    if (_isLoadingUsers) {
       return const Expanded(
         child: Center(
-          child: Text("No users found", style: TextStyle(color: Colors.white54)),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.white70),
+              SizedBox(height: 16),
+              Text("Searching users...", style: TextStyle(color: Colors.white54)),
+            ],
+          ),
         ),
       );
     }
 
+    // Show error state
+    if (_searchError != null) {
+      return Expanded(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, color: Colors.red.shade300, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                _searchError!,
+                style: const TextStyle(color: Colors.white54),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show no results
+    if (_searchResults.isEmpty && query.trim().isNotEmpty) {
+      return const Expanded(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.search_off, color: Colors.white54, size: 48),
+              SizedBox(height: 16),
+              Text("No users found", style: TextStyle(color: Colors.white54)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show search results
     return Expanded(
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: suggestions.length,
+        itemCount: _searchResults.length,
         separatorBuilder: (_, __) =>
             Divider(color: Colors.white.withOpacity(0.08), height: 1),
         itemBuilder: (context, idx) {
-          final u = suggestions[idx];
+          final user = _searchResults[idx];
+          final displayName = user['displayName'] as String? ?? 'Unknown User';
+          final username = user['username'] as String? ?? '';
+          final followersCount = user['followersCount'] as int? ?? 0;
+          final profilePicture = user['profilePicture'] as String? ?? '';
+          
           return ListTile(
             leading: CircleAvatar(
               backgroundColor: Colors.purple,
-              child: Icon(u['avatar'], color: Colors.white),
+              backgroundImage: profilePicture.isNotEmpty 
+                  ? NetworkImage(profilePicture) 
+                  : null,
+              child: profilePicture.isEmpty 
+                  ? const Icon(Icons.person, color: Colors.white)
+                  : null,
             ),
-            title: Text(u['username'],
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w600)),
-            subtitle: Text('${u['followers']} followers',
-                style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            title: Text(
+              displayName,
+              style: const TextStyle(
+                color: Colors.white, 
+                fontWeight: FontWeight.w600
+              ),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (username.isNotEmpty)
+                  Text(
+                    '@$username',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                Text(
+                  '$followersCount followers',
+                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+              ],
+            ),
             onTap: () {
               _searchFocusNode.unfocus();
+              // Clear search after selecting a user to go back to discovery feed
+              setState(() {
+                _isSearching = false;
+                query = '';
+                _controller.clear();
+                _searchResults = [];
+              });
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => UserProfileScreen(
-                    username: u['username'] as String,
-                    avatarUrl: "https://i.pravatar.cc/150?img=1",
+                    username: displayName,
+                    avatarUrl: profilePicture.isNotEmpty 
+                        ? profilePicture 
+                        : "https://i.pravatar.cc/150?img=1",
                   ),
                 ),
               );
@@ -266,12 +409,26 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   }
 
   void _cancelSearch() {
+    _debounceTimer?.cancel();
     setState(() {
       query = '';
       _controller.clear();
       _isSearching = false;
+      _searchResults = [];
+      _isLoadingUsers = false;
+      _searchError = null;
       _searchFocusNode.unfocus();
     });
+  }
+
+  void _onSearchComplete() {
+    // Only set _isSearching to false if the search field is empty
+    // This allows users to see search results while keeping the search active
+    if (query.trim().isEmpty) {
+      setState(() {
+        _isSearching = false;
+      });
+    }
   }
 
   @override
@@ -309,7 +466,9 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
                                   setState(() {
                                     query = '';
                                     _controller.clear();
-                                    _isSearching = true;
+                                    _searchResults = [];
+                                    _isLoadingUsers = false;
+                                    _searchError = null;
                                   });
                                 },
                               ),

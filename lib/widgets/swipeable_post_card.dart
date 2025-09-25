@@ -12,6 +12,7 @@ class SwipeablePostCard extends StatefulWidget {
   final void Function(bool isLiked, int likes)? onLikeChanged;
   final VoidCallback? onCardTap;
   final VoidCallback? onShare;
+  final VoidCallback? onOpenInSpotify;
   final bool showUserInfo;
 
   const SwipeablePostCard({
@@ -23,6 +24,7 @@ class SwipeablePostCard extends StatefulWidget {
     this.onLikeChanged,
     this.onCardTap,
     this.onShare,
+    this.onOpenInSpotify,
     this.showUserInfo = true,
   });
 
@@ -259,6 +261,7 @@ class _SwipeablePostCardState extends State<SwipeablePostCard>
                   onLikeChanged: widget.onLikeChanged,
                   onCardTap: widget.onCardTap,
                   onShare: widget.onShare,
+                  onOpenInSpotify: widget.onOpenInSpotify,
                   showFollowButton: false,
                   showUserInfo: widget.showUserInfo,
                 ),

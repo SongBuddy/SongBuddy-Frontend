@@ -5,6 +5,7 @@ import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
 import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/services/spotify_service.dart';
+import 'package:songbuddy/services/spotify_deep_link_service.dart';
 import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/widgets/spotify_login_button.dart';
@@ -1016,6 +1017,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
         onShare: () {
           // TODO: Implement share functionality
           print('Share post: ${post.id}');
+        },
+        onOpenInSpotify: () async {
+          try {
+            print('🔗 ProfileScreen: Opening song in Spotify: ${post.songName} by ${post.artistName}');
+            final success = await SpotifyDeepLinkService.openSongInSpotify(
+              songName: post.songName,
+              artistName: post.artistName,
+            );
+            
+            if (success) {
+              print('✅ ProfileScreen: Successfully opened song in Spotify');
+              HapticFeedback.lightImpact();
+            } else {
+              print('❌ ProfileScreen: Failed to open song in Spotify');
+              
+              // Try simple Spotify opening as fallback
+              final simpleSuccess = await SpotifyDeepLinkService.openSpotifySimple();
+              if (simpleSuccess) {
+                print('✅ ProfileScreen: Opened Spotify app (simple method)');
+                HapticFeedback.lightImpact();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(SpotifyDeepLinkService.getSpotifyErrorMessage()),
+                    backgroundColor: Colors.orange,
+                    duration: const Duration(seconds: 4),
+                    action: SnackBarAction(
+                      label: 'OK',
+                      textColor: Colors.white,
+                      onPressed: () {},
+                    ),
+                  ),
+                );
+              }
+            }
+          } catch (e) {
+            print('❌ ProfileScreen: Error opening Spotify: $e');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error opening Spotify: $e'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
         },
       ),
     );

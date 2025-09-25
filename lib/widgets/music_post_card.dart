@@ -17,6 +17,7 @@ class MusicPostCard extends StatefulWidget {
   final VoidCallback? onShare;
   final void Function(bool isLiked, int likes)? onLikeChanged;
   final VoidCallback? onFollowPressed;
+  final VoidCallback? onOpenInSpotify;
 
   final bool showFollowButton;
   final bool showUserInfo;
@@ -38,6 +39,7 @@ class MusicPostCard extends StatefulWidget {
     this.onShare,
     this.onLikeChanged,
     this.onFollowPressed,
+    this.onOpenInSpotify,
     this.showFollowButton = false,
     this.showUserInfo = true,
     this.height = 165,
@@ -267,7 +269,7 @@ class _MusicPostCardState extends State<MusicPostCard> {
                     ),
                     const Spacer(),
 
-                    // Bottom: like + share
+                    // Bottom: like + share + spotify
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -282,6 +284,15 @@ class _MusicPostCardState extends State<MusicPostCard> {
                         Text(
                           "$likes",
                           style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: widget.onOpenInSpotify,
+                          icon: const Icon(
+                            Icons.music_note,
+                            color: Colors.green,
+                            size: 18,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         IconButton(

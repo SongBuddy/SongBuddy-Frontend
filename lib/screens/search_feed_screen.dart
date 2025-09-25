@@ -98,11 +98,11 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
       return;
     }
 
-    if (searchQuery.trim().length < 2) {
+    if (searchQuery.trim().isEmpty) {
       setState(() {
         _searchResults = [];
         _isLoadingUsers = false;
-        _searchError = 'Search query must be at least 2 characters';
+        _searchError = null;
       });
       return;
     }

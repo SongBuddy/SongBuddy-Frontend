@@ -5,7 +5,12 @@ import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
 import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/services/spotify_service.dart';
+import 'package:songbuddy/services/spotify_deep_link_service.dart';
+import 'package:songbuddy/services/backend_service.dart';
+import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/widgets/spotify_login_button.dart';
+import 'package:songbuddy/widgets/swipeable_post_card.dart';
+import 'package:songbuddy/screens/create_post_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -17,6 +22,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   late final AuthProvider _authProvider;
   late final SpotifyService _spotifyService;
+  late final BackendService _backendService;
 
   bool _initialized = false;
   bool _loading = false;
@@ -32,6 +38,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Set<String> _selectedTracks = <String>{};
   bool _isSelectionMode = false;
 
+  // User posts
+  List<Post> _userPosts = [];
+  bool _loadingPosts = false;
+
   bool _loadingTop = false; // non-blocking loading for top artists/tracks (kept for future use)
   static const Duration _animDur = Duration(milliseconds: 250);
 
@@ -40,6 +50,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _authProvider = AuthProvider();
     _spotifyService = SpotifyService();
+    _backendService = BackendService();
     _initialize();
   }
 
@@ -138,6 +149,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _user = user;
       });
+      
+      // Fetch user profile after getting user data
+      _fetchUserProfile();
+      
       // ignore: avoid_print
       print('[Profile] Fetch success: user=${user['id']} topArtists=${_topArtists.length} topTracks=${_topTracks.length} recently=${_recentlyPlayed.length}');
     } catch (e) {
@@ -183,28 +198,140 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _createPost() {
     if (_selectedTracks.isEmpty) return;
     
-    // TODO: Implement post creation with selected tracks
-    // For now, just show a dialog
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create Post'),
-        content: Text('Selected ${_selectedTracks.length} track(s) for your post.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _toggleSelectionMode();
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
+    // Find the selected track from recently played
+    final selectedTrackId = _selectedTracks.first;
+    final selectedTrack = _recentlyPlayed.firstWhere(
+      (track) => track['track']['id'] == selectedTrackId,
+      orElse: () => _recentlyPlayed.first,
     );
+    
+    // Navigate to create post screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CreatePostScreen(
+          selectedTrack: selectedTrack['track'],
+          selectedTrackId: selectedTrackId,
+        ),
+      ),
+    ).then((success) {
+      if (success == true) {
+        // Post created successfully, exit selection mode and refresh posts
+        _toggleSelectionMode();
+        _fetchUserProfile();
+        HapticFeedback.lightImpact();
+      }
+    });
+  }
+
+  /// Fetch user profile with posts (NEW EFFICIENT API)
+  Future<void> _fetchUserProfile() async {
+    if (_authProvider.userId == null) {
+      print('❌ ProfileScreen: User ID is null, cannot fetch profile');
+      return;
+    }
+    
+    print('🔍 ProfileScreen: Fetching profile for user: ${_authProvider.userId}');
+    
+    setState(() {
+      _loadingPosts = true;
+    });
+
+    try {
+      final profileData = await _backendService.getUserProfile(_authProvider.userId!, currentUserId: _authProvider.userId);
+      print('🔍 ProfileScreen: Received profile data');
+      print('🔍 ProfileScreen: User: ${profileData.user.displayName}, Posts: ${profileData.posts.length}');
+      
+      // Update posts from the profile data
+      setState(() {
+        _userPosts = profileData.posts;
+      });
+      
+      print('✅ ProfileScreen: Successfully updated _userPosts with ${_userPosts.length} posts');
+      
+      // Debug: Check final posts state
+      if (_userPosts.isEmpty) {
+        print('❌ ProfileScreen: _userPosts is empty after processing!');
+      } else {
+        print('✅ ProfileScreen: _userPosts has ${_userPosts.length} posts');
+        for (int i = 0; i < _userPosts.length; i++) {
+          final post = _userPosts[i];
+          print('🔍 ProfileScreen: Final post $i: id=${post.id}, title=${post.songName}');
+        }
+      }
+      
+      // Log like states for debugging
+      for (final post in _userPosts) {
+        print('🔍 ProfileScreen: Post ${post.id} - liked: ${post.isLikedByCurrentUser}, count: ${post.likeCount}');
+      }
+    } catch (e) {
+      print('❌ ProfileScreen: Failed to fetch user profile: $e');
+      
+      // Show user-friendly error message
+      if (e.toString().contains('Connection timed out') || e.toString().contains('SocketException')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot connect to server. Please check your network connection.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load profile: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _loadingPosts = false;
+      });
+    }
+  }
+
+  /// Delete a post
+  Future<void> _deletePost(String postId) async {
+    try {
+      // Get the current user ID
+      final userId = _authProvider.userId;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+      
+      // Debug: Print the post being deleted and userId
+      final postToDelete = _userPosts.firstWhere((post) => post.id == postId);
+      print('🔍 ProfileScreen: Deleting post: $postId');
+      print('🔍 ProfileScreen: Post owner userId: ${postToDelete.userId}');
+      print('🔍 ProfileScreen: Current user userId: $userId');
+      print('🔍 ProfileScreen: UserIds match: ${postToDelete.userId == userId}');
+      
+      await _backendService.deletePost(postId, userId: userId);
+      setState(() {
+        _userPosts.removeWhere((post) => post.id == postId);
+      });
+      HapticFeedback.lightImpact();
+      
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Post deleted successfully'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      print('❌ ProfileScreen: Failed to delete post: $e');
+      // Show error message to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete post: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
 
@@ -309,6 +436,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 : _buildTopTracksWidget(context),
                             _buildSectionTitle('Recently Played'),
                             _buildRecentlyPlayedWidget(),
+                            _buildSectionTitle('My Posts'),
+                            _buildUserPostsWidget(),
                             if (_insufficientScopeTop)
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -490,7 +619,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildTopArtistsContent({Key? key}) {
     return SizedBox(
       key: key,
-      height: 120,
+      height: 80,
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
@@ -501,13 +630,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return Column(
             children: [
               CircleAvatar(
-                radius: 36,
+                radius: 24,
                 backgroundImage: url != null ? NetworkImage(url) : null,
-                child: url == null ? const Icon(Icons.person, color: AppColors.onDarkSecondary) : null,
+                child: url == null ? const Icon(Icons.person, color: AppColors.onDarkSecondary, size: 20) : null,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               SizedBox(
-                width: 80,
+                width: 60,
                 child: Text(
                   artist['name'] as String? ?? '',
                   maxLines: 2,
@@ -520,7 +649,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         },
         separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemCount: _topArtists.length,
+        itemCount: _topArtists.length > 5 ? 5 : _topArtists.length,
       ),
     );
   }
@@ -614,86 +743,71 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     }
-    final cross = _gridCountForWidth(MediaQuery.of(context).size.width);
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: cross,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.75,
-      ),
-      itemCount: _topTracks.length,
-      itemBuilder: (context, index) {
-        if (index >= _topTracks.length) return const SizedBox.shrink();
-        final track = _topTracks[index];
-        final images = track['album']?['images'] as List<dynamic>? ?? const [];
-        final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
-        final artists = (track['artists'] as List<dynamic>? ?? const [])
-            .map((a) => a['name'] as String? ?? '')
-            .where((s) => s.isNotEmpty)
-            .join(', ');
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: imageUrl != null
-                    ? Image.network(imageUrl, fit: BoxFit.cover)
-                    : Container(
-                        color: AppColors.onDarkPrimary.withOpacity(0.12),
-                        child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
-                      ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              track['name'] as String? ?? '',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
-            ),
-            Text(
-              artists,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.captionOnDark,
-            ),
-          ],
-        );
-      },
-    );
+     return SizedBox(
+       height: 80,
+       child: ListView.separated(
+         padding: const EdgeInsets.symmetric(horizontal: 16),
+         scrollDirection: Axis.horizontal,
+         itemBuilder: (context, index) {
+           if (index >= _topTracks.length) return const SizedBox.shrink();
+           final track = _topTracks[index];
+           final images = track['album']?['images'] as List<dynamic>? ?? const [];
+           final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
+           return Column(
+             children: [
+               ClipRRect(
+                 borderRadius: BorderRadius.circular(8),
+                 child: imageUrl != null
+                     ? Image.network(
+                         imageUrl, 
+                         width: 48, 
+                         height: 48, 
+                         fit: BoxFit.cover,
+                       )
+                     : Container(
+                         width: 48,
+                         height: 48,
+                         color: AppColors.onDarkPrimary.withOpacity(0.12),
+                         child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary, size: 20),
+                       ),
+               ),
+               const SizedBox(height: 6),
+               SizedBox(
+                 width: 60,
+                 child: Text(
+                   track['name'] as String? ?? '',
+                   maxLines: 2,
+                   overflow: TextOverflow.ellipsis,
+                   textAlign: TextAlign.center,
+                   style: AppTextStyles.captionOnDark.copyWith(fontSize: 10),
+                 ),
+               )
+             ],
+           );
+         },
+         separatorBuilder: (_, __) => const SizedBox(width: 12),
+         itemCount: _topTracks.length > 5 ? 5 : _topTracks.length,
+       ),
+     );
   }
 
   Widget _buildTopTracksSkeletonWidget(BuildContext context) {
-    final gridCount = _gridCountForWidth(MediaQuery.of(context).size.width);
-    final itemCount = gridCount * 2;
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: gridCount,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.75,
-      ),
-      itemCount: itemCount,
-      itemBuilder: (context, index) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return SizedBox(
+      height: 80,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemBuilder: (_, __) => Column(
+          mainAxisAlignment: MainAxisAlignment.start,
           children: const [
-            Expanded(child: _SkeletonBox(width: double.infinity, height: double.infinity, radius: 12)),
-            SizedBox(height: 8),
-            _SkeletonBox(width: 120, height: 14, radius: 6),
+            _SkeletonBox(width: 48, height: 48, radius: 8),
             SizedBox(height: 6),
-            _SkeletonBox(width: 80, height: 12, radius: 6),
+            _SkeletonBox(width: 60, height: 10, radius: 6),
           ],
-        );
-      },
+        ),
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemCount: 5,
+      ),
     );
   }
 
@@ -814,9 +928,196 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // User posts widget
+  Widget _buildUserPostsWidget() {
+    if (_loadingPosts) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          children: List.generate(3, (index) => const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: _SkeletonTile(),
+          )),
+        ),
+      );
+    }
+
+    print('🔍 ProfileScreen: UI rendering - _userPosts.length = ${_userPosts.length}');
+
+    if (_userPosts.isEmpty) {
+      print('🔍 ProfileScreen: Showing empty state - no posts to display');
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: _EmptyCard(
+          icon: Icons.post_add,
+          title: 'No posts yet',
+          subtitle: 'Create your first post by selecting a track from Recently Played.',
+        ),
+      );
+    }
+
+    print('🔍 ProfileScreen: Rendering ${_userPosts.length} posts');
+    return Column(
+      children: _userPosts.map((post) => _buildPostCard(post)).toList(),
+    );
+  }
+
+  // Build individual post card using SwipeablePostCard
+  Widget _buildPostCard(Post post) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: SwipeablePostCard(
+        post: post,
+        showUserInfo: false, // Hide username and avatar in profile screen
+        onDelete: () => _deletePost(post.id),
+        onEditDescription: (newDescription) => _editPost(post, newDescription: newDescription),
+        onLikeChanged: (isLiked, likes) async {
+          try {
+            final userId = _authProvider.userId;
+            if (userId == null) {
+              print('❌ ProfileScreen: User not authenticated for like');
+              return;
+            }
+            
+            print('🔍 ProfileScreen: Toggling like for post: ${post.id}, isLiked: $isLiked');
+            final result = await _backendService.togglePostLike(post.id, userId, !isLiked);
+            print('✅ ProfileScreen: Like toggled successfully, result: $result');
+            
+            // Update the post in the list with new like count
+            setState(() {
+              final postIndex = _userPosts.indexWhere((p) => p.id == post.id);
+              if (postIndex != -1) {
+                _userPosts[postIndex] = _userPosts[postIndex].copyWith(
+                  likeCount: likes,
+                  isLikedByCurrentUser: isLiked,
+                );
+                print('✅ ProfileScreen: Updated like state for post ${post.id}: liked=$isLiked, count=$likes');
+              } else {
+                print('❌ ProfileScreen: Post ${post.id} not found for like update');
+              }
+            });
+            
+            HapticFeedback.lightImpact();
+          } catch (e) {
+            print('❌ ProfileScreen: Failed to toggle like: $e');
+            // Show error message to user
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to update like: $e'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+            },
+            onCardTap: () {
+              // TODO: Implement post tap functionality
+              print('Post tapped: ${post.id}');
+            },
+        onShare: () {
+          // TODO: Implement share functionality
+          print('Share post: ${post.id}');
+        },
+        onOpenInSpotify: () async {
+          try {
+            print('🔗 ProfileScreen: Opening song in Spotify: ${post.songName} by ${post.artistName}');
+            final success = await SpotifyDeepLinkService.openSongInSpotify(
+              songName: post.songName,
+              artistName: post.artistName,
+            );
+            
+            if (success) {
+              print('✅ ProfileScreen: Successfully opened song in Spotify');
+              HapticFeedback.lightImpact();
+            } else {
+              print('❌ ProfileScreen: Failed to open song in Spotify');
+              
+              // Try simple Spotify opening as fallback
+              final simpleSuccess = await SpotifyDeepLinkService.openSpotifySimple();
+              if (simpleSuccess) {
+                print('✅ ProfileScreen: Opened Spotify app (simple method)');
+                HapticFeedback.lightImpact();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(SpotifyDeepLinkService.getSpotifyErrorMessage()),
+                    backgroundColor: Colors.orange,
+                    duration: const Duration(seconds: 4),
+                    action: SnackBarAction(
+                      label: 'OK',
+                      textColor: Colors.white,
+                      onPressed: () {},
+                    ),
+                  ),
+                );
+              }
+            }
+          } catch (e) {
+            print('❌ ProfileScreen: Error opening Spotify: $e');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error opening Spotify: $e'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+
+  /// Edit a post
+  Future<void> _editPost(Post post, {String? newDescription}) async {
+    try {
+      final userId = _authProvider.userId;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      if (newDescription != null) {
+        print('🔍 ProfileScreen: Updating post: ${post.id} with new description');
+        print('🔍 ProfileScreen: Original post ID: ${post.id}');
+        
+        final updatedPost = await _backendService.updatePost(post.id, userId, newDescription);
+        print('🔍 ProfileScreen: Updated post ID: ${updatedPost.id}');
+        
+        // Handle case where backend doesn't return ID in response
+        final finalUpdatedPost = updatedPost.id.isEmpty 
+            ? updatedPost.copyWith(id: post.id) // Preserve original ID
+            : updatedPost;
+        
+        print('🔍 ProfileScreen: Final post ID: ${finalUpdatedPost.id}');
+        
+        // Refresh the profile screen to get updated post information
+        print('🔄 ProfileScreen: Refreshing profile screen after post update');
+        await _fetchUserProfile();
+        
+        HapticFeedback.lightImpact();
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Post updated successfully'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ ProfileScreen: Failed to update post: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update post: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   // New: Skeleton widgets list used when loading
   List<Widget> _buildSkeletonWidgets(BuildContext context) {
-    final gridCount = _gridCountForWidth(MediaQuery.of(context).size.width);
     return [
       _buildSectionTitle('Currently Playing'),
       const Padding(
@@ -841,31 +1142,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
           itemCount: 6,
         ),
       ),
-      _buildSectionTitle('Top Tracks'),
-      GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: gridCount,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 0.75,
-        ),
-        itemCount: gridCount * 2,
-        itemBuilder: (context, index) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Expanded(child: _SkeletonBox(width: double.infinity, height: double.infinity, radius: 12)),
-              SizedBox(height: 8),
-              _SkeletonBox(width: 120, height: 14, radius: 6),
-              SizedBox(height: 6),
-              _SkeletonBox(width: 80, height: 12, radius: 6),
-            ],
-          );
-        },
-      ),
+       _buildSectionTitle('Top Tracks'),
+       SizedBox(
+         height: 80,
+         child: ListView.separated(
+           padding: const EdgeInsets.symmetric(horizontal: 16),
+           scrollDirection: Axis.horizontal,
+           itemBuilder: (_, __) => Column(
+             mainAxisAlignment: MainAxisAlignment.start,
+             children: const [
+               _SkeletonBox(width: 48, height: 48, radius: 8),
+               SizedBox(height: 6),
+               _SkeletonBox(width: 60, height: 10, radius: 6),
+             ],
+           ),
+           separatorBuilder: (_, __) => const SizedBox(width: 12),
+           itemCount: 5,
+         ),
+       ),
       _buildSectionTitle('Recently Played'),
       ListView.builder(
         shrinkWrap: true,

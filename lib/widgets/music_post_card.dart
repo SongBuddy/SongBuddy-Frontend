@@ -17,8 +17,10 @@ class MusicPostCard extends StatefulWidget {
   final VoidCallback? onShare;
   final void Function(bool isLiked, int likes)? onLikeChanged;
   final VoidCallback? onFollowPressed;
+  final VoidCallback? onOpenInSpotify;
 
   final bool showFollowButton;
+  final bool showUserInfo;
   final double height;
   final double borderRadius;
   final double overlayOpacity;
@@ -37,7 +39,9 @@ class MusicPostCard extends StatefulWidget {
     this.onShare,
     this.onLikeChanged,
     this.onFollowPressed,
+    this.onOpenInSpotify,
     this.showFollowButton = false,
+    this.showUserInfo = true,
     this.height = 165,
     this.borderRadius = 18,
     this.overlayOpacity = 0.35,
@@ -101,76 +105,130 @@ class _MusicPostCardState extends State<MusicPostCard> {
 
               // Foreground content
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     // Top row: avatar + username | time | optional follow
-                    Row(
-                      children: [
-                        Padding(
-                          padding: EdgeInsets.symmetric(
-                            vertical: widget.avatarVerticalPadding,
-                          ),
-                          child: CircleAvatar(
-                            radius: 14,
-                            backgroundImage: NetworkImage(widget.avatarUrl),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            widget.username,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                    if (widget.showUserInfo)
+                      Row(
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                              vertical: widget.avatarVerticalPadding,
                             ),
-                            overflow: TextOverflow.ellipsis,
+                            child: CircleAvatar(
+                              radius: 14,
+                              backgroundImage: NetworkImage(widget.avatarUrl),
+                            ),
                           ),
-                        ),
-                        Text(
-                          widget.timeAgo,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 11,
-                          ),
-                        ),
-                        if (widget.showFollowButton) ...[
                           const SizedBox(width: 8),
-                          TextButton(
-                            onPressed: widget.onFollowPressed,
-                            style: TextButton.styleFrom(
-                              backgroundColor: Colors.white.withOpacity(0.15),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            ),
-                            child: const Text(
-                              "Follow",
-                              style: TextStyle(color: Colors.white, fontSize: 12),
+                          Expanded(
+                            child: Text(
+                              widget.username,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        ]
-                      ],
-                    ),
-                    const SizedBox(height: 10),
+                          Text(
+                            widget.timeAgo,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                            ),
+                          ),
+                          if (widget.showFollowButton) ...[
+                            const SizedBox(width: 8),
+                            TextButton(
+                              onPressed: widget.onFollowPressed,
+                              style: TextButton.styleFrom(
+                                backgroundColor: Colors.white.withOpacity(0.15),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              ),
+                              child: const Text(
+                                "Follow",
+                                style: TextStyle(color: Colors.white, fontSize: 12),
+                              ),
+                            ),
+                          ]
+                        ],
+                      )
+                    else
+                      // Just show time when user info is hidden
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            widget.timeAgo,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 8),
 
                     // Middle: small cover + song info (+ optional description)
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            widget.coverUrl,
-                            width: 60,
-                            height: 60,
-                            fit: BoxFit.cover,
+                        // Cover image with fixed size
+                        SizedBox(
+                          width: 60,
+                          height: 60,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: widget.coverUrl.isNotEmpty
+                                ? Image.network(
+                                    widget.coverUrl,
+                                    width: 60,
+                                    height: 60,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      print('❌ Image load error: $error');
+                                      return Container(
+                                        width: 60,
+                                        height: 60,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey[800],
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Icon(
+                                          Icons.music_note,
+                                          color: Colors.white70,
+                                          size: 24,
+                                        ),
+                                      );
+                                    },
+                                  )
+                                : Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[800],
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(
+                                      Icons.music_note,
+                                      color: Colors.white70,
+                                      size: 24,
+                                    ),
+                                  ),
                           ),
                         ),
                         const SizedBox(width: 12),
+                        // Song info with flexible layout
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 widget.trackTitle,
@@ -182,6 +240,7 @@ class _MusicPostCardState extends State<MusicPostCard> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
+                              const SizedBox(height: 1),
                               Text(
                                 widget.artist,
                                 style: const TextStyle(
@@ -191,16 +250,18 @@ class _MusicPostCardState extends State<MusicPostCard> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              if ((widget.description ?? '').isNotEmpty)
+                              if ((widget.description ?? '').isNotEmpty) ...[
+                                const SizedBox(height: 2),
                                 Text(
                                   widget.description!,
                                   style: const TextStyle(
                                     color: Colors.white60,
                                     fontSize: 11,
                                   ),
-                                  maxLines: 1,
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
+                              ],
                             ],
                           ),
                         ),
@@ -208,7 +269,7 @@ class _MusicPostCardState extends State<MusicPostCard> {
                     ),
                     const Spacer(),
 
-                    // Bottom: like + share
+                    // Bottom: like + share + spotify
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -223,6 +284,15 @@ class _MusicPostCardState extends State<MusicPostCard> {
                         Text(
                           "$likes",
                           style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: widget.onOpenInSpotify,
+                          icon: const Icon(
+                            Icons.music_note,
+                            color: Colors.green,
+                            size: 18,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         IconButton(

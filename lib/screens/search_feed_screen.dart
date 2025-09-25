@@ -1,9 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:songbuddy/screens/user_profile_screen.dart';
 import 'package:songbuddy/widgets/music_post_card.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:share_plus/share_plus.dart';
+import 'package:songbuddy/services/backend_service.dart';
+import 'package:songbuddy/providers/auth_provider.dart';
 
 class SearchFeedScreen extends StatefulWidget {
   const SearchFeedScreen({super.key});
@@ -20,6 +23,10 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   bool _isListening = false;
   bool _isSearching = false;
 
+  // Backend services
+  late final BackendService _backendService;
+  late final AuthProvider _authProvider;
+
   // Track likes for posts
   final Map<int, bool> _likedPosts = {};
   final Map<int, int> _likeCounts = {};
@@ -29,6 +36,8 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
     super.initState();
     _speech = stt.SpeechToText();
     _searchFocusNode = FocusNode();
+    _backendService = BackendService();
+    _authProvider = AuthProvider();
     _searchFocusNode.addListener(_onFocusChange);
 
     _controller.addListener(() {
@@ -216,11 +225,35 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
             ),
           );
         },
-        onLikeChanged: (newLiked, newLikes) {
-          setState(() {
-            _likedPosts[index] = newLiked;
-            _likeCounts[index] = newLikes;
-          });
+        onLikeChanged: (newLiked, newLikes) async {
+          try {
+            final userId = _authProvider.userId;
+            if (userId == null) {
+              print('❌ SearchFeedScreen: User not authenticated for like');
+              return;
+            }
+            
+            print('🔍 SearchFeedScreen: Toggling like for post: ${posts[index]['id']}, isLiked: $newLiked');
+            final result = await _backendService.togglePostLike(posts[index]['id'], userId, !newLiked);
+            print('✅ SearchFeedScreen: Like toggled successfully, result: $result');
+            
+            setState(() {
+              _likedPosts[index] = newLiked;
+              _likeCounts[index] = newLikes;
+            });
+            
+            HapticFeedback.lightImpact();
+          } catch (e) {
+            print('❌ SearchFeedScreen: Failed to toggle like: $e');
+            // Show error message to user
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to update like: $e'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
         },
         onShare: () {
           final text =

@@ -8,6 +8,9 @@ class AppUser {
   final List<Map<String, dynamic>> topArtists;
   final List<Map<String, dynamic>> topTracks;
   final List<Map<String, dynamic>> recentlyPlayed;
+  final List<String> following; // User IDs that this user follows
+  final List<String> followers; // User IDs that follow this user
+  final int postCount; // Number of posts by this user
 
   AppUser({
     required this.id,
@@ -19,6 +22,9 @@ class AppUser {
     this.topArtists = const [],
     this.topTracks = const [],
     this.recentlyPlayed = const [],
+    this.following = const [],
+    this.followers = const [],
+    this.postCount = 0,
   });
 
   factory AppUser.fromSpotify(Map<String, dynamic> json) {
@@ -40,6 +46,13 @@ class AppUser {
       recentlyPlayed: json['recentlyPlayed'] != null 
           ? List<Map<String, dynamic>>.from(json['recentlyPlayed'])
           : [],
+      following: json['following'] != null 
+          ? List<String>.from(json['following'])
+          : [],
+      followers: json['followers'] != null 
+          ? List<String>.from(json['followers'])
+          : [],
+      postCount: json['postCount'] ?? 0,
     );
   }
 
@@ -54,6 +67,9 @@ class AppUser {
       "topArtists": topArtists,
       "topTracks": topTracks,
       "recentlyPlayed": recentlyPlayed,
+      "following": following,
+      "followers": followers,
+      "postCount": postCount,
     };
   }
 }

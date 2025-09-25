@@ -38,6 +38,7 @@ class User {
   final int followersCount;
   final int followingCount;
   final int postsCount;
+  final bool isFollowing; // New field for follow status
 
   const User({
     required this.id,
@@ -47,6 +48,7 @@ class User {
     required this.followersCount,
     required this.followingCount,
     required this.postsCount,
+    this.isFollowing = false, // Default to false
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -58,6 +60,7 @@ class User {
       followersCount: json['followersCount'] as int,
       followingCount: json['followingCount'] as int,
       postsCount: json['postsCount'] as int,
+      isFollowing: json['isFollowing'] as bool? ?? false, // Handle missing field
     );
   }
 
@@ -70,6 +73,7 @@ class User {
       'followersCount': followersCount,
       'followingCount': followingCount,
       'postsCount': postsCount,
+      'isFollowing': isFollowing,
     };
   }
 }

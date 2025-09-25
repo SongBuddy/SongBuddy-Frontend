@@ -32,9 +32,11 @@ class BackendService {
   
   // Alternative IPs to try if the main one fails
   static const List<String> alternativeUrls = [
-    'http://192.168.83.108:3000',  // Current IP
-    'http://192.168.227.108:3000', // Previous IP
+    'http://192.168.83.108:3000',  // Current IP (Wi-Fi)
+    'http://192.168.56.1:3000',    // Ethernet adapter
+    'http://192.168.32.2:3000',    // Ethernet 6 adapter
     'http://192.168.1.108:3000',   // Common home network
+    'http://192.168.227.108:3000', // Previous IP
     'http://10.0.2.2:3000',        // Android emulator
     'http://localhost:3000',        // Local development
   ];
@@ -42,6 +44,33 @@ class BackendService {
   /// Clear any cached backend URLs to force rediscovery
   static void clearCache() {
     BackendApiService.clearBackendCache();
+  }
+
+  /// Test all possible backend URLs and return the working one
+  static Future<String?> testAllUrls() async {
+    print('🔍 BackendService: Testing all possible backend URLs...');
+    
+    for (String url in alternativeUrls) {
+      try {
+        print('🔍 BackendService: Testing URL: $url');
+        final response = await SimpleHttpClient.get(
+          Uri.parse("$url/health"),
+          headers: {"Content-Type": "application/json"},
+        );
+        
+        if (response.statusCode == 200) {
+          print('✅ BackendService: SUCCESS! Working URL: $url');
+          return url;
+        } else {
+          print('❌ BackendService: URL $url returned status ${response.statusCode}');
+        }
+      } catch (e) {
+        print('❌ BackendService: URL $url failed: $e');
+      }
+    }
+    
+    print('❌ BackendService: No working URLs found!');
+    return null;
   }
 
   /// Test backend connection before making requests
@@ -315,6 +344,55 @@ class BackendService {
     }
   }
 
+  /// Get feed posts (posts from users that the current user follows)
+  Future<List<Post>> getFeedPosts(String userId, {int limit = 20, int offset = 0, String? currentUserId}) async {
+    final url = "$baseUrl/api/posts/feed/$userId?limit=$limit&offset=$offset${currentUserId != null ? '&currentUserId=$currentUserId' : ''}";
+    print('🔗 BackendService: Getting feed posts from: $url');
+    
+    final response = await SimpleHttpClient.get(
+      Uri.parse(url),
+      headers: {"Content-Type": "application/json"},
+    );
+
+    print('📡 BackendService: Feed response - Status: ${response.statusCode}');
+    print('📡 BackendService: Raw response body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      print('🔍 BackendService: Parsed JSON data: $data');
+      print('🔍 BackendService: Data keys: ${data.keys.toList()}');
+      
+      // Check different possible response structures
+      List<dynamic> postsList = [];
+      
+      if (data['posts'] != null) {
+        postsList = data['posts'] as List<dynamic>;
+        print('📊 BackendService: Found posts in data["posts"]: ${postsList.length} items');
+      } else if (data['data'] != null) {
+        postsList = data['data'] as List<dynamic>;
+        print('📊 BackendService: Found posts in data["data"]: ${postsList.length} items');
+      } else if (data is List) {
+        postsList = data;
+        print('📊 BackendService: Data is directly a list: ${postsList.length} items');
+      } else {
+        print('❌ BackendService: No posts found in response. Available keys: ${data.keys.toList()}');
+        return [];
+      }
+      
+      final posts = postsList
+          .map((post) {
+            print('🔍 BackendService: Processing post: $post');
+            return Post.fromJson(post);
+          })
+          .toList();
+      
+      print('📊 BackendService: Successfully parsed ${posts.length} posts from feed');
+      return posts;
+    } else {
+      throw Exception("Failed to get feed posts: ${response.body}");
+    }
+  }
+
   /// Get random recent posts (for search/discovery feed)
   Future<List<Post>> getRandomRecentPosts({int limit = 20, int offset = 0, String? currentUserId}) async {
     final url = "$baseUrl/api/posts/random?limit=$limit&offset=$offset${currentUserId != null ? '&currentUserId=$currentUserId' : ''}";
@@ -409,7 +487,162 @@ class BackendService {
     }
   }
 
-  /// Follow/unfollow a user
+  /// Follow a user
+  Future<Map<String, dynamic>> followUser(String currentUserId, String targetUserId) async {
+    final url = "$baseUrl/api/users/$targetUserId/follow";
+    print('🔗 BackendService: Following user: $currentUserId -> $targetUserId');
+    
+    final response = await SimpleHttpClient.post(
+      Uri.parse(url),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "followerId": currentUserId,
+      }),
+    );
+
+    print('📡 BackendService: Follow response - Status: ${response.statusCode}, Body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        print('✅ BackendService: Successfully followed user');
+        return data['data'];
+      } else {
+        throw Exception("Failed to follow user: ${data['message']}");
+      }
+    } else {
+      throw Exception("Failed to follow user: ${response.statusCode} - ${response.body}");
+    }
+  }
+
+  /// Unfollow a user
+  Future<Map<String, dynamic>> unfollowUser(String currentUserId, String targetUserId) async {
+    final url = "$baseUrl/api/users/$targetUserId/follow";
+    print('🔗 BackendService: Unfollowing user: $currentUserId -> $targetUserId');
+    
+    final response = await SimpleHttpClient.delete(
+      Uri.parse(url),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "followerId": currentUserId,
+      }),
+    );
+
+    print('📡 BackendService: Unfollow response - Status: ${response.statusCode}, Body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        print('✅ BackendService: Successfully unfollowed user');
+        return data['data'];
+      } else {
+        throw Exception("Failed to unfollow user: ${data['message']}");
+      }
+    } else {
+      throw Exception("Failed to unfollow user: ${response.statusCode} - ${response.body}");
+    }
+  }
+
+  /// Check follow status
+  Future<Map<String, dynamic>> getFollowStatus(String currentUserId, String targetUserId) async {
+    final url = "$baseUrl/api/users/$targetUserId/follow-status?currentUserId=$currentUserId";
+    print('🔗 BackendService: Checking follow status: $currentUserId -> $targetUserId');
+    
+    final response = await SimpleHttpClient.get(
+      Uri.parse(url),
+      headers: {"Content-Type": "application/json"},
+    );
+
+    print('📡 BackendService: Follow status response - Status: ${response.statusCode}, Body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        print('✅ BackendService: Successfully got follow status');
+        return data['data'];
+      } else {
+        throw Exception("Failed to get follow status: ${data['message']}");
+      }
+    } else {
+      throw Exception("Failed to get follow status: ${response.statusCode} - ${response.body}");
+    }
+  }
+
+  /// Get user's followers
+  Future<List<Map<String, dynamic>>> getUserFollowers(String userId, {int page = 1, int limit = 20}) async {
+    final url = "$baseUrl/api/users/$userId/followers?page=$page&limit=$limit";
+    print('🔗 BackendService: Getting followers for user: $userId');
+    
+    try {
+      final response = await SimpleHttpClient.get(
+        Uri.parse(url),
+        headers: {"Content-Type": "application/json"},
+      );
+
+      print('📡 BackendService: Followers response - Status: ${response.statusCode}, Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          print('✅ BackendService: Successfully got followers');
+          // Handle case where data might be null or undefined
+          if (data['data'] == null) {
+            print('⚠️ BackendService: Followers data is null, returning empty list');
+            return [];
+          }
+          return List<Map<String, dynamic>>.from(data['data']);
+        } else {
+          throw Exception("Failed to get followers: ${data['message']}");
+        }
+      } else {
+        throw Exception("Failed to get followers: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      print('❌ BackendService: Error getting followers: $e');
+      // Return empty list instead of throwing error for better UX
+      print('⚠️ BackendService: Returning empty followers list due to error');
+      return [];
+    }
+  }
+
+  /// Get user's following
+  Future<List<Map<String, dynamic>>> getUserFollowing(String userId, {int page = 1, int limit = 20}) async {
+    final url = "$baseUrl/api/users/$userId/following?page=$page&limit=$limit";
+    print('🔗 BackendService: Getting following for user: $userId');
+    
+    try {
+      final response = await SimpleHttpClient.get(
+        Uri.parse(url),
+        headers: {"Content-Type": "application/json"},
+      );
+
+      print('📡 BackendService: Following response - Status: ${response.statusCode}, Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          print('✅ BackendService: Successfully got following');
+          // Handle case where data might be null or undefined
+          if (data['data'] == null) {
+            print('⚠️ BackendService: Following data is null, returning empty list');
+            return [];
+          }
+          return List<Map<String, dynamic>>.from(data['data']);
+        } else {
+          throw Exception("Failed to get following: ${data['message']}");
+        }
+      } else {
+        throw Exception("Failed to get following: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      print('❌ BackendService: Error getting following: $e');
+      // Return empty list instead of throwing error for better UX
+      print('⚠️ BackendService: Returning empty following list due to error');
+      return [];
+    }
+  }
+
+  /// Follow/unfollow a user (LEGACY - kept for backward compatibility)
   Future<bool> toggleFollow(String currentUserId, String targetUserId) async {
     final url = "$baseUrl/api/users/follow";
     print('🔗 BackendService: Toggling follow: $currentUserId -> $targetUserId');

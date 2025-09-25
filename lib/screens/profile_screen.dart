@@ -8,6 +8,7 @@ import 'package:songbuddy/services/spotify_service.dart';
 import 'package:songbuddy/services/spotify_deep_link_service.dart';
 import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/models/Post.dart';
+import 'package:songbuddy/models/ProfileData.dart';
 import 'package:songbuddy/widgets/spotify_login_button.dart';
 import 'package:songbuddy/widgets/swipeable_post_card.dart';
 import 'package:songbuddy/screens/create_post_screen.dart';
@@ -41,6 +42,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // User posts
   List<Post> _userPosts = [];
   bool _loadingPosts = false;
+  
+  // Profile data (includes follow status)
+  ProfileData? _profileData;
 
   bool _loadingTop = false; // non-blocking loading for top artists/tracks (kept for future use)
   static const Duration _animDur = Duration(milliseconds: 250);
@@ -242,9 +246,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       print('🔍 ProfileScreen: Received profile data');
       print('🔍 ProfileScreen: User: ${profileData.user.displayName}, Posts: ${profileData.posts.length}');
       
-      // Update posts from the profile data
+      // Update posts and profile data
       setState(() {
         _userPosts = profileData.posts;
+        _profileData = profileData;
       });
       
       print('✅ ProfileScreen: Successfully updated _userPosts with ${_userPosts.length} posts');
@@ -426,6 +431,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: _loading
                         ? _buildSkeletonWidgets(context)
                         : [
+                            _buildProfileHeader(),
                             _buildSectionTitle('Currently Playing'),
                             _buildCurrentlyPlaying(),
                             _buildSectionTitle('Top Artists'),
@@ -529,6 +535,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
                         ],
+                        const SizedBox(height: 12),
+                        // Instagram-style followers/following buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildFollowButton(
+                                count: _profileData?.user.followersCount ?? 0,
+                                label: 'Followers',
+                                onTap: () => _showFollowersDialog(),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildFollowButton(
+                                count: _profileData?.user.followingCount ?? 0,
+                                label: 'Following',
+                                onTap: () => _showFollowingDialog(),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -545,11 +572,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
       child: Row(
         children: [
           Expanded(
-            child: Text(title, style: AppTextStyles.heading2OnDark),
+            child: Text(
+              title, 
+              style: AppTextStyles.heading2OnDark.copyWith(fontSize: 18),
+            ),
           ),
           if (title == 'Recently Played' && _recentlyPlayed.isNotEmpty)
             TextButton.icon(
@@ -811,15 +841,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // New: Recently played as a widget (no slivers)
+  // New: Recently played as a widget (no slivers) - Last 24 hours only
   Widget _buildRecentlyPlayedWidget() {
-    if (_recentlyPlayed.isEmpty) {
+    // Filter tracks from last 24 hours
+    final now = DateTime.now();
+    final last24Hours = now.subtract(const Duration(hours: 24));
+    
+    final recentTracks = _recentlyPlayed.where((track) {
+      final playedAt = DateTime.tryParse(track['played_at'] as String? ?? '');
+      return playedAt != null && playedAt.isAfter(last24Hours);
+    }).toList();
+    
+    if (recentTracks.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: const _EmptyCard(
           icon: Icons.history,
           title: 'No recent plays',
-          subtitle: 'Play some songs to see them here.',
+          subtitle: 'Play some songs in the last 24 hours to see them here.',
         ),
       );
     }
@@ -829,42 +868,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // Selection mode controls
         if (_isSelectionMode)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
-                    _selectedTracks.length == 1 
-                        ? '1 track selected' 
+                    _selectedTracks.isNotEmpty 
+                        ? 'Track selected' 
                         : 'No track selected',
-                    style: AppTextStyles.captionOnDark,
+                    style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
                   ),
                 ),
                 if (_selectedTracks.isNotEmpty)
                   TextButton.icon(
                     onPressed: _createPost,
-                    icon: const Icon(Icons.add, size: 16),
+                    icon: const Icon(Icons.add, size: 14),
                     label: const Text('Create Post'),
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.primary,
+                      textStyle: const TextStyle(fontSize: 12),
                     ),
                   ),
                 TextButton(
                   onPressed: _toggleSelectionMode,
-                  child: const Text('Cancel'),
+                  child: const Text('Cancel', style: TextStyle(fontSize: 12)),
                 ),
               ],
             ),
           ),
         
-        // Track list
+        // Compact track list (max 5 items)
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: _recentlyPlayed.length,
+          itemCount: recentTracks.length > 5 ? 5 : recentTracks.length,
           itemBuilder: (context, index) {
-            if (index >= _recentlyPlayed.length) return const SizedBox.shrink();
-            final item = _recentlyPlayed[index];
+            if (index >= recentTracks.length) return const SizedBox.shrink();
+            final item = recentTracks[index];
             final track = item['track'] as Map<String, dynamic>? ?? const {};
             final trackId = track['id'] as String? ?? '';
             final images = track['album']?['images'] as List<dynamic>? ?? const [];
@@ -876,26 +916,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
             final isSelected = _selectedTracks.contains(trackId);
             
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
               child: _GlassCard(
-                borderRadius: 12,
+                borderRadius: 8,
                 child: ListTile(
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                     child: imageUrl != null
-                        ? Image.network(imageUrl, width: 56, height: 56, fit: BoxFit.cover)
+                        ? Image.network(imageUrl, width: 40, height: 40, fit: BoxFit.cover)
                         : Container(
-                            width: 56,
-                            height: 56,
+                            width: 40,
+                            height: 40,
                             color: AppColors.onDarkPrimary.withOpacity(0.12),
-                            child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
+                            child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary, size: 20),
                           ),
                   ),
                   title: Text(
                     track['name'] as String? ?? '',
-                    style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+                    style: AppTextStyles.bodyOnDark.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  subtitle: Text(artists, style: AppTextStyles.captionOnDark),
+                  subtitle: Text(
+                    artists, 
+                    style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   onTap: _isSelectionMode 
                       ? () => _toggleTrackSelection(trackId)
                       : null,
@@ -1424,8 +1476,538 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+
+  /// Build compact profile header with user info and followers/following buttons
+  Widget _buildProfileHeader() {
+    final images = (_user?['images'] as List<dynamic>?) ?? const [];
+    final avatarUrl = images.isNotEmpty ? (images.first['url'] as String?) : null;
+    final displayName = _user?['display_name'] as String? ?? 'Spotify User';
+    final email = _user?['email'] as String?;
+    final followers = _user?['followers']?['total'] as int?;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.onDarkPrimary.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.onDarkPrimary.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          // Compact user info row
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: AppColors.onDarkPrimary.withOpacity(0.12),
+                backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                child: avatarUrl == null
+                    ? const Icon(Icons.person, color: AppColors.onDarkPrimary, size: 24)
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: AppTextStyles.heading2OnDark.copyWith(fontSize: 18),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (email != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        email,
+                        style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    if (followers != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.people, size: 12, color: AppColors.onDarkSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$followers followers',
+                            style: AppTextStyles.captionOnDark.copyWith(fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Compact Instagram-style followers/following buttons
+          Row(
+            children: [
+              Expanded(
+                child: _buildFollowButton(
+                  count: _profileData?.user.followersCount ?? 0,
+                  label: 'Followers',
+                  onTap: () => _showFollowersDialog(),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _buildFollowButton(
+                  count: _profileData?.user.followingCount ?? 0,
+                  label: 'Following',
+                  onTap: () => _showFollowingDialog(),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build compact Instagram-style follow button
+  Widget _buildFollowButton({
+    required int count,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+        decoration: BoxDecoration(
+          color: AppColors.onDarkPrimary.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: AppColors.onDarkPrimary.withOpacity(0.12),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              count.toString(),
+              style: AppTextStyles.heading2OnDark.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.onDarkPrimary,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 1),
+            Text(
+              label,
+              style: AppTextStyles.captionOnDark.copyWith(
+                fontSize: 10,
+                color: AppColors.onDarkSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Show followers dialog
+  void _showFollowersDialog() async {
+    if (_profileData == null) return;
+    
+    try {
+      final followers = await _backendService.getUserFollowers(_profileData!.user.id);
+      
+      if (!mounted) return;
+      
+      showDialog(
+        context: context,
+        builder: (context) => _FollowersFollowingDialog(
+          title: 'Followers',
+          users: followers,
+          currentUserId: _authProvider.userId!,
+          backendService: _backendService,
+          onFollowToggle: (userId, isFollowing) async {
+            // Handle follow/unfollow logic here
+            print('Follow toggle: $userId -> $isFollowing');
+          },
+        ),
+      );
+    } catch (e) {
+      print('❌ ProfileScreen: Failed to get followers: $e');
+      if (!mounted) return;
+      
+      // Show dialog with empty list instead of error
+      showDialog(
+        context: context,
+        builder: (context) => _FollowersFollowingDialog(
+          title: 'Followers',
+          users: [], // Empty list
+          currentUserId: _authProvider.userId!,
+          backendService: _backendService,
+          onFollowToggle: (userId, isFollowing) async {
+            print('Follow toggle: $userId -> $isFollowing');
+          },
+        ),
+      );
+      
+      // Show a brief error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to load followers. Please try again later.'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// Show following dialog
+  void _showFollowingDialog() async {
+    if (_profileData == null) return;
+    
+    try {
+      final following = await _backendService.getUserFollowing(_profileData!.user.id);
+      
+      if (!mounted) return;
+      
+      showDialog(
+        context: context,
+        builder: (context) => _FollowersFollowingDialog(
+          title: 'Following',
+          users: following,
+          currentUserId: _authProvider.userId!,
+          backendService: _backendService,
+          onFollowToggle: (userId, isFollowing) async {
+            // Handle follow/unfollow logic here
+            print('Follow toggle: $userId -> $isFollowing');
+          },
+        ),
+      );
+    } catch (e) {
+      print('❌ ProfileScreen: Failed to get following: $e');
+      if (!mounted) return;
+      
+      // Show dialog with empty list instead of error
+      showDialog(
+        context: context,
+        builder: (context) => _FollowersFollowingDialog(
+          title: 'Following',
+          users: [], // Empty list
+          currentUserId: _authProvider.userId!,
+          backendService: _backendService,
+          onFollowToggle: (userId, isFollowing) async {
+            print('Follow toggle: $userId -> $isFollowing');
+          },
+        ),
+      );
+      
+      // Show a brief error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to load following. Please try again later.'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
 }
 
+/// Dialog to show followers/following list
+class _FollowersFollowingDialog extends StatefulWidget {
+  final String title;
+  final List<Map<String, dynamic>> users;
+  final String currentUserId;
+  final Function(String userId, bool isFollowing) onFollowToggle;
+  final BackendService backendService;
+
+  const _FollowersFollowingDialog({
+    required this.title,
+    required this.users,
+    required this.currentUserId,
+    required this.onFollowToggle,
+    required this.backendService,
+  });
+
+  @override
+  State<_FollowersFollowingDialog> createState() => _FollowersFollowingDialogState();
+}
+
+class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.6,
+        decoration: BoxDecoration(
+          color: AppColors.darkBackgroundEnd,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.onDarkPrimary.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.onDarkPrimary.withOpacity(0.1),
+                    width: 1,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    widget.title,
+                    style: AppTextStyles.heading2OnDark.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(
+                      Icons.close,
+                      color: AppColors.onDarkPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Users list
+            Expanded(
+              child: widget.users.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No ${widget.title.toLowerCase()} found',
+                        style: AppTextStyles.bodyOnDark.copyWith(
+                          color: AppColors.onDarkSecondary,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(8),
+                      itemCount: widget.users.length,
+                      itemBuilder: (context, index) {
+                        final user = widget.users[index];
+                        return _buildUserTile(user);
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserTile(Map<String, dynamic> user) {
+    final userId = user['id'] as String;
+    final displayName = user['displayName'] as String? ?? 'Unknown User';
+    final username = user['username'] as String? ?? '';
+    final profilePicture = user['profilePicture'] as String?;
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.onDarkPrimary.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.onDarkPrimary.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: AppColors.onDarkPrimary.withOpacity(0.1),
+            backgroundImage: profilePicture != null ? NetworkImage(profilePicture) : null,
+            child: profilePicture == null
+                ? const Icon(Icons.person, color: AppColors.onDarkPrimary, size: 20)
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  displayName,
+                  style: AppTextStyles.bodyOnDark.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (username.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    '@$username',
+                    style: AppTextStyles.captionOnDark,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          // Follow/Unfollow button (only show if not current user)
+          if (userId != widget.currentUserId)
+            _buildFollowButton(userId, user),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFollowButton(String userId, Map<String, dynamic> user) {
+    // Get follow status information
+    final isFollowedBy = user['isFollowedBy'] as bool? ?? false;
+    final followRequestStatus = user['followRequestStatus'] as String? ?? 'none'; // 'none', 'pending', 'accepted'
+    
+    // Determine button text and action based on context
+    String buttonText;
+    Color buttonColor;
+    VoidCallback? onPressed;
+    
+    if (widget.title == 'Following') {
+      // In Following list: Always show "Unfollow" since we're following them
+      buttonText = 'Unfollow';
+      buttonColor = Colors.red;
+      onPressed = () async {
+        await _handleUnfollow(userId);
+      };
+    } else {
+      // In Followers list: Instagram-style logic
+      if (isFollowedBy) {
+        // They follow us back, so show "Remove"
+        buttonText = 'Remove';
+        buttonColor = Colors.red;
+        onPressed = () async {
+          await _handleRemove(userId);
+        };
+      } else if (followRequestStatus == 'pending') {
+        // We sent a follow request, show "Pending"
+        buttonText = 'Pending';
+        buttonColor = Colors.orange;
+        onPressed = null; // Disabled button
+      } else {
+        // They don't follow us back, show "Follow"
+        buttonText = 'Follow';
+        buttonColor = AppColors.primary;
+        onPressed = () async {
+          await _handleFollow(userId);
+        };
+      }
+    }
+    
+    return TextButton(
+      onPressed: onPressed,
+      child: Text(
+        buttonText,
+        style: AppTextStyles.captionOnDark.copyWith(
+          color: buttonColor,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleFollow(String userId) async {
+    try {
+      await widget.backendService.followUser(widget.currentUserId, userId);
+      print('✅ Followed user: $userId');
+      
+      // Update the user's status to pending
+      setState(() {
+        final userIndex = widget.users.indexWhere((u) => u['id'] == userId);
+        if (userIndex != -1) {
+          widget.users[userIndex]['followRequestStatus'] = 'pending';
+        }
+      });
+      
+      widget.onFollowToggle(userId, true);
+      HapticFeedback.lightImpact();
+    } catch (e) {
+      print('❌ Failed to follow: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to send follow request: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleUnfollow(String userId) async {
+    try {
+      await widget.backendService.unfollowUser(widget.currentUserId, userId);
+      print('✅ Unfollowed user: $userId');
+      
+      // Update the user's status
+      setState(() {
+        final userIndex = widget.users.indexWhere((u) => u['id'] == userId);
+        if (userIndex != -1) {
+          widget.users[userIndex]['isFollowing'] = false;
+          widget.users[userIndex]['followRequestStatus'] = 'none';
+        }
+      });
+      
+      widget.onFollowToggle(userId, false);
+      HapticFeedback.lightImpact();
+    } catch (e) {
+      print('❌ Failed to unfollow: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to unfollow: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleRemove(String userId) async {
+    try {
+      // Remove the user from our followers (this is different from unfollowing)
+      // This would be a new API endpoint like removeFollower
+      await widget.backendService.unfollowUser(widget.currentUserId, userId);
+      print('✅ Removed user: $userId');
+      
+      // Update the user's status
+      setState(() {
+        final userIndex = widget.users.indexWhere((u) => u['id'] == userId);
+        if (userIndex != -1) {
+          widget.users[userIndex]['isFollowedBy'] = false;
+        }
+      });
+      
+      widget.onFollowToggle(userId, false);
+      HapticFeedback.lightImpact();
+    } catch (e) {
+      print('❌ Failed to remove: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to remove follower: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+}
 
 class _EmptyCard extends StatelessWidget {
   final IconData icon;

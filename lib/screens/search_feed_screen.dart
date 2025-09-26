@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:songbuddy/screens/user_profile_screen.dart';
 import 'package:songbuddy/widgets/music_post_card.dart';
+import 'package:songbuddy/widgets/shimmer_post_card.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:share_plus/share_plus.dart';
 import 'package:songbuddy/services/backend_service.dart';
@@ -41,6 +42,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   List<Map<String, dynamic>> _discoveryPosts = [];
   bool _isLoadingDiscovery = false;
   String? _discoveryError;
+  DateTime? _discoveryLoadingStartTime;
 
   // Track likes for posts
   final Map<String, bool> _likedPosts = {}; // Changed to String key (post ID)
@@ -186,16 +188,16 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   Widget _buildSuggestionDropdown() {
     // Show loading state
     if (_isLoadingUsers) {
-      return const Expanded(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: Colors.white70),
-              SizedBox(height: 16),
-              Text("Searching users...", style: TextStyle(color: Colors.white54)),
-            ],
-          ),
+      return Expanded(
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          itemCount: 3,
+          itemBuilder: (context, index) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: _buildShimmerUserTile(),
+            );
+          },
         ),
       );
     }
@@ -495,11 +497,43 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
     }
   }
 
+  /// Build shimmer user tile for search loading
+  Widget _buildShimmerUserTile() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.06),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          ShimmerCircle(diameter: 40),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShimmerBox(width: 120, height: 14, radius: 6),
+                const SizedBox(height: 6),
+                ShimmerBox(width: 80, height: 12, radius: 5),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Load discovery posts from backend
   Future<void> _loadDiscoveryPosts() async {
     setState(() {
       _isLoadingDiscovery = true;
       _discoveryError = null;
+      _discoveryLoadingStartTime = DateTime.now();
     });
 
     try {
@@ -508,7 +542,6 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
       
       setState(() {
         _discoveryPosts = posts;
-        _isLoadingDiscovery = false;
         
         // Initialize like counts for discovery posts
         for (final post in posts) {
@@ -523,6 +556,32 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
         }
       });
       
+      // Ensure shimmer shows for at least 2 seconds
+      if (_discoveryLoadingStartTime != null) {
+        final elapsed = DateTime.now().difference(_discoveryLoadingStartTime!);
+        final remaining = const Duration(seconds: 2) - elapsed;
+        
+        if (remaining.isNegative) {
+          // Already been 2+ seconds, hide shimmer immediately
+          setState(() {
+            _isLoadingDiscovery = false;
+          });
+        } else {
+          // Wait for remaining time
+          Future.delayed(remaining, () {
+            if (mounted) {
+              setState(() {
+                _isLoadingDiscovery = false;
+              });
+            }
+          });
+        }
+      } else {
+        setState(() {
+          _isLoadingDiscovery = false;
+        });
+      }
+      
       print('✅ SearchFeedScreen: Loaded ${posts.length} discovery posts');
     } catch (e) {
       setState(() {
@@ -536,16 +595,12 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   /// Build the discovery feed UI
   Widget _buildDiscoveryFeed() {
     if (_isLoadingDiscovery) {
-      return const Expanded(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: Colors.white70),
-              SizedBox(height: 16),
-              Text("Loading discovery posts...", style: TextStyle(color: Colors.white54)),
-            ],
-          ),
+      return Expanded(
+        child: ShimmerPostList(
+          itemCount: 5,
+          height: 180,
+          borderRadius: 20,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),
       );
     }

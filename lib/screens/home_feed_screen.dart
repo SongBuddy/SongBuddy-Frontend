@@ -7,6 +7,7 @@ import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
 import 'package:songbuddy/screens/notification_screen.dart';
 import 'package:songbuddy/widgets/music_post_card.dart';
+import 'package:songbuddy/widgets/shimmer_post_card.dart';
 import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/models/Post.dart';
@@ -26,6 +27,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   List<Post> _posts = [];
   bool _loading = false;
   bool _initialized = false;
+  DateTime? _loadingStartTime;
 
   @override
   void initState() {
@@ -45,6 +47,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
     setState(() {
       _loading = true;
+      _loadingStartTime = DateTime.now();
     });
 
     try {
@@ -52,10 +55,34 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     } catch (e) {
       print('❌ HomeFeedScreen: Failed to fetch posts: $e');
     } finally {
-      setState(() {
-        _loading = false;
-        _initialized = true;
-      });
+      // Ensure shimmer shows for at least 2 seconds
+      if (_loadingStartTime != null) {
+        final elapsed = DateTime.now().difference(_loadingStartTime!);
+        final remaining = const Duration(seconds: 2) - elapsed;
+        
+        if (remaining.isNegative) {
+          // Already been 2+ seconds, hide shimmer immediately
+          setState(() {
+            _loading = false;
+            _initialized = true;
+          });
+        } else {
+          // Wait for remaining time
+          Future.delayed(remaining, () {
+            if (mounted) {
+              setState(() {
+                _loading = false;
+                _initialized = true;
+              });
+            }
+          });
+        }
+      } else {
+        setState(() {
+          _loading = false;
+          _initialized = true;
+        });
+      }
     }
   }
 
@@ -75,6 +102,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       
       setState(() {
         _posts = posts;
+        _loadingStartTime = DateTime.now(); // Reset timer for refresh
       });
       
       print('✅ HomeFeedScreen: Successfully fetched ${posts.length} feed posts');
@@ -158,11 +186,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
   Widget _buildFeedContent() {
     if (!_initialized) {
-      return const Center(
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: AppColors.onDarkSecondary,
-        ),
+      return ShimmerPostList(
+        itemCount: 4,
+        height: 180,
+        borderRadius: 18,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       );
     }
 
@@ -189,11 +217,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     }
 
     if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          color: AppColors.onDarkSecondary,
-        ),
+      return ShimmerPostList(
+        itemCount: 4,
+        height: 180,
+        borderRadius: 18,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       );
     }
 
@@ -232,7 +260,40 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _fetchFollowingPosts,
+      onRefresh: () async {
+        setState(() {
+          _loading = true;
+          _loadingStartTime = DateTime.now();
+        });
+        
+        try {
+          await _fetchFollowingPosts();
+        } finally {
+          // Ensure shimmer shows for at least 2 seconds during refresh
+          if (_loadingStartTime != null) {
+            final elapsed = DateTime.now().difference(_loadingStartTime!);
+            final remaining = const Duration(seconds: 2) - elapsed;
+            
+            if (remaining.isNegative) {
+              setState(() {
+                _loading = false;
+              });
+            } else {
+              Future.delayed(remaining, () {
+                if (mounted) {
+                  setState(() {
+                    _loading = false;
+                  });
+                }
+              });
+            }
+          } else {
+            setState(() {
+              _loading = false;
+            });
+          }
+        }
+      },
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         itemCount: _posts.length,

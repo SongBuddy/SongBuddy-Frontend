@@ -2152,7 +2152,7 @@ class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 3500))
       ..repeat();
   }
 

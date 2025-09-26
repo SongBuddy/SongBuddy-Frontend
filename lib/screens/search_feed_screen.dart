@@ -592,8 +592,6 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
     return Expanded(
       child: RefreshIndicator(
         onRefresh: _loadDiscoveryPosts,
-        color: Colors.white,
-        backgroundColor: Colors.black,
         child: ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           itemCount: _discoveryPosts.length,

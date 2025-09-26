@@ -37,9 +37,14 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   // Real search results
   List<Map<String, dynamic>> _searchResults = [];
 
+  // Discovery posts from backend
+  List<Map<String, dynamic>> _discoveryPosts = [];
+  bool _isLoadingDiscovery = false;
+  String? _discoveryError;
+
   // Track likes for posts
-  final Map<int, bool> _likedPosts = {};
-  final Map<int, int> _likeCounts = {};
+  final Map<String, bool> _likedPosts = {}; // Changed to String key (post ID)
+  final Map<String, int> _likeCounts = {}; // Changed to String key (post ID)
 
   @override
   void initState() {
@@ -62,11 +67,8 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
       }
     });
 
-    // Initialize like counts
-    for (int i = 0; i < posts.length; i++) {
-      _likedPosts[i] = false;
-      _likeCounts[i] = 0;
-    }
+    // Load discovery posts from backend
+    _loadDiscoveryPosts();
   }
 
   void _onFocusChange() {
@@ -177,37 +179,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
     }
   }
 
-  // Removed hardcoded users - now using real backend search
-
-  final List<Map<String, dynamic>> posts = [
-    {
-      'track': 'Midnight City',
-      'artist': 'M83',
-      'user': 'Alice',
-      'desc': 'Perfect track for late night vibes.',
-      'coverUrl':
-          'https://i.scdn.co/image/ab67616d00001e02257c60eb99821fe397f817b2',
-      'time': '7h',
-    },
-    {
-      'track': 'Blinding Lights',
-      'artist': 'The Weeknd',
-      'user': 'Bob',
-      'desc': 'Still one of my favorites!',
-      'coverUrl':
-          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDTJ4AuwUIeQ-wc-z78atPgem_s9RgBtGP_A&s',
-      'time': '12h',
-    },
-    {
-      'track': 'Sunflower',
-      'artist': 'Post Malone',
-      'user': 'Charlie',
-      'desc': 'Always lifts my mood.',
-      'coverUrl':
-          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSF0Jqpe95kORYuGnJhSprCr8KG_WtwW8oS9Q&ss',
-      'time': '1d',
-    },
-  ];
+  // Removed hardcoded posts - now using dynamic discovery feed from backend
 
   // Removed filteredUsers getter - now using _searchResults from backend
 
@@ -336,10 +308,102 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
     );
   }
 
+  /// Build discovery post widget (similar to music post but for discovery posts)
+  Widget _buildDiscoveryPost(Map<String, dynamic> post) {
+    final postId = post['id'] as String;
+    final username = post['username'] as String? ?? 'Unknown User';
+    final userAvatar = post['userAvatar'] as String? ?? 'https://i.pravatar.cc/150?img=1';
+    final songName = post['songName'] as String? ?? 'Unknown Track';
+    final artistName = post['artistName'] as String? ?? 'Unknown Artist';
+    final songImage = post['songImage'] as String? ?? '';
+    final description = post['description'] as String? ?? '';
+    final createdAt = post['createdAt'] as String? ?? '';
+    
+    // Calculate time since posted
+    String timeAgo = 'now';
+    if (createdAt.isNotEmpty) {
+      try {
+        final postTime = DateTime.parse(createdAt);
+        final now = DateTime.now();
+        final difference = now.difference(postTime);
+        
+        if (difference.inHours < 1) {
+          timeAgo = '${difference.inMinutes}m';
+        } else if (difference.inDays < 1) {
+          timeAgo = '${difference.inHours}h';
+        } else {
+          timeAgo = '${difference.inDays}d';
+        }
+      } catch (e) {
+        timeAgo = 'now';
+      }
+    }
+
+    final initialLikes = _likeCounts[postId] ?? 0;
+    final isInitiallyLiked = _likedPosts[postId] ?? false;
+    
+    print('🎵 Building discovery post $postId: initialLikes=$initialLikes, isInitiallyLiked=$isInitiallyLiked');
+    
+    return MusicPostCard(
+      username: username,
+      avatarUrl: userAvatar,
+      trackTitle: songName,
+      artist: artistName,
+      coverUrl: songImage,
+      timeAgo: timeAgo,
+      description: description,
+      initialLikes: initialLikes,
+      isInitiallyLiked: isInitiallyLiked,
+      onLikeChanged: (newLiked, newLikes) async {
+        try {
+          final userId = _authProvider.userId;
+          if (userId == null) {
+            print('❌ SearchFeedScreen: User not authenticated for like');
+            return;
+          }
+          
+          print('🔍 SearchFeedScreen: Toggling like for discovery post: $postId, isLiked: $newLiked');
+          final result = await _backendService.togglePostLike(postId, userId, !newLiked);
+          print('✅ SearchFeedScreen: Like toggled successfully, result: $result');
+          
+          setState(() {
+            _likedPosts[postId] = newLiked;
+            _likeCounts[postId] = newLikes;
+          });
+          
+          HapticFeedback.lightImpact();
+        } catch (e) {
+          print('❌ SearchFeedScreen: Failed to toggle like: $e');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to update like: $e'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      },
+      onShare: () {
+        final text = "$username shared a song: $songName by $artistName";
+        Share.share(text);
+      },
+      onFollowPressed: () {
+        // TODO: Implement follow functionality
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Follow $username'),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildMusicPost(Map<String, dynamic> post, int index) {
     final username = post['user'] as String;
-    final likeCount = _likeCounts[index] ?? 0;
-    final isLiked = _likedPosts[index] ?? false;
+    final postId = post['id'] as String? ?? 'post-$index';
+    final likeCount = _likeCounts[postId] ?? 0;
+    final isLiked = _likedPosts[postId] ?? false;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -376,13 +440,13 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
               return;
             }
             
-            print('🔍 SearchFeedScreen: Toggling like for post: ${posts[index]['id']}, isLiked: $newLiked');
-            final result = await _backendService.togglePostLike(posts[index]['id'], userId, !newLiked);
+            print('🔍 SearchFeedScreen: Toggling like for post: $postId, isLiked: $newLiked');
+            final result = await _backendService.togglePostLike(postId, userId, !newLiked);
             print('✅ SearchFeedScreen: Like toggled successfully, result: $result');
             
             setState(() {
-              _likedPosts[index] = newLiked;
-              _likeCounts[index] = newLikes;
+              _likedPosts[postId] = newLiked;
+              _likeCounts[postId] = newLikes;
             });
             
             HapticFeedback.lightImpact();
@@ -429,6 +493,133 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
         _isSearching = false;
       });
     }
+  }
+
+  /// Load discovery posts from backend
+  Future<void> _loadDiscoveryPosts() async {
+    setState(() {
+      _isLoadingDiscovery = true;
+      _discoveryError = null;
+    });
+
+    try {
+      final userId = _authProvider.userId;
+      final posts = await _backendService.getDiscoveryPosts(userId: userId);
+      
+      setState(() {
+        _discoveryPosts = posts;
+        _isLoadingDiscovery = false;
+        
+        // Initialize like counts for discovery posts
+        for (final post in posts) {
+          final postId = post['id'] as String;
+          final likesCount = post['likesCount'] as int? ?? 0;
+          final isLiked = post['isLiked'] as bool? ?? false;
+          
+          print('🔍 Discovery Post $postId: likesCount=$likesCount, isLiked=$isLiked');
+          
+          _likedPosts[postId] = isLiked;
+          _likeCounts[postId] = likesCount;
+        }
+      });
+      
+      print('✅ SearchFeedScreen: Loaded ${posts.length} discovery posts');
+    } catch (e) {
+      setState(() {
+        _discoveryError = e.toString();
+        _isLoadingDiscovery = false;
+      });
+      print('❌ SearchFeedScreen: Failed to load discovery posts: $e');
+    }
+  }
+
+  /// Build the discovery feed UI
+  Widget _buildDiscoveryFeed() {
+    if (_isLoadingDiscovery) {
+      return const Expanded(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.white70),
+              SizedBox(height: 16),
+              Text("Loading discovery posts...", style: TextStyle(color: Colors.white54)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_discoveryError != null) {
+      return Expanded(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, color: Colors.red.shade300, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                _discoveryError!,
+                style: const TextStyle(color: Colors.white54),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadDiscoveryPosts,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_discoveryPosts.isEmpty) {
+      return const Expanded(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.explore_off, color: Colors.white54, size: 48),
+              SizedBox(height: 16),
+              Text("No discovery posts available", style: TextStyle(color: Colors.white54)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Expanded(
+      child: RefreshIndicator(
+        onRefresh: _loadDiscoveryPosts,
+        color: Colors.white,
+        backgroundColor: Colors.black,
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          itemCount: _discoveryPosts.length,
+          itemBuilder: (context, index) {
+            final post = _discoveryPosts[index];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: _buildDiscoveryPost(post),
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -516,27 +707,7 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
             if (_isSearching)
               _buildSuggestionDropdown()
             else
-              Expanded(
-                child: ListView.builder(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  itemCount: posts.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      return const Padding(
-                        padding: EdgeInsets.only(bottom: 12),
-                        child: Text('Random Discovery',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold)),
-                      );
-                    }
-                    final post = posts[index - 1];
-                    return _buildMusicPost(post, index - 1);
-                  },
-                ),
-              ),
+              _buildDiscoveryFeed(),
           ],
         ),
       ),

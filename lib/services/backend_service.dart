@@ -433,6 +433,38 @@ class BackendService {
   }
 
 
+  /// Get discovery posts (Instagram-style) from users not followed
+  Future<List<Map<String, dynamic>>> getDiscoveryPosts({String? userId, int page = 1, int limit = 20}) async {
+    final url = "$baseUrl/api/posts/discovery?userId=${Uri.encodeComponent(userId ?? '')}&page=$page&limit=$limit";
+    print('🔗 BackendService: Getting discovery posts for user: $userId');
+    print('🔍 BackendService: URL -> $url');
+    
+    try {
+      final response = await SimpleHttpClient.get(
+        Uri.parse(url),
+        headers: {"Content-Type": "application/json"},
+      );
+
+      print('📡 BackendService: Discovery posts response - Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        if (data is Map<String, dynamic> && data['data'] is List) {
+          final posts = List<Map<String, dynamic>>.from(data['data']);
+          print('✅ BackendService: Found ${posts.length} discovery posts');
+          return posts;
+        }
+      }
+
+      throw Exception('Unexpected response format: ${response.statusCode}');
+      
+    } catch (e) {
+      print('❌ BackendService: Discovery posts error: $e');
+      return [];
+    }
+  }
+
   /// Search posts by song name, artist, or description
   Future<List<Post>> searchPosts(String query, {int page = 1, int limit = 20, String? currentUserId}) async {
     final url = "$baseUrl/api/posts/search?q=${Uri.encodeComponent(query)}&page=$page&limit=$limit${currentUserId != null ? '&currentUserId=$currentUserId' : ''}";
@@ -467,45 +499,6 @@ class BackendService {
     }
   }
 
-  /// Get discovery feed (random recent posts)
-  Future<List<Post>> getDiscoveryPosts({int page = 1, int limit = 20, String? currentUserId}) async {
-    final url = "$baseUrl/api/posts/discovery?page=$page&limit=$limit${currentUserId != null ? '&currentUserId=$currentUserId' : ''}";
-    print('🔗 BackendService: Getting discovery posts from: $url');
-    
-    try {
-      final response = await SimpleHttpClient.get(
-        Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
-      );
-
-      print('📡 BackendService: Discovery posts response - Status: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          final posts = (data['data'] as List<dynamic>)
-              .map((post) => Post.fromJson(post))
-              .toList();
-          print('✅ BackendService: Found ${posts.length} discovery posts');
-          return posts;
-        } else {
-          print('❌ BackendService: Get discovery posts failed: ${data['message']}');
-          return [];
-        }
-      } else {
-        throw Exception("Failed to get discovery posts: ${response.statusCode} - ${response.body}");
-      }
-    } catch (e) {
-      print('❌ BackendService: Get discovery posts error: $e');
-      throw Exception("Failed to get discovery posts: $e");
-    }
-  }
-
-  /// Get random recent posts (LEGACY - kept for backward compatibility)
-  Future<List<Post>> getRandomRecentPosts({int limit = 20, int offset = 0, String? currentUserId}) async {
-    // Use the new discovery endpoint
-    return await getDiscoveryPosts(page: 1, limit: limit, currentUserId: currentUserId);
-  }
 
   /// Like a post
   Future<bool> likePost(String postId, String userId) async {

@@ -42,7 +42,7 @@ class MusicPostCard extends StatefulWidget {
     this.onOpenInSpotify,
     this.showFollowButton = false,
     this.showUserInfo = true,
-    this.height = 165,
+    this.height = 180,
     this.borderRadius = 18,
     this.overlayOpacity = 0.35,
     this.initialLikes = 0,
@@ -79,8 +79,11 @@ class _MusicPostCardState extends State<MusicPostCard> {
       borderRadius: BorderRadius.circular(widget.borderRadius),
       child: GestureDetector(
         onTap: widget.onCardTap,
-        child: SizedBox(
-          height: widget.height,
+        child: Container(
+          constraints: BoxConstraints(
+            minHeight: widget.height,
+            maxHeight: widget.height + 20, // Allow some flexibility
+          ),
           width: double.infinity,
           child: Stack(
             children: [
@@ -94,21 +97,30 @@ class _MusicPostCardState extends State<MusicPostCard> {
                   ),
                 ),
               ),
-              // Dark overlay to improve contrast
+              // Dark overlay with gradient to improve contrast
               Positioned.fill(
                 child: IgnorePointer(
                   child: Container(
-                    color: Colors.black.withOpacity(widget.overlayOpacity),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withOpacity(widget.overlayOpacity * 0.7),
+                          Colors.black.withOpacity(widget.overlayOpacity * 1.2),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
 
               // Foreground content
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisSize: MainAxisSize.max,
                   children: [
                     // Top row: avatar + username | time | optional follow
                     if (widget.showUserInfo)
@@ -123,7 +135,7 @@ class _MusicPostCardState extends State<MusicPostCard> {
                               backgroundImage: NetworkImage(widget.avatarUrl),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Text(
                               widget.username,
@@ -143,7 +155,7 @@ class _MusicPostCardState extends State<MusicPostCard> {
                             ),
                           ),
                           if (widget.showFollowButton) ...[
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 12),
                             TextButton(
                               onPressed: widget.onFollowPressed,
                               style: TextButton.styleFrom(
@@ -173,16 +185,26 @@ class _MusicPostCardState extends State<MusicPostCard> {
                           ),
                         ],
                       ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
 
                     // Middle: small cover + song info (+ optional description)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Cover image with fixed size
-                        SizedBox(
+                        // Cover image with fixed size and shadow
+                        Container(
                           width: 60,
                           height: 60,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: widget.coverUrl.isNotEmpty
@@ -223,7 +245,7 @@ class _MusicPostCardState extends State<MusicPostCard> {
                                   ),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 16),
                         // Song info with flexible layout
                         Expanded(
                           child: Column(
@@ -285,7 +307,7 @@ class _MusicPostCardState extends State<MusicPostCard> {
                           "$likes",
                           style: const TextStyle(color: Colors.white70, fontSize: 12),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 12),
                         IconButton(
                           onPressed: widget.onOpenInSpotify,
                           icon: const Icon(
@@ -294,7 +316,7 @@ class _MusicPostCardState extends State<MusicPostCard> {
                             size: 18,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 12),
                         IconButton(
                           onPressed: widget.onShare,
                           icon: const Icon(

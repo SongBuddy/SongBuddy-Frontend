@@ -254,6 +254,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       coverUrl: post.songImage,
       description: post.description ?? '',
       initialLikes: post.likeCount,
+      isInitiallyLiked: post.isLikedByCurrentUser ?? false,
       timeAgo: post.timeline,
       height: 180,
       avatarVerticalPadding: 6,

@@ -17,13 +17,14 @@ class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<ProfileScreen> createState() => ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class ProfileScreenState extends State<ProfileScreen> {
   late final AuthProvider _authProvider;
   late final SpotifyService _spotifyService;
   late final BackendService _backendService;
+  late final ScrollController _scrollController;
 
   bool _initialized = false;
   bool _loading = false;
@@ -55,6 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _authProvider = AuthProvider();
     _spotifyService = SpotifyService();
     _backendService = BackendService();
+    _scrollController = ScrollController();
     _initialize();
   }
 
@@ -85,6 +87,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_initialized) {
       _authProvider.removeListener(_onAuthChanged);
     }
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -427,6 +430,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     HapticFeedback.selectionClick();
                   },
                   child: ListView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.zero,
                     children: _loading
                         ? _buildSkeletonWidgets(context)
@@ -463,6 +468,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  /// Scroll to top of the profile screen
+  void scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   SliverAppBar _buildHeader(BuildContext context) {

@@ -40,18 +40,45 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  final GlobalKey<HomeFeedScreenState> _homeFeedKey = GlobalKey<HomeFeedScreenState>();
+  final GlobalKey<SearchFeedScreenState> _searchFeedKey = GlobalKey<SearchFeedScreenState>();
+  final GlobalKey<ProfileScreenState> _profileKey = GlobalKey<ProfileScreenState>();
+  final GlobalKey<SettingsScreenState> _settingsKey = GlobalKey<SettingsScreenState>();
+  late final List<Widget> _screens;
 
-  final List<Widget> _screens = const [
-    HomeFeedScreen(),
-    SearchFeedScreen(),
-    ProfileScreen(),
-    SettingsScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      HomeFeedScreen(key: _homeFeedKey),
+      SearchFeedScreen(key: _searchFeedKey),
+      ProfileScreen(key: _profileKey),
+      SettingsScreen(key: _settingsKey),
+    ];
+  }
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    // If tapping the same tab, scroll to top
+    if (_selectedIndex == index) {
+      if (index == 0) {
+        // Home tab - scroll to top and refresh
+        _homeFeedKey.currentState?.scrollToTopAndRefresh();
+      } else if (index == 1) {
+        // Search tab - scroll to top and refresh
+        _searchFeedKey.currentState?.scrollToTopAndRefresh();
+      } else if (index == 2) {
+        // Profile tab - scroll to top
+        _profileKey.currentState?.scrollToTop();
+      } else if (index == 3) {
+        // Settings tab - scroll to top
+        _settingsKey.currentState?.scrollToTop();
+      }
+    } else {
+      // Switch to different tab
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   @override

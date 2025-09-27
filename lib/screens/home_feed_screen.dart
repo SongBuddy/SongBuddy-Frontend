@@ -17,10 +17,10 @@ class HomeFeedScreen extends StatefulWidget {
   const HomeFeedScreen({super.key});
 
   @override
-  State<HomeFeedScreen> createState() => _HomeFeedScreenState();
+  State<HomeFeedScreen> createState() => HomeFeedScreenState();
 }
 
-class _HomeFeedScreenState extends State<HomeFeedScreen> {
+class HomeFeedScreenState extends State<HomeFeedScreen> {
   late final AuthProvider _authProvider;
   late final BackendService _backendService;
   late final ScrollController _scrollController;
@@ -119,6 +119,12 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
             duration: const Duration(seconds: 3),
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
       }
     }
   }
@@ -444,6 +450,30 @@ ${post.description?.isNotEmpty == true ? post.description : ''}
         ),
       ),
     );
+  }
+
+  /// Scroll to top and refresh the home feed
+  void scrollToTopAndRefresh() {
+    // Show loading indicator immediately
+    setState(() {
+      _loading = true;
+    });
+    
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+      
+      // Trigger refresh after scroll animation
+      Future.delayed(const Duration(milliseconds: 350), () {
+        _fetchFollowingPosts();
+      });
+    } else {
+      // If scroll controller is not ready, just refresh
+      _fetchFollowingPosts();
+    }
   }
 }
 

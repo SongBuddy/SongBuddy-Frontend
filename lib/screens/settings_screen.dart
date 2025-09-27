@@ -11,12 +11,13 @@ class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  State<SettingsScreen> createState() => SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class SettingsScreenState extends State<SettingsScreen> {
   late final AuthProvider _authProvider;
   late final SpotifyService _spotifyService;
+  late final ScrollController _scrollController;
   
   bool _loading = false;
   Map<String, dynamic>? _user;
@@ -26,12 +27,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _authProvider = AuthProvider();
     _spotifyService = SpotifyService();
+    _scrollController = ScrollController();
     _initializeAuth();
   }
 
   @override
   void dispose() {
     _authProvider.removeListener(_onAuthStateChanged);
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -224,6 +227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     HapticFeedback.selectionClick();
                   },
                   child: ListView(
+                    controller: _scrollController,
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(16),
                     children: [
@@ -262,6 +266,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  /// Scroll to top of the settings screen
+  void scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   Widget _buildTopBar(BuildContext context) {

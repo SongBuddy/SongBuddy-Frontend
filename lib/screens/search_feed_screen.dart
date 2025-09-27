@@ -15,10 +15,10 @@ class SearchFeedScreen extends StatefulWidget {
   const SearchFeedScreen({super.key});
 
   @override
-  State<SearchFeedScreen> createState() => _SearchFeedScreenState();
+  State<SearchFeedScreen> createState() => SearchFeedScreenState();
 }
 
-class _SearchFeedScreenState extends State<SearchFeedScreen> {
+class SearchFeedScreenState extends State<SearchFeedScreen> {
   String query = '';
   final TextEditingController _controller = TextEditingController();
   late final FocusNode _searchFocusNode;
@@ -843,5 +843,29 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
         ),
       ),      ),
     );
+  }
+
+  /// Scroll to top and refresh the discovery feed
+  void scrollToTopAndRefresh() {
+    // Show loading indicator immediately
+    setState(() {
+      _isLoadingDiscovery = true;
+    });
+    
+    if (_discoveryScrollController.hasClients) {
+      _discoveryScrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+      
+      // Trigger refresh after scroll animation
+      Future.delayed(const Duration(milliseconds: 350), () {
+        _loadDiscoveryPosts();
+      });
+    } else {
+      // If scroll controller is not ready, just refresh
+      _loadDiscoveryPosts();
+    }
   }
 }

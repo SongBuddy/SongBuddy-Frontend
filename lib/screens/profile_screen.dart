@@ -467,6 +467,10 @@ class ProfileScreenState extends State<ProfileScreen> {
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fab-create-post',
         backgroundColor: AppColors.primary,
+        elevation: 0,
+        focusElevation: 0,
+        hoverElevation: 0,
+        highlightElevation: 0,
         onPressed: () {
           showCreatePostSheet(
             context,
@@ -896,17 +900,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CreatePostScreen(
-                      selectedTrack: track,
-                      selectedTrackId: track['id'] as String? ?? '',
-                    ),
-                  ),
-                );
-              },
+              // Remove tap-to-open compose from recent list per request
+              onTap: null,
             ),
           ),
         );

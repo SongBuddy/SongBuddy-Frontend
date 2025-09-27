@@ -28,7 +28,7 @@ class SimpleHttpClient {
 class BackendService {
   // Constant base URL for backend - using computer's IP for mobile debugging
   // Update this IP address whenever your computer's IP changes
-  static const String baseUrl = 'http://10.0.2.2:3000';
+  static const String baseUrl = 'http://192.168.83.108:3000';
   
   // Alternative IPs to try if the main one fails
   static const List<String> alternativeUrls = [

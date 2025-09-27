@@ -45,7 +45,6 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   bool _isLoadingMoreDiscovery = false;
   bool _hasMoreDiscoveryPosts = true;
   String? _discoveryError;
-  DateTime? _discoveryLoadingStartTime;
   int _discoveryCurrentPage = 1;
   static const int _discoveryPostsPerPage = 10;
   late final ScrollController _discoveryScrollController;
@@ -549,7 +548,6 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
     setState(() {
       _isLoadingDiscovery = true;
       _discoveryError = null;
-      _discoveryLoadingStartTime = DateTime.now();
     });
 
     try {
@@ -578,39 +576,18 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
         }
       });
       
-      // Ensure shimmer shows for at least 2 seconds
-      if (_discoveryLoadingStartTime != null) {
-        final elapsed = DateTime.now().difference(_discoveryLoadingStartTime!);
-        final remaining = const Duration(seconds: 2) - elapsed;
-        
-        if (remaining.isNegative) {
-          // Already been 2+ seconds, hide shimmer immediately
-          setState(() {
-            _isLoadingDiscovery = false;
-          });
-        } else {
-          // Wait for remaining time
-          Future.delayed(remaining, () {
-            if (mounted) {
-              setState(() {
-                _isLoadingDiscovery = false;
-              });
-            }
-          });
-        }
-      } else {
-        setState(() {
-          _isLoadingDiscovery = false;
-        });
-      }
-      
       print('✅ SearchFeedScreen: Loaded ${posts.length} discovery posts');
     } catch (e) {
       setState(() {
         _discoveryError = e.toString();
-        _isLoadingDiscovery = false;
       });
       print('❌ SearchFeedScreen: Failed to load discovery posts: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingDiscovery = false;
+        });
+      }
     }
   }
 

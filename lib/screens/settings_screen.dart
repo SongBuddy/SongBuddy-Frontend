@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:ui';
 import '../providers/auth_provider.dart';
 import '../constants/app_colors.dart';
@@ -87,6 +88,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _loading = false;
         });
       }
+    }
+  }
+
+  Future<void> _refreshData() async {
+    if (!_authProvider.isAuthenticated) return;
+    
+    try {
+      await _fetchUserData();
+    } catch (e) {
+      // Handle error silently
     }
   }
 
@@ -206,36 +217,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: _buildTopBar(context),
               ),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    _buildSectionTitle('Account'),
-                    if (_authProvider.isAuthenticated) ...[
-                      _buildAccountCard(),
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    HapticFeedback.lightImpact();
+                    await _refreshData();
+                    HapticFeedback.selectionClick();
+                  },
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      _buildSectionTitle('Account'),
+                      if (_authProvider.isAuthenticated) ...[
+                        _buildAccountCard(),
+                        const SizedBox(height: 16),
+                        _buildActionButton(
+                          icon: Icons.logout,
+                          title: 'Logout',
+                          subtitle: 'Sign out from Spotify',
+                          onTap: _handleLogout,
+                          color: Colors.orange,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildActionButton(
+                          icon: Icons.delete_forever,
+                          title: 'Delete Account',
+                          subtitle: 'Permanently delete your account',
+                          onTap: _showDeleteAccountDialog,
+                          color: Colors.red,
+                        ),
+                      ] else ...[
+                        _buildNotConnectedCard(),
+                      ],
+                      const SizedBox(height: 32),
+                      _buildSectionTitle('App Info'),
                       const SizedBox(height: 16),
-                      _buildActionButton(
-                        icon: Icons.logout,
-                        title: 'Logout',
-                        subtitle: 'Sign out from Spotify',
-                        onTap: _handleLogout,
-                        color: Colors.orange,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildActionButton(
-                        icon: Icons.delete_forever,
-                        title: 'Delete Account',
-                        subtitle: 'Permanently delete your account',
-                        onTap: _showDeleteAccountDialog,
-                        color: Colors.red,
-                      ),
-                    ] else ...[
-                      _buildNotConnectedCard(),
+                      _buildInfoCard(),
                     ],
-                    const SizedBox(height: 32),
-                    _buildSectionTitle('App Info'),
-                    const SizedBox(height: 16),
-                    _buildInfoCard(),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -503,7 +522,7 @@ class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 3500))
       ..repeat();
   }
 

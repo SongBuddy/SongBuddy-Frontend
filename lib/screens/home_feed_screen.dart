@@ -30,7 +30,6 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
   bool _loadingMore = false;
   bool _hasMorePosts = true;
   bool _initialized = false;
-  DateTime? _loadingStartTime;
   int _currentPage = 1;
   static const int _postsPerPage = 10;
 
@@ -67,7 +66,6 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
     setState(() {
       _loading = true;
-      _loadingStartTime = DateTime.now();
     });
 
     try {
@@ -75,29 +73,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
     } catch (e) {
       print('❌ HomeFeedScreen: Failed to fetch posts: $e');
     } finally {
-      // Ensure shimmer shows for at least 2 seconds
-      if (_loadingStartTime != null) {
-        final elapsed = DateTime.now().difference(_loadingStartTime!);
-        final remaining = const Duration(seconds: 2) - elapsed;
-        
-        if (remaining.isNegative) {
-          // Already been 2+ seconds, hide shimmer immediately
-          setState(() {
-            _loading = false;
-            _initialized = true;
-          });
-        } else {
-          // Wait for remaining time
-          Future.delayed(remaining, () {
-            if (mounted) {
-              setState(() {
-                _loading = false;
-                _initialized = true;
-              });
-            }
-          });
-        }
-      } else {
+      if (mounted) {
         setState(() {
           _loading = false;
           _initialized = true;
@@ -126,7 +102,6 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
         _posts = posts;
         _currentPage = 1;
         _hasMorePosts = posts.length >= _postsPerPage;
-        _loadingStartTime = DateTime.now(); // Reset timer for refresh
       });
       
       print('✅ HomeFeedScreen: Successfully fetched ${posts.length} feed posts');
@@ -336,31 +311,12 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
         HapticFeedback.lightImpact();
         setState(() {
           _loading = true;
-          _loadingStartTime = DateTime.now();
         });
         
         try {
           await _fetchFollowingPosts();
         } finally {
-          // Ensure shimmer shows for at least 2 seconds during refresh
-          if (_loadingStartTime != null) {
-            final elapsed = DateTime.now().difference(_loadingStartTime!);
-            final remaining = const Duration(seconds: 2) - elapsed;
-            
-            if (remaining.isNegative) {
-              setState(() {
-                _loading = false;
-              });
-            } else {
-              Future.delayed(remaining, () {
-                if (mounted) {
-                  setState(() {
-                    _loading = false;
-                  });
-                }
-              });
-            }
-          } else {
+          if (mounted) {
             setState(() {
               _loading = false;
             });

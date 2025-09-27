@@ -4,20 +4,43 @@ class ProfileData {
   final User user;
   final List<Post> posts;
   final Pagination pagination;
+  // Music sections data
+  final Map<String, dynamic>? currentlyPlaying;
+  final List<Map<String, dynamic>> topArtists;
+  final List<Map<String, dynamic>> topTracks;
+  final List<Map<String, dynamic>> recentlyPlayed;
 
   const ProfileData({
     required this.user,
     required this.posts,
     required this.pagination,
+    this.currentlyPlaying,
+    this.topArtists = const [],
+    this.topTracks = const [],
+    this.recentlyPlayed = const [],
   });
 
   factory ProfileData.fromJson(Map<String, dynamic> json) {
+    // Extract music data from the user object
+    final userJson = json['user'] as Map<String, dynamic>;
+    
     return ProfileData(
-      user: User.fromJson(json['user']),
+      user: User.fromJson(userJson),
       posts: (json['posts'] as List<dynamic>)
           .map((post) => Post.fromJson(post))
           .toList(),
       pagination: Pagination.fromJson(json['pagination']),
+      // Music data is inside the user object
+      currentlyPlaying: userJson['currentlyPlaying'] as Map<String, dynamic>?,
+      topArtists: userJson['topArtists'] != null 
+          ? List<Map<String, dynamic>>.from(userJson['topArtists'])
+          : const [],
+      topTracks: userJson['topTracks'] != null 
+          ? List<Map<String, dynamic>>.from(userJson['topTracks'])
+          : const [],
+      recentlyPlayed: userJson['recentlyPlayed'] != null 
+          ? List<Map<String, dynamic>>.from(userJson['recentlyPlayed'])
+          : const [],
     );
   }
 
@@ -26,6 +49,10 @@ class ProfileData {
       'user': user.toJson(),
       'posts': posts.map((post) => post.toJson()).toList(),
       'pagination': pagination.toJson(),
+      'currentlyPlaying': currentlyPlaying,
+      'topArtists': topArtists,
+      'topTracks': topTracks,
+      'recentlyPlayed': recentlyPlayed,
     };
   }
 }

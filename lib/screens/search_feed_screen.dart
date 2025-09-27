@@ -315,6 +315,7 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
                     avatarUrl: profilePicture.isNotEmpty 
                         ? profilePicture 
                         : "https://i.pravatar.cc/150?img=1",
+                    userId: user['id'] as String?, // Pass the user ID
                   ),
                 ),
               );
@@ -445,6 +446,7 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
               builder: (context) => UserProfileScreen(
                 username: username,
                 avatarUrl: "https://i.pravatar.cc/150?img=1",
+                userId: post['userId'] as String?, // Pass the user ID if available
               ),
             ),
           );

@@ -778,7 +778,7 @@ class BackendService {
       print('📡 BackendService: Response body: ${response.body}');
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data   = jsonDecode(response.body);
         print('🔍 BackendService: Parsed data: $data');
         
         if (data['success'] == true && data['data'] != null) {

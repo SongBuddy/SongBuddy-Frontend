@@ -10,6 +10,7 @@ import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/models/ProfileData.dart';
 import 'package:songbuddy/widgets/spotify_login_button.dart';
+import 'package:songbuddy/widgets/create_post_sheet.dart';
 import 'package:songbuddy/widgets/swipeable_post_card.dart';
 import 'package:songbuddy/screens/create_post_screen.dart';
 
@@ -463,6 +464,24 @@ class ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab-create-post',
+        backgroundColor: AppColors.primary,
+        onPressed: () {
+          showCreatePostSheet(
+            context,
+            nowPlaying: _currentlyPlaying,
+            topTracks: _topTracks,
+            recentPlayed: _recentlyPlayed,
+          ).then((success) {
+            if (success == true) {
+              _fetchUserProfile();
+            }
+          });
+        },
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Create post', style: TextStyle(color: Colors.white)),
+      ),
     );
   }
 
@@ -593,19 +612,6 @@ class ProfileScreenState extends State<ProfileScreen> {
               style: AppTextStyles.heading2OnDark.copyWith(fontSize: 18),
             ),
           ),
-          if (title == 'Recently Played' && _recentlyPlayed.isNotEmpty)
-            TextButton.icon(
-              onPressed: _toggleSelectionMode,
-              icon: Icon(
-                _isSelectionMode ? Icons.close : Icons.checklist,
-                size: 16,
-              ),
-              label: Text(_isSelectionMode ? 'Cancel' : 'Select'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              ),
-            ),
         ],
       ),
     );
@@ -842,120 +848,69 @@ class ProfileScreenState extends State<ProfileScreen> {
       );
     }
     
-    return Column(
-      children: [
-        // Selection mode controls
-        if (_isSelectionMode)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _selectedTracks.isNotEmpty 
-                        ? 'Track selected' 
-                        : 'No track selected',
-                    style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
-                  ),
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: recentTracks.length > 5 ? 5 : recentTracks.length,
+      itemBuilder: (context, index) {
+        if (index >= recentTracks.length) return const SizedBox.shrink();
+        final item = recentTracks[index];
+        final track = item['track'] as Map<String, dynamic>? ?? const {};
+        final images = track['album']?['images'] as List<dynamic>? ?? const [];
+        final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
+        final artists = (track['artists'] as List<dynamic>? ?? const [])
+            .map((a) => a['name'] as String? ?? '')
+            .where((s) => s.isNotEmpty)
+            .join(', ');
+        
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+          child: _GlassCard(
+            borderRadius: 8,
+            child: ListTile(
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: imageUrl != null
+                    ? Image.network(imageUrl, width: 40, height: 40, fit: BoxFit.cover)
+                    : Container(
+                        width: 40,
+                        height: 40,
+                        color: AppColors.onDarkPrimary.withOpacity(0.12),
+                        child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary, size: 20),
+                      ),
+              ),
+              title: Text(
+                track['name'] as String? ?? '',
+                style: AppTextStyles.bodyOnDark.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
                 ),
-                if (_selectedTracks.isNotEmpty)
-                  TextButton.icon(
-                    onPressed: _createPost,
-                    icon: const Icon(Icons.add, size: 14),
-                    label: const Text('Create Post'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      textStyle: const TextStyle(fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                artists, 
+                style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CreatePostScreen(
+                      selectedTrack: track,
+                      selectedTrackId: track['id'] as String? ?? '',
                     ),
                   ),
-                TextButton(
-                  onPressed: _toggleSelectionMode,
-                  child: const Text('Cancel', style: TextStyle(fontSize: 12)),
-                ),
-              ],
+                );
+              },
             ),
           ),
-        
-        // Compact track list (max 5 items)
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: recentTracks.length > 5 ? 5 : recentTracks.length,
-          itemBuilder: (context, index) {
-            if (index >= recentTracks.length) return const SizedBox.shrink();
-            final item = recentTracks[index];
-            final track = item['track'] as Map<String, dynamic>? ?? const {};
-            final trackId = track['id'] as String? ?? '';
-            final images = track['album']?['images'] as List<dynamic>? ?? const [];
-            final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
-            final artists = (track['artists'] as List<dynamic>? ?? const [])
-                .map((a) => a['name'] as String? ?? '')
-                .where((s) => s.isNotEmpty)
-                .join(', ');
-            final isSelected = _selectedTracks.contains(trackId);
-            
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-              child: _GlassCard(
-                borderRadius: 8,
-                child: ListTile(
-                  dense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: imageUrl != null
-                        ? Image.network(imageUrl, width: 40, height: 40, fit: BoxFit.cover)
-                        : Container(
-                            width: 40,
-                            height: 40,
-                            color: AppColors.onDarkPrimary.withOpacity(0.12),
-                            child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary, size: 20),
-                          ),
-                  ),
-                  title: Text(
-                    track['name'] as String? ?? '',
-                    style: AppTextStyles.bodyOnDark.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    artists, 
-                    style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onTap: _isSelectionMode 
-                      ? () => _toggleTrackSelection(trackId)
-                      : null,
-                  trailing: _isSelectionMode
-                      ? GestureDetector(
-                          onTap: () => _toggleTrackSelection(trackId),
-                          child: Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.primary : Colors.transparent,
-                              border: Border.all(
-                                color: isSelected ? AppColors.primary : AppColors.onDarkSecondary,
-                                width: 2,
-                              ),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: isSelected
-                                ? const Icon(Icons.check, size: 16, color: Colors.white)
-                                : null,
-                          ),
-                        )
-                      : null,
-                ),
-              ),
-            );
-          },
-        ),
-      ],
+        );
+      },
     );
   }
 

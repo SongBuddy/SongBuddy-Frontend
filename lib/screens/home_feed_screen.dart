@@ -333,6 +333,7 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
 
     return RefreshIndicator(
       onRefresh: () async {
+        HapticFeedback.lightImpact();
         setState(() {
           _loading = true;
           _loadingStartTime = DateTime.now();
@@ -365,9 +366,11 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
             });
           }
         }
+        HapticFeedback.selectionClick();
       },
       child: ListView.separated(
         controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         itemCount: _posts.length + (_loadingMore ? 1 : 0),
         separatorBuilder: (_, __) => const SizedBox(height: 12),

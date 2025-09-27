@@ -245,25 +245,38 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 ),
               ),
 
-              // Content
+              // Content (modern composer)
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Selected track info
-                      _buildSelectedTrackCard(track, trackImage, artistNames),
-                      
-                      const SizedBox(height: 20),
-                      
-                      // Description field
-                      _buildDescriptionField(),
-                      
-                      const SizedBox(height: 12),
-                      
-                      // Character count
-                      _buildCharacterCount(),
+                      // Hero cover banner
+                      _buildHeroBanner(trackImage, track, artistNames),
+                      const SizedBox(height: 16),
+
+                      // Glass input card
+                      _ComposerGlass(
+                        borderRadius: 12,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Say something about this track', style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 8),
+                              _ComposerInput(
+                                controller: _descriptionController,
+                                maxLength: _maxDescriptionLength,
+                                onChanged: (_) => setState(() {}),
+                              ),
+                              const SizedBox(height: 6),
+                              Align(alignment: Alignment.centerRight, child: _buildCharacterCount()),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -359,62 +372,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         color: AppColors.onDarkPrimary.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Icon(
-        Icons.music_note,
-        color: AppColors.onDarkSecondary,
-        size: 24,
-      ),
     );
   }
 
-  Widget _buildDescriptionField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Add a note (optional)',
-          style: AppTextStyles.bodyOnDark.copyWith(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: AppColors.onDarkSecondary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.onDarkPrimary.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: AppColors.onDarkPrimary.withOpacity(0.1),
-              width: 1,
-            ),
-          ),
-          child: TextField(
-            controller: _descriptionController,
-            maxLines: 3,
-            maxLength: _maxDescriptionLength,
-            style: AppTextStyles.bodyOnDark.copyWith(fontSize: 14, color: Colors.black),
-            decoration: InputDecoration(
-              hintText: 'Share your thoughts about this song...',
-              hintStyle: AppTextStyles.captionOnDark.copyWith(
-                color: AppColors.onDarkSecondary.withOpacity(0.5),
-                fontSize: 13,
-              ),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              counterStyle: AppTextStyles.captionOnDark.copyWith(
-                color: AppColors.onDarkSecondary,
-                fontSize: 11,
-              ),
-            ),
-            onChanged: (value) {
-              setState(() {}); // Update character count
-            },
-          ),
-        ),
-      ],
-    );
-  }
+  // Removed old TextField-based input; using custom input below
 
   Widget _buildCharacterCount() {
     final currentLength = _descriptionController.text.length;
@@ -433,6 +394,158 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildHeroBanner(String trackImage, Map<String, dynamic> track, String artistNames) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: Stack(
+        children: [
+          // Background cover (blurred fallback)
+          Container(
+            height: 180,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppColors.onDarkPrimary.withOpacity(0.10),
+                  AppColors.onDarkPrimary.withOpacity(0.04),
+                ],
+              ),
+              border: Border.all(color: AppColors.onDarkPrimary.withOpacity(0.08)),
+            ),
+          ),
+          Positioned.fill(
+            child: Row(
+              children: [
+                // Cover
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: trackImage.isNotEmpty
+                        ? Image.network(trackImage, width: 120, height: 120, fit: BoxFit.cover)
+                        : _buildPlaceholderImage(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Texts
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 12, top: 12, bottom: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          track['name'] ?? 'Unknown Song',
+                          style: AppTextStyles.heading2OnDark.copyWith(fontSize: 18, fontWeight: FontWeight.w700),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          artistNames,
+                          style: AppTextStyles.captionOnDark.copyWith(color: AppColors.onDarkSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ComposerGlass extends StatelessWidget {
+  final Widget child;
+  final double borderRadius;
+  const _ComposerGlass({required this.child, this.borderRadius = 12});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.onDarkPrimary.withOpacity(0.03),
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: Border.all(color: AppColors.onDarkPrimary.withOpacity(0.08)),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _ComposerInput extends StatefulWidget {
+  final TextEditingController controller;
+  final int maxLength;
+  final ValueChanged<String>? onChanged;
+  const _ComposerInput({required this.controller, required this.maxLength, this.onChanged});
+
+  @override
+  State<_ComposerInput> createState() => _ComposerInputState();
+}
+
+class _ComposerInputState extends State<_ComposerInput> {
+  late FocusNode _focusNode;
+  bool _focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+    _focusNode.addListener(() {
+      setState(() => _focused = _focusNode.hasFocus);
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _focusNode.requestFocus(),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: (_focused ? AppColors.primary : AppColors.onDarkPrimary.withOpacity(0.08)),
+            width: 1,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: EditableText(
+            controller: widget.controller,
+            focusNode: _focusNode,
+            style: AppTextStyles.bodyOnDark.copyWith(color: Colors.white, fontSize: 14),
+            cursorColor: Colors.white,
+            backgroundCursorColor: Colors.transparent,
+            maxLines: 4,
+            selectionColor: AppColors.primary.withOpacity(0.25),
+            keyboardType: TextInputType.multiline,
+            onChanged: widget.onChanged,
+          ),
+        ),
+      ),
     );
   }
 }

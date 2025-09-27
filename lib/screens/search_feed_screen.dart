@@ -4,19 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:songbuddy/screens/user_profile_screen.dart';
 import 'package:songbuddy/widgets/music_post_card.dart';
+import 'package:songbuddy/widgets/shimmer_post_card.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:share_plus/share_plus.dart';
 import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/providers/auth_provider.dart';
+import 'package:songbuddy/constants/app_colors.dart';
 
 class SearchFeedScreen extends StatefulWidget {
   const SearchFeedScreen({super.key});
 
   @override
-  State<SearchFeedScreen> createState() => _SearchFeedScreenState();
+  State<SearchFeedScreen> createState() => SearchFeedScreenState();
 }
 
-class _SearchFeedScreenState extends State<SearchFeedScreen> {
+class SearchFeedScreenState extends State<SearchFeedScreen> {
   String query = '';
   final TextEditingController _controller = TextEditingController();
   late final FocusNode _searchFocusNode;
@@ -40,7 +42,12 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   // Discovery posts from backend
   List<Map<String, dynamic>> _discoveryPosts = [];
   bool _isLoadingDiscovery = false;
+  bool _isLoadingMoreDiscovery = false;
+  bool _hasMoreDiscoveryPosts = true;
   String? _discoveryError;
+  int _discoveryCurrentPage = 1;
+  static const int _discoveryPostsPerPage = 10;
+  late final ScrollController _discoveryScrollController;
 
   // Track likes for posts
   final Map<String, bool> _likedPosts = {}; // Changed to String key (post ID)
@@ -53,6 +60,8 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
     _searchFocusNode = FocusNode();
     _backendService = BackendService();
     _authProvider = AuthProvider();
+    _discoveryScrollController = ScrollController();
+    _discoveryScrollController.addListener(_onDiscoveryScroll);
     _searchFocusNode.addListener(_onFocusChange);
 
     _controller.addListener(() {
@@ -81,9 +90,17 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   void dispose() {
     _debounceTimer?.cancel();
     _searchFocusNode.dispose();
+    _discoveryScrollController.removeListener(_onDiscoveryScroll);
+    _discoveryScrollController.dispose();
     _controller.dispose();
     if (_isListening) _speech.stop();
     super.dispose();
+  }
+
+  void _onDiscoveryScroll() {
+    if (_discoveryScrollController.position.pixels >= _discoveryScrollController.position.maxScrollExtent - 200) {
+      _loadMoreDiscoveryPosts();
+    }
   }
 
   /// Perform debounced search
@@ -186,16 +203,16 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   Widget _buildSuggestionDropdown() {
     // Show loading state
     if (_isLoadingUsers) {
-      return const Expanded(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: Colors.white70),
-              SizedBox(height: 16),
-              Text("Searching users...", style: TextStyle(color: Colors.white54)),
-            ],
-          ),
+      return Expanded(
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          itemCount: 3,
+          itemBuilder: (context, index) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: _buildShimmerUserTile(),
+            );
+          },
         ),
       );
     }
@@ -495,6 +512,37 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
     }
   }
 
+  /// Build shimmer user tile for search loading
+  Widget _buildShimmerUserTile() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.06),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          ShimmerCircle(diameter: 40),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShimmerBox(width: 120, height: 14, radius: 6),
+                const SizedBox(height: 6),
+                ShimmerBox(width: 80, height: 12, radius: 5),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Load discovery posts from backend
   Future<void> _loadDiscoveryPosts() async {
     setState(() {
@@ -504,11 +552,16 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
 
     try {
       final userId = _authProvider.userId;
-      final posts = await _backendService.getDiscoveryPosts(userId: userId);
+      final posts = await _backendService.getDiscoveryPosts(
+        userId: userId,
+        page: 1,
+        limit: _discoveryPostsPerPage,
+      );
       
       setState(() {
         _discoveryPosts = posts;
-        _isLoadingDiscovery = false;
+        _discoveryCurrentPage = 1;
+        _hasMoreDiscoveryPosts = posts.length >= _discoveryPostsPerPage;
         
         // Initialize like counts for discovery posts
         for (final post in posts) {
@@ -527,25 +580,82 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
     } catch (e) {
       setState(() {
         _discoveryError = e.toString();
-        _isLoadingDiscovery = false;
       });
       print('❌ SearchFeedScreen: Failed to load discovery posts: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingDiscovery = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMoreDiscoveryPosts() async {
+    if (_isLoadingMoreDiscovery || !_hasMoreDiscoveryPosts) return;
+
+    setState(() {
+      _isLoadingMoreDiscovery = true;
+    });
+
+    try {
+      final nextPage = _discoveryCurrentPage + 1;
+      
+      print('🔗 SearchFeedScreen: Loading more discovery posts - Page: $nextPage');
+      
+      final newPosts = await _backendService.getDiscoveryPosts(
+        userId: _authProvider.userId,
+        page: nextPage,
+        limit: _discoveryPostsPerPage,
+      );
+      
+      print('📊 SearchFeedScreen: Received ${newPosts.length} more discovery posts');
+      
+      setState(() {
+        _discoveryPosts.addAll(newPosts);
+        _discoveryCurrentPage = nextPage;
+        _hasMoreDiscoveryPosts = newPosts.length >= _discoveryPostsPerPage;
+        
+        // Initialize like counts for new discovery posts
+        for (final post in newPosts) {
+          final postId = post['id'] as String;
+          final likesCount = post['likesCount'] as int? ?? 0;
+          final isLiked = post['isLiked'] as bool? ?? false;
+          
+          _likedPosts[postId] = isLiked;
+          _likeCounts[postId] = likesCount;
+        }
+      });
+      
+      print('✅ SearchFeedScreen: Successfully loaded ${newPosts.length} more discovery posts. Total: ${_discoveryPosts.length}');
+    } catch (e) {
+      print('❌ SearchFeedScreen: Failed to load more discovery posts: $e');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load more posts: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isLoadingMoreDiscovery = false;
+      });
     }
   }
 
   /// Build the discovery feed UI
   Widget _buildDiscoveryFeed() {
     if (_isLoadingDiscovery) {
-      return const Expanded(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: Colors.white70),
-              SizedBox(height: 16),
-              Text("Loading discovery posts...", style: TextStyle(color: Colors.white54)),
-            ],
-          ),
+      return Expanded(
+        child: ShimmerPostList(
+          itemCount: 5,
+          height: 180,
+          borderRadius: 20,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),
       );
     }
@@ -593,9 +703,22 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
       child: RefreshIndicator(
         onRefresh: _loadDiscoveryPosts,
         child: ListView.builder(
+          controller: _discoveryScrollController,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          itemCount: _discoveryPosts.length,
+          itemCount: _discoveryPosts.length + (_isLoadingMoreDiscovery ? 1 : 0),
           itemBuilder: (context, index) {
+            if (index == _discoveryPosts.length) {
+              // Loading indicator at the bottom
+              return Container(
+                padding: const EdgeInsets.all(16),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white54,
+                  ),
+                ),
+              );
+            }
             final post = _discoveryPosts[index];
             return Container(
               margin: const EdgeInsets.only(bottom: 20),
@@ -623,10 +746,20 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Column(
-          children: [
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppColors.darkBackgroundStart,
+              AppColors.darkBackgroundEnd,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
             // Search bar + cancel button
             Row(
               children: [
@@ -708,7 +841,31 @@ class _SearchFeedScreenState extends State<SearchFeedScreen> {
               _buildDiscoveryFeed(),
           ],
         ),
-      ),
+      ),      ),
     );
+  }
+
+  /// Scroll to top and refresh the discovery feed
+  void scrollToTopAndRefresh() {
+    // Show loading indicator immediately
+    setState(() {
+      _isLoadingDiscovery = true;
+    });
+    
+    if (_discoveryScrollController.hasClients) {
+      _discoveryScrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+      
+      // Trigger refresh after scroll animation
+      Future.delayed(const Duration(milliseconds: 350), () {
+        _loadDiscoveryPosts();
+      });
+    } else {
+      // If scroll controller is not ready, just refresh
+      _loadDiscoveryPosts();
+    }
   }
 }

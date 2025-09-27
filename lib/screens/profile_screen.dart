@@ -10,6 +10,7 @@ import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/models/ProfileData.dart';
 import 'package:songbuddy/widgets/spotify_login_button.dart';
+import 'package:songbuddy/widgets/create_post_sheet.dart';
 import 'package:songbuddy/widgets/swipeable_post_card.dart';
 import 'package:songbuddy/screens/create_post_screen.dart';
 
@@ -17,13 +18,14 @@ class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  State<ProfileScreen> createState() => ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class ProfileScreenState extends State<ProfileScreen> {
   late final AuthProvider _authProvider;
   late final SpotifyService _spotifyService;
   late final BackendService _backendService;
+  late final ScrollController _scrollController;
 
   bool _initialized = false;
   bool _loading = false;
@@ -55,6 +57,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _authProvider = AuthProvider();
     _spotifyService = SpotifyService();
     _backendService = BackendService();
+    _scrollController = ScrollController();
     _initialize();
   }
 
@@ -85,6 +88,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_initialized) {
       _authProvider.removeListener(_onAuthChanged);
     }
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -415,10 +419,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: _buildTopBar(context),
-              ),
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
@@ -427,6 +427,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     HapticFeedback.selectionClick();
                   },
                   child: ListView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.zero,
                     children: _loading
                         ? _buildSkeletonWidgets(context)
@@ -462,7 +464,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab-create-post',
+        backgroundColor: AppColors.primary,
+        elevation: 0,
+        focusElevation: 0,
+        hoverElevation: 0,
+        highlightElevation: 0,
+        onPressed: () {
+          showCreatePostSheet(
+            context,
+            nowPlaying: _currentlyPlaying,
+            topTracks: _topTracks,
+            recentPlayed: _recentlyPlayed,
+          ).then((success) {
+            if (success == true) {
+              _fetchUserProfile();
+            }
+          });
+        },
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Create post', style: TextStyle(color: Colors.white)),
+      ),
     );
+  }
+
+  /// Scroll to top of the profile screen
+  void scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
 
   SliverAppBar _buildHeader(BuildContext context) {
@@ -581,19 +616,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: AppTextStyles.heading2OnDark.copyWith(fontSize: 18),
             ),
           ),
-          if (title == 'Recently Played' && _recentlyPlayed.isNotEmpty)
-            TextButton.icon(
-              onPressed: _toggleSelectionMode,
-              icon: Icon(
-                _isSelectionMode ? Icons.close : Icons.checklist,
-                size: 16,
-              ),
-              label: Text(_isSelectionMode ? 'Cancel' : 'Select'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              ),
-            ),
         ],
       ),
     );
@@ -669,7 +691,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 60,
                 child: Text(
                   artist['name'] as String? ?? '',
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: AppTextStyles.captionOnDark,
@@ -707,39 +729,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // Removed time range toggle UI
 
-  // New: Top bar with title on the left
-  Widget _buildTopBar(BuildContext context) {
-    // final images = (_user?['images'] as List<dynamic>?) ?? const [];
-    // final avatarUrl = images.isNotEmpty ? (images.first['url'] as String?) : null;
-    return Row(
-      children: [
-        Text(
-          'Profile',
-          style: AppTextStyles.heading2OnDark.copyWith(
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-            letterSpacing: 0.6,
-            shadows: [
-              Shadow(
-                color: AppColors.onDarkPrimary.withOpacity(0.03),
-                blurRadius: 6,
-              )
-            ],
-          ),
-        ),
-        const Spacer(),
-        // Commented out profile picture section
-        // CircleAvatar(
-        //   radius: 18,
-        //   backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-        //   backgroundColor: Colors.transparent,
-        //   child: avatarUrl == null
-        //       ? const Icon(Icons.person_outline, color: AppColors.onDarkSecondary)
-        //       : null,
-        // ),
-      ],
-    );
-  }
 
   // New: Top Artists as a widget (no slivers)
   Widget _buildTopArtistsWidget() {
@@ -806,7 +795,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                  width: 60,
                  child: Text(
                    track['name'] as String? ?? '',
-                   maxLines: 2,
+                   maxLines: 1,
                    overflow: TextOverflow.ellipsis,
                    textAlign: TextAlign.center,
                    style: AppTextStyles.captionOnDark.copyWith(fontSize: 10),
@@ -863,120 +852,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
     
-    return Column(
-      children: [
-        // Selection mode controls
-        if (_isSelectionMode)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _selectedTracks.isNotEmpty 
-                        ? 'Track selected' 
-                        : 'No track selected',
-                    style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
-                  ),
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: recentTracks.length > 5 ? 5 : recentTracks.length,
+      itemBuilder: (context, index) {
+        if (index >= recentTracks.length) return const SizedBox.shrink();
+        final item = recentTracks[index];
+        final track = item['track'] as Map<String, dynamic>? ?? const {};
+        final images = track['album']?['images'] as List<dynamic>? ?? const [];
+        final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
+        final artists = (track['artists'] as List<dynamic>? ?? const [])
+            .map((a) => a['name'] as String? ?? '')
+            .where((s) => s.isNotEmpty)
+            .join(', ');
+        
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+          child: _GlassCard(
+            borderRadius: 8,
+            child: ListTile(
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: imageUrl != null
+                    ? Image.network(imageUrl, width: 40, height: 40, fit: BoxFit.cover)
+                    : Container(
+                        width: 40,
+                        height: 40,
+                        color: AppColors.onDarkPrimary.withOpacity(0.12),
+                        child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary, size: 20),
+                      ),
+              ),
+              title: Text(
+                track['name'] as String? ?? '',
+                style: AppTextStyles.bodyOnDark.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
                 ),
-                if (_selectedTracks.isNotEmpty)
-                  TextButton.icon(
-                    onPressed: _createPost,
-                    icon: const Icon(Icons.add, size: 14),
-                    label: const Text('Create Post'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      textStyle: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-                TextButton(
-                  onPressed: _toggleSelectionMode,
-                  child: const Text('Cancel', style: TextStyle(fontSize: 12)),
-                ),
-              ],
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                artists, 
+                style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              // Remove tap-to-open compose from recent list per request
+              onTap: null,
             ),
           ),
-        
-        // Compact track list (max 5 items)
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: recentTracks.length > 5 ? 5 : recentTracks.length,
-          itemBuilder: (context, index) {
-            if (index >= recentTracks.length) return const SizedBox.shrink();
-            final item = recentTracks[index];
-            final track = item['track'] as Map<String, dynamic>? ?? const {};
-            final trackId = track['id'] as String? ?? '';
-            final images = track['album']?['images'] as List<dynamic>? ?? const [];
-            final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
-            final artists = (track['artists'] as List<dynamic>? ?? const [])
-                .map((a) => a['name'] as String? ?? '')
-                .where((s) => s.isNotEmpty)
-                .join(', ');
-            final isSelected = _selectedTracks.contains(trackId);
-            
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-              child: _GlassCard(
-                borderRadius: 8,
-                child: ListTile(
-                  dense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: imageUrl != null
-                        ? Image.network(imageUrl, width: 40, height: 40, fit: BoxFit.cover)
-                        : Container(
-                            width: 40,
-                            height: 40,
-                            color: AppColors.onDarkPrimary.withOpacity(0.12),
-                            child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary, size: 20),
-                          ),
-                  ),
-                  title: Text(
-                    track['name'] as String? ?? '',
-                    style: AppTextStyles.bodyOnDark.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    artists, 
-                    style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onTap: _isSelectionMode 
-                      ? () => _toggleTrackSelection(trackId)
-                      : null,
-                  trailing: _isSelectionMode
-                      ? GestureDetector(
-                          onTap: () => _toggleTrackSelection(trackId),
-                          child: Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppColors.primary : Colors.transparent,
-                              border: Border.all(
-                                color: isSelected ? AppColors.primary : AppColors.onDarkSecondary,
-                                width: 2,
-                              ),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: isSelected
-                                ? const Icon(Icons.check, size: 16, color: Colors.white)
-                                : null,
-                          ),
-                        )
-                      : null,
-                ),
-              ),
-            );
-          },
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -1171,6 +1100,87 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // New: Skeleton widgets list used when loading
   List<Widget> _buildSkeletonWidgets(BuildContext context) {
     return [
+      // Profile Header Skeleton - matches _buildProfileHeader() exactly
+      Container(
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.onDarkPrimary.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.onDarkPrimary.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            // Compact user info row - matches the real layout
+            Row(
+              children: [
+                const _SkeletonCircle(diameter: 48), // radius: 24
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _SkeletonBox(width: 120, height: 18, radius: 9), // displayName
+                      const SizedBox(height: 2),
+                      const _SkeletonBox(width: 80, height: 12, radius: 6), // email
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const _SkeletonBox(width: 8, height: 8, radius: 4), // people icon
+                          const SizedBox(width: 4),
+                          const _SkeletonBox(width: 60, height: 11, radius: 5), // followers text
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // Compact Instagram-style followers/following buttons
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.onDarkPrimary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Column(
+                      children: [
+                        _SkeletonBox(width: 20, height: 14, radius: 7), // count
+                        SizedBox(height: 2),
+                        _SkeletonBox(width: 50, height: 10, radius: 5), // "Followers"
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.onDarkPrimary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Column(
+                      children: [
+                        _SkeletonBox(width: 20, height: 14, radius: 7), // count
+                        SizedBox(height: 2),
+                        _SkeletonBox(width: 50, height: 10, radius: 5), // "Following"
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
       _buildSectionTitle('Currently Playing'),
       const Padding(
         padding: EdgeInsets.symmetric(horizontal: 16),
@@ -1178,16 +1188,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       _buildSectionTitle('Top Artists'),
       SizedBox(
-        height: 120,
+        height: 100,
         child: ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           scrollDirection: Axis.horizontal,
           itemBuilder: (_, __) => Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: const [
-              _SkeletonCircle(diameter: 72),
-              SizedBox(height: 8),
-              _SkeletonBox(width: 80, height: 12, radius: 6),
+              _SkeletonCircle(diameter: 60),
+              SizedBox(height: 6),
+              _SkeletonBox(width: 60, height: 10, radius: 5),
             ],
           ),
           separatorBuilder: (_, __) => const SizedBox(width: 12),
@@ -1196,16 +1206,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
        _buildSectionTitle('Top Tracks'),
        SizedBox(
-         height: 80,
+         height: 70,
          child: ListView.separated(
            padding: const EdgeInsets.symmetric(horizontal: 16),
            scrollDirection: Axis.horizontal,
            itemBuilder: (_, __) => Column(
              mainAxisAlignment: MainAxisAlignment.start,
              children: const [
-               _SkeletonBox(width: 48, height: 48, radius: 8),
-               SizedBox(height: 6),
-               _SkeletonBox(width: 60, height: 10, radius: 6),
+               _SkeletonBox(width: 40, height: 40, radius: 6),
+               SizedBox(height: 4),
+               _SkeletonBox(width: 50, height: 8, radius: 4),
              ],
            ),
            separatorBuilder: (_, __) => const SizedBox(width: 12),
@@ -1222,6 +1232,81 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: _SkeletonTile(),
         ),
       ),
+      _buildSectionTitle('My Posts'),
+      ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 3,
+        itemBuilder: (context, index) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Container(
+            height: 180,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: AppColors.onDarkPrimary.withOpacity(0.03),
+              border: Border.all(
+                color: AppColors.onDarkPrimary.withOpacity(0.06),
+                width: 1,
+              ),
+            ),
+            child: const _Shimmer(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top row: avatar + username
+                    Row(
+                      children: [
+                        _SkeletonCircle(diameter: 28),
+                        SizedBox(width: 12),
+                        _SkeletonBox(width: 60, height: 13, radius: 6),
+                        SizedBox(width: 30),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    // Middle: cover + song info
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SkeletonBox(width: 60, height: 60, radius: 12),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _SkeletonBox(width: 150, height: 16, radius: 8),
+                              SizedBox(height: 6),
+                              _SkeletonBox(width: 100, height: 13, radius: 6),
+                              SizedBox(height: 8),
+                              _SkeletonBox(width: 180, height: 12, radius: 6),
+                              SizedBox(height: 4),
+                              _SkeletonBox(width: 120, height: 12, radius: 6),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // Bottom: 3 circles for action buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        _SkeletonCircle(diameter: 18),
+                        SizedBox(width: 12),
+                        _SkeletonCircle(diameter: 18),
+                        SizedBox(width: 12),
+                        _SkeletonCircle(diameter: 18),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 24),
     ];
   }
 
@@ -2152,7 +2237,7 @@ class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 3500))
       ..repeat();
   }
 

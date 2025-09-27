@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:ui';
 import '../providers/auth_provider.dart';
 import '../constants/app_colors.dart';
@@ -10,12 +11,13 @@ class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  State<SettingsScreen> createState() => SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class SettingsScreenState extends State<SettingsScreen> {
   late final AuthProvider _authProvider;
   late final SpotifyService _spotifyService;
+  late final ScrollController _scrollController;
   
   bool _loading = false;
   Map<String, dynamic>? _user;
@@ -25,12 +27,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _authProvider = AuthProvider();
     _spotifyService = SpotifyService();
+    _scrollController = ScrollController();
     _initializeAuth();
   }
 
   @override
   void dispose() {
     _authProvider.removeListener(_onAuthStateChanged);
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -87,6 +91,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _loading = false;
         });
       }
+    }
+  }
+
+  Future<void> _refreshData() async {
+    if (!_authProvider.isAuthenticated) return;
+    
+    try {
+      await _fetchUserData();
+    } catch (e) {
+      // Handle error silently
     }
   }
 
@@ -201,41 +215,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: _buildTopBar(context),
-              ),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    _buildSectionTitle('Account'),
-                    if (_authProvider.isAuthenticated) ...[
-                      _buildAccountCard(),
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    HapticFeedback.lightImpact();
+                    await _refreshData();
+                    HapticFeedback.selectionClick();
+                  },
+                  child: ListView(
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      _buildSectionTitle('Account'),
+                      if (_authProvider.isAuthenticated) ...[
+                        _buildAccountCard(),
+                        const SizedBox(height: 16),
+                        _buildActionButton(
+                          icon: Icons.logout,
+                          title: 'Logout',
+                          subtitle: 'Sign out from Spotify',
+                          onTap: _handleLogout,
+                          color: Colors.orange,
+                        ),
+                        const SizedBox(height: 12),
+                        _buildActionButton(
+                          icon: Icons.delete_forever,
+                          title: 'Delete Account',
+                          subtitle: 'Permanently delete your account',
+                          onTap: _showDeleteAccountDialog,
+                          color: Colors.red,
+                        ),
+                      ] else ...[
+                        _buildNotConnectedCard(),
+                      ],
+                      const SizedBox(height: 32),
+                      _buildSectionTitle('App Info'),
                       const SizedBox(height: 16),
-                      _buildActionButton(
-                        icon: Icons.logout,
-                        title: 'Logout',
-                        subtitle: 'Sign out from Spotify',
-                        onTap: _handleLogout,
-                        color: Colors.orange,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildActionButton(
-                        icon: Icons.delete_forever,
-                        title: 'Delete Account',
-                        subtitle: 'Permanently delete your account',
-                        onTap: _showDeleteAccountDialog,
-                        color: Colors.red,
-                      ),
-                    ] else ...[
-                      _buildNotConnectedCard(),
+                      _buildInfoCard(),
                     ],
-                    const SizedBox(height: 32),
-                    _buildSectionTitle('App Info'),
-                    const SizedBox(height: 16),
-                    _buildInfoCard(),
-                  ],
+                  ),
                 ),
               ),
             ],
@@ -245,28 +264,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildTopBar(BuildContext context) {
-    return Row(
-      children: [
-        const SizedBox(width: 4),
-        Text(
-          'Settings',
-          style: AppTextStyles.heading2OnDark.copyWith(
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-            letterSpacing: 0.6,
-            shadows: [
-              Shadow(
-                color: AppColors.onDarkPrimary.withOpacity(0.03),
-                blurRadius: 6,
-              )
-            ],
-          ),
-        ),
-        const Spacer(),
-      ],
-    );
+  /// Scroll to top of the settings screen
+  void scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
   }
+
 
   Widget _buildSectionTitle(String title) {
     return Padding(
@@ -503,7 +511,7 @@ class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 3500))
       ..repeat();
   }
 

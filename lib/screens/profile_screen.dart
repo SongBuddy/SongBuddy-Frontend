@@ -681,7 +681,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                 width: 60,
                 child: Text(
                   artist['name'] as String? ?? '',
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: AppTextStyles.captionOnDark,
@@ -785,7 +785,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                  width: 60,
                  child: Text(
                    track['name'] as String? ?? '',
-                   maxLines: 2,
+                   maxLines: 1,
                    overflow: TextOverflow.ellipsis,
                    textAlign: TextAlign.center,
                    style: AppTextStyles.captionOnDark.copyWith(fontSize: 10),
@@ -1238,16 +1238,16 @@ class ProfileScreenState extends State<ProfileScreen> {
       ),
       _buildSectionTitle('Top Artists'),
       SizedBox(
-        height: 120,
+        height: 100,
         child: ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           scrollDirection: Axis.horizontal,
           itemBuilder: (_, __) => Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: const [
-              _SkeletonCircle(diameter: 72),
-              SizedBox(height: 8),
-              _SkeletonBox(width: 80, height: 12, radius: 6),
+              _SkeletonCircle(diameter: 60),
+              SizedBox(height: 6),
+              _SkeletonBox(width: 60, height: 10, radius: 5),
             ],
           ),
           separatorBuilder: (_, __) => const SizedBox(width: 12),
@@ -1256,16 +1256,16 @@ class ProfileScreenState extends State<ProfileScreen> {
       ),
        _buildSectionTitle('Top Tracks'),
        SizedBox(
-         height: 80,
+         height: 70,
          child: ListView.separated(
            padding: const EdgeInsets.symmetric(horizontal: 16),
            scrollDirection: Axis.horizontal,
            itemBuilder: (_, __) => Column(
              mainAxisAlignment: MainAxisAlignment.start,
              children: const [
-               _SkeletonBox(width: 48, height: 48, radius: 8),
-               SizedBox(height: 6),
-               _SkeletonBox(width: 60, height: 10, radius: 6),
+               _SkeletonBox(width: 40, height: 40, radius: 6),
+               SizedBox(height: 4),
+               _SkeletonBox(width: 50, height: 8, radius: 4),
              ],
            ),
            separatorBuilder: (_, __) => const SizedBox(width: 12),
@@ -1337,7 +1337,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ],
                     ),
-                    Spacer(),
+                    const SizedBox(height: 20),
                     // Bottom: 3 circles for action buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,

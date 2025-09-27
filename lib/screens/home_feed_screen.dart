@@ -23,18 +23,38 @@ class HomeFeedScreen extends StatefulWidget {
 class _HomeFeedScreenState extends State<HomeFeedScreen> {
   late final AuthProvider _authProvider;
   late final BackendService _backendService;
+  late final ScrollController _scrollController;
   
   List<Post> _posts = [];
   bool _loading = false;
+  bool _loadingMore = false;
+  bool _hasMorePosts = true;
   bool _initialized = false;
   DateTime? _loadingStartTime;
+  int _currentPage = 1;
+  static const int _postsPerPage = 10;
 
   @override
   void initState() {
     super.initState();
     _authProvider = AuthProvider();
     _backendService = BackendService();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
     _initializeData();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      _loadMorePosts();
+    }
   }
 
   Future<void> _initializeData() async {
@@ -95,6 +115,8 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       final posts = await _backendService.getFeedPosts(
         _authProvider.userId!,
         currentUserId: _authProvider.userId,
+        limit: _postsPerPage,
+        offset: 0,
       );
       
       print('📊 HomeFeedScreen: Received ${posts.length} posts from API');
@@ -102,6 +124,8 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
       
       setState(() {
         _posts = posts;
+        _currentPage = 1;
+        _hasMorePosts = posts.length >= _postsPerPage;
         _loadingStartTime = DateTime.now(); // Reset timer for refresh
       });
       
@@ -121,6 +145,54 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _loadMorePosts() async {
+    if (_loadingMore || !_hasMorePosts) return;
+
+    setState(() {
+      _loadingMore = true;
+    });
+
+    try {
+      final nextPage = _currentPage + 1;
+      final offset = (nextPage - 1) * _postsPerPage;
+      
+      print('🔗 HomeFeedScreen: Loading more posts - Page: $nextPage, Offset: $offset');
+      
+      final newPosts = await _backendService.getFeedPosts(
+        _authProvider.userId!,
+        currentUserId: _authProvider.userId,
+        limit: _postsPerPage,
+        offset: offset,
+      );
+      
+      print('📊 HomeFeedScreen: Received ${newPosts.length} more posts');
+      
+      setState(() {
+        _posts.addAll(newPosts);
+        _currentPage = nextPage;
+        _hasMorePosts = newPosts.length >= _postsPerPage;
+      });
+      
+      print('✅ HomeFeedScreen: Successfully loaded ${newPosts.length} more posts. Total: ${_posts.length}');
+    } catch (e) {
+      print('❌ HomeFeedScreen: Failed to load more posts: $e');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load more posts: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _loadingMore = false;
+      });
     }
   }
 
@@ -295,10 +367,15 @@ class _HomeFeedScreenState extends State<HomeFeedScreen> {
         }
       },
       child: ListView.separated(
+        controller: _scrollController,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        itemCount: _posts.length,
+        itemCount: _posts.length + (_loadingMore ? 1 : 0),
         separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
+          if (index == _posts.length) {
+            // Loading indicator at the bottom
+            return _buildLoadingIndicator();
+          }
           final post = _posts[index];
           return _buildPostCard(post);
         },
@@ -395,6 +472,18 @@ ${post.description?.isNotEmpty == true ? post.description : ''}
           );
         }
       },
+    );
+  }
+
+  Widget _buildLoadingIndicator() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: const Center(
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: AppColors.onDarkSecondary,
+        ),
+      ),
     );
   }
 }

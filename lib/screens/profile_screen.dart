@@ -1150,6 +1150,87 @@ class ProfileScreenState extends State<ProfileScreen> {
   // New: Skeleton widgets list used when loading
   List<Widget> _buildSkeletonWidgets(BuildContext context) {
     return [
+      // Profile Header Skeleton - matches _buildProfileHeader() exactly
+      Container(
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.onDarkPrimary.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppColors.onDarkPrimary.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            // Compact user info row - matches the real layout
+            Row(
+              children: [
+                const _SkeletonCircle(diameter: 48), // radius: 24
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const _SkeletonBox(width: 120, height: 18, radius: 9), // displayName
+                      const SizedBox(height: 2),
+                      const _SkeletonBox(width: 80, height: 12, radius: 6), // email
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const _SkeletonBox(width: 8, height: 8, radius: 4), // people icon
+                          const SizedBox(width: 4),
+                          const _SkeletonBox(width: 60, height: 11, radius: 5), // followers text
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // Compact Instagram-style followers/following buttons
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.onDarkPrimary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Column(
+                      children: [
+                        _SkeletonBox(width: 20, height: 14, radius: 7), // count
+                        SizedBox(height: 2),
+                        _SkeletonBox(width: 50, height: 10, radius: 5), // "Followers"
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.onDarkPrimary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Column(
+                      children: [
+                        _SkeletonBox(width: 20, height: 14, radius: 7), // count
+                        SizedBox(height: 2),
+                        _SkeletonBox(width: 50, height: 10, radius: 5), // "Following"
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
       _buildSectionTitle('Currently Playing'),
       const Padding(
         padding: EdgeInsets.symmetric(horizontal: 16),
@@ -1201,6 +1282,81 @@ class ProfileScreenState extends State<ProfileScreen> {
           child: _SkeletonTile(),
         ),
       ),
+      _buildSectionTitle('My Posts'),
+      ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 3,
+        itemBuilder: (context, index) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Container(
+            height: 180,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: AppColors.onDarkPrimary.withOpacity(0.03),
+              border: Border.all(
+                color: AppColors.onDarkPrimary.withOpacity(0.06),
+                width: 1,
+              ),
+            ),
+            child: const _Shimmer(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top row: avatar + username
+                    Row(
+                      children: [
+                        _SkeletonCircle(diameter: 28),
+                        SizedBox(width: 12),
+                        _SkeletonBox(width: 60, height: 13, radius: 6),
+                        SizedBox(width: 30),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    // Middle: cover + song info
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SkeletonBox(width: 60, height: 60, radius: 12),
+                        SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _SkeletonBox(width: 150, height: 16, radius: 8),
+                              SizedBox(height: 6),
+                              _SkeletonBox(width: 100, height: 13, radius: 6),
+                              SizedBox(height: 8),
+                              _SkeletonBox(width: 180, height: 12, radius: 6),
+                              SizedBox(height: 4),
+                              _SkeletonBox(width: 120, height: 12, radius: 6),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    Spacer(),
+                    // Bottom: 3 circles for action buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        _SkeletonCircle(diameter: 18),
+                        SizedBox(width: 12),
+                        _SkeletonCircle(diameter: 18),
+                        SizedBox(width: 12),
+                        _SkeletonCircle(diameter: 18),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 24),
     ];
   }
 

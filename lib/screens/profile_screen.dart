@@ -418,10 +418,6 @@ class ProfileScreenState extends State<ProfileScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: _buildTopBar(context),
-              ),
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
@@ -723,39 +719,6 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   // Removed time range toggle UI
 
-  // New: Top bar with title on the left
-  Widget _buildTopBar(BuildContext context) {
-    // final images = (_user?['images'] as List<dynamic>?) ?? const [];
-    // final avatarUrl = images.isNotEmpty ? (images.first['url'] as String?) : null;
-    return Row(
-      children: [
-        Text(
-          'Profile',
-          style: AppTextStyles.heading2OnDark.copyWith(
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-            letterSpacing: 0.6,
-            shadows: [
-              Shadow(
-                color: AppColors.onDarkPrimary.withOpacity(0.03),
-                blurRadius: 6,
-              )
-            ],
-          ),
-        ),
-        const Spacer(),
-        // Commented out profile picture section
-        // CircleAvatar(
-        //   radius: 18,
-        //   backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-        //   backgroundColor: Colors.transparent,
-        //   child: avatarUrl == null
-        //       ? const Icon(Icons.person_outline, color: AppColors.onDarkSecondary)
-        //       : null,
-        // ),
-      ],
-    );
-  }
 
   // New: Top Artists as a widget (no slivers)
   Widget _buildTopArtistsWidget() {

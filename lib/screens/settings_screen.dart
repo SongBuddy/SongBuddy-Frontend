@@ -215,10 +215,6 @@ class SettingsScreenState extends State<SettingsScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: _buildTopBar(context),
-              ),
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
@@ -279,28 +275,6 @@ class SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Widget _buildTopBar(BuildContext context) {
-    return Row(
-      children: [
-        const SizedBox(width: 4),
-        Text(
-          'Settings',
-          style: AppTextStyles.heading2OnDark.copyWith(
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-            letterSpacing: 0.6,
-            shadows: [
-              Shadow(
-                color: AppColors.onDarkPrimary.withOpacity(0.03),
-                blurRadius: 6,
-              )
-            ],
-          ),
-        ),
-        const Spacer(),
-      ],
-    );
-  }
 
   Widget _buildSectionTitle(String title) {
     return Padding(

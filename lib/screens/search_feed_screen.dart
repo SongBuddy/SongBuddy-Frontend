@@ -48,6 +48,13 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
   int _discoveryCurrentPage = 1;
   static const int _discoveryPostsPerPage = 10;
   late final ScrollController _discoveryScrollController;
+  
+  // Navigation state for nested navigation
+  final GlobalKey<NavigatorState> _nestedNavigatorKey = GlobalKey<NavigatorState>();
+  bool _showUserProfile = false;
+  String? _selectedUserId;
+  String? _selectedUsername;
+  String? _selectedAvatarUrl;
 
   // Track likes for posts
   final Map<String, bool> _likedPosts = {}; // Changed to String key (post ID)
@@ -95,6 +102,26 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
     _controller.dispose();
     if (_isListening) _speech.stop();
     super.dispose();
+  }
+
+  // Method to navigate to user profile (sub-route)
+  void _navigateToUserProfile(String userId, String username, String avatarUrl) {
+    setState(() {
+      _showUserProfile = true;
+      _selectedUserId = userId;
+      _selectedUsername = username;
+      _selectedAvatarUrl = avatarUrl;
+    });
+  }
+
+  // Method to go back to search feed
+  void _goBackToSearchFeed() {
+    setState(() {
+      _showUserProfile = false;
+      _selectedUserId = null;
+      _selectedUsername = null;
+      _selectedAvatarUrl = null;
+    });
   }
 
   void _onDiscoveryScroll() {
@@ -307,17 +334,12 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
                 _controller.clear();
                 _searchResults = [];
               });
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => UserProfileScreen(
-                    username: displayName,
-                    avatarUrl: profilePicture.isNotEmpty 
-                        ? profilePicture 
-                        : "https://i.pravatar.cc/150?img=1",
-                    userId: user['id'] as String?, // Pass the user ID
-                  ),
-                ),
+              _navigateToUserProfile(
+                user['id'] as String,
+                displayName,
+                profilePicture.isNotEmpty 
+                    ? profilePicture 
+                    : "https://i.pravatar.cc/150?img=1",
               );
             },
           );
@@ -440,15 +462,10 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
         isInitiallyLiked: isLiked,
         showFollowButton: true,
         onCardTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => UserProfileScreen(
-                username: username,
-                avatarUrl: "https://i.pravatar.cc/150?img=1",
-                userId: post['userId'] as String?, // Pass the user ID if available
-              ),
-            ),
+          _navigateToUserProfile(
+            post['userId'] as String,
+            username,
+            "https://i.pravatar.cc/150?img=1",
           );
         },
         onLikeChanged: (newLiked, newLikes) async {
@@ -760,8 +777,32 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
           ),
         ),
         child: SafeArea(
-          child: Column(
-            children: [
+          child: _showUserProfile ? _buildUserProfileView() : _buildSearchFeedView(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserProfileView() {
+    return Navigator(
+      key: _nestedNavigatorKey,
+      onGenerateRoute: (settings) {
+        return MaterialPageRoute(
+          builder: (context) => UserProfileScreen(
+            username: _selectedUsername ?? '',
+            avatarUrl: _selectedAvatarUrl ?? '',
+            userId: _selectedUserId,
+            onBackPressed: _goBackToSearchFeed,
+            nestedNavigatorKey: _nestedNavigatorKey, // Pass navigator key for nested navigation
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchFeedView() {
+    return Column(
+      children: [
             // Search bar + cancel button
             Row(
               children: [
@@ -842,9 +883,8 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
             else
               _buildDiscoveryFeed(),
           ],
-        ),
-      ),      ),
-    );
+        );
+   
   }
 
   /// Scroll to top and refresh the discovery feed

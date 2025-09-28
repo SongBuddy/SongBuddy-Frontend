@@ -14,12 +14,16 @@ class UserProfileScreen extends StatefulWidget {
   final String username;
   final String avatarUrl;
   final String? userId;
+  final VoidCallback? onBackPressed; // Callback for custom back navigation
+  final GlobalKey<NavigatorState>? nestedNavigatorKey; // Navigator key for nested navigation
 
   const UserProfileScreen({
     super.key,
     required this.username,
     required this.avatarUrl,
     this.userId,
+    this.onBackPressed,
+    this.nestedNavigatorKey,
   });
 
   @override
@@ -97,6 +101,25 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           _loading = false;
         });
       }
+    }
+  }
+
+  // Method to navigate to another user profile using nested navigation
+  void _navigateToUserProfile(String userId, String username, String avatarUrl) {
+    if (widget.nestedNavigatorKey?.currentState != null) {
+      widget.nestedNavigatorKey!.currentState!.push(
+        MaterialPageRoute(
+          builder: (context) => UserProfileScreen(
+            username: username,
+            avatarUrl: avatarUrl,
+            userId: userId,
+            onBackPressed: () {
+              widget.nestedNavigatorKey!.currentState!.pop();
+            },
+            nestedNavigatorKey: widget.nestedNavigatorKey,
+          ),
+        ),
+      );
     }
   }
 
@@ -418,26 +441,32 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: AppColors.onDarkSecondary),
+       children: [
+         IconButton(
+           onPressed: () {
+             if (widget.onBackPressed != null) {
+               widget.onBackPressed!();
+             } else {
+               Navigator.pop(context);
+             }
+           },
+           icon: const Icon(Icons.arrow_back, color: AppColors.onDarkSecondary),
+         ),
+        const Spacer(),
+        Text(
+          widget.username,
+          style: AppTextStyles.heading2OnDark.copyWith(
+            fontWeight: FontWeight.w800,
+            fontSize: 20,
+            letterSpacing: 0.6,
           ),
-          const Spacer(),
-          Text(
-            widget.username,
-            style: AppTextStyles.heading2OnDark.copyWith(
-              fontWeight: FontWeight.w800,
-              fontSize: 20,
-              letterSpacing: 0.6,
-            ),
-          ),
-          const Spacer(),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.more_vert, color: AppColors.onDarkSecondary),
-          ),
-        ],
+        ),
+        const Spacer(),
+        IconButton(
+          onPressed: () {},
+          icon: const Icon(Icons.more_vert, color: AppColors.onDarkSecondary),
+        ),
+      ],
       ),
     );
   }
@@ -678,15 +707,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final trackData = _currentlyPlaying?['item'] as Map<String, dynamic>? ?? _currentlyPlaying;
     print('🔍 UserProfileScreen: _buildCurrentlyPlaying - trackData: $trackData');
     if (trackData == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: _EmptyCard(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: _EmptyCard(
           icon: Icons.play_circle_outline,
           title: 'Nothing playing right now',
           subtitle: 'User is not currently listening to anything.',
-        ),
-      );
-    }
+      ),
+    );
+  }
 
     final name = trackData['name'] as String? ?? '';
     final artists = (trackData['artists'] as List<dynamic>? ?? const [])
@@ -809,10 +838,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Widget _buildTopTracksWidget(BuildContext context) {
     print('🔍 UserProfileScreen: _buildTopTracksWidget - _topTracks.length: ${_topTracks.length}');
     if (_topTracks.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
         child: const _EmptyCard(
-          icon: Icons.music_note,
+        icon: Icons.music_note,
           title: 'No top tracks yet',
           subtitle: 'Listen more to build your top tracks.',
         ),
@@ -862,8 +891,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
          },
          separatorBuilder: (_, __) => const SizedBox(width: 12),
          itemCount: _topTracks.length > 5 ? 5 : _topTracks.length,
-       ),
-     );
+      ),
+    );
   }
 
 
@@ -881,16 +910,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     
     print('🔍 UserProfileScreen: _buildRecentlyPlayedWidget - recentTracks.length: ${recentTracks.length}');
     if (recentTracks.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
         child: const _EmptyCard(
-          icon: Icons.history,
+        icon: Icons.history,
           title: 'No recent plays',
           subtitle: 'Play some songs in the last 24 hours to see them here.',
-        ),
-      );
-    }
-    
+      ),
+    );
+  }
+
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -984,10 +1013,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   // Build individual post card using SwipeablePostCard
   Widget _buildPostCard(Post post) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: SwipeablePostCard(
-        post: post,
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: SwipeablePostCard(
+            post: post,
         showUserInfo: true, // Show username and avatar in user profile screen
         onDelete: null, // Users can't delete other users' posts
         onEditDescription: null, // Users can't edit other users' posts
@@ -1038,15 +1067,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           // TODO: Implement share functionality
           print('Share post: ${post.id}');
         },
-        onOpenInSpotify: () async {
-          try {
+            onOpenInSpotify: () async {
+              try {
             print('🔗 UserProfileScreen: Opening song in Spotify: ${post.songName} by ${post.artistName}');
-            final success = await SpotifyDeepLinkService.openSongInSpotify(
-              songName: post.songName,
-              artistName: post.artistName,
-            );
+                final success = await SpotifyDeepLinkService.openSongInSpotify(
+                  songName: post.songName,
+                  artistName: post.artistName,
+                );
             
-            if (success) {
+                if (success) {
               print('✅ UserProfileScreen: Successfully opened song in Spotify');
               HapticFeedback.lightImpact();
             } else {
@@ -1056,12 +1085,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               final simpleSuccess = await SpotifyDeepLinkService.openSpotifySimple();
               if (simpleSuccess) {
                 print('✅ UserProfileScreen: Opened Spotify app (simple method)');
-                HapticFeedback.lightImpact();
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
+                  HapticFeedback.lightImpact();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(SpotifyDeepLinkService.getSpotifyErrorMessage()),
-                    backgroundColor: Colors.orange,
+                      backgroundColor: Colors.orange,
                     duration: const Duration(seconds: 4),
                     action: SnackBarAction(
                       label: 'OK',
@@ -1071,19 +1100,19 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ),
                 );
               }
-            }
-          } catch (e) {
+                }
+              } catch (e) {
             print('❌ UserProfileScreen: Error opening Spotify: $e');
-            ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Error opening Spotify: $e'),
                 backgroundColor: Colors.red,
                 duration: const Duration(seconds: 3),
               ),
-            );
-          }
-        },
-      ),
+                );
+              }
+            },
+          ),
     );
   }
 
@@ -1114,7 +1143,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           border: Border.all(
             color: AppColors.onDarkPrimary.withOpacity(0.1),
             width: 1,
-          ),
+        ),
         ),
         child: Column(
           children: [
@@ -1122,11 +1151,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             Row(
               children: [
                 const _SkeletonCircle(diameter: 48), // radius: 24
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                       const _SkeletonBox(width: 120, height: 18, radius: 9), // displayName
                       const SizedBox(height: 2),
                       const _SkeletonBox(width: 80, height: 12, radius: 6), // email
@@ -1210,7 +1239,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           itemCount: 6,
         ),
       ),
-       _buildSectionTitle('Top Tracks'),
+      _buildSectionTitle('Top Tracks'),
        SizedBox(
          height: 70,
          child: ListView.separated(
@@ -1336,6 +1365,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             // Handle follow/unfollow logic here
             print('Follow toggle: $userId -> $isFollowing');
           },
+          onUserTap: _navigateToUserProfile,
         ),
       );
     } catch (e) {
@@ -1353,6 +1383,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           onFollowToggle: (userId, isFollowing) async {
             print('Follow toggle: $userId -> $isFollowing');
           },
+          onUserTap: _navigateToUserProfile,
         ),
       );
       
@@ -1387,6 +1418,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             // Handle follow/unfollow logic here
             print('Follow toggle: $userId -> $isFollowing');
           },
+          onUserTap: _navigateToUserProfile,
         ),
       );
     } catch (e) {
@@ -1404,6 +1436,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           onFollowToggle: (userId, isFollowing) async {
             print('Follow toggle: $userId -> $isFollowing');
           },
+          onUserTap: _navigateToUserProfile,
         ),
       );
       
@@ -1436,9 +1469,9 @@ class _EmptyCard extends StatelessWidget {
             Icon(icon, size: 28, color: AppColors.onDarkSecondary),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(
+      child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+        children: [
                   Text(title, style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
                   Text(subtitle, style: AppTextStyles.captionOnDark),
@@ -1459,6 +1492,7 @@ class _FollowersFollowingDialog extends StatefulWidget {
   final String currentUserId;
   final Function(String userId, bool isFollowing) onFollowToggle;
   final BackendService backendService;
+  final Function(String userId, String username, String avatarUrl)? onUserTap; // Navigation callback
 
   const _FollowersFollowingDialog({
     required this.title,
@@ -1466,6 +1500,7 @@ class _FollowersFollowingDialog extends StatefulWidget {
     required this.currentUserId,
     required this.onFollowToggle,
     required this.backendService,
+    this.onUserTap,
   });
 
   @override
@@ -1530,10 +1565,10 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
                         ),
                       ),
                     )
-                  : ListView.builder(
+            : ListView.builder(
                       padding: const EdgeInsets.all(8),
                       itemCount: widget.users.length,
-                      itemBuilder: (context, index) {
+                itemBuilder: (context, index) {
                         final user = widget.users[index];
                         return _buildUserTile(user);
                       },
@@ -1547,8 +1582,8 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
 
   Widget _buildUserTile(Map<String, dynamic> user) {
     final userId = user['id'] as String;
-    final displayName = user['displayName'] as String? ?? 'Unknown User';
-    final username = user['username'] as String? ?? '';
+                  final displayName = user['displayName'] as String? ?? 'Unknown User';
+                  final username = user['username'] as String? ?? '';
     final profilePicture = user['profilePicture'] as String?;
     
     return Container(
@@ -1565,19 +1600,14 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => UserProfileScreen(
-                    username: displayName,
-                    avatarUrl: profilePicture ?? "https://i.pravatar.cc/150?img=1",
-                    userId: userId,
-                  ),
-                ),
-              );
-            },
+                    onTap: () {
+                      Navigator.pop(context);
+                      widget.onUserTap?.call(
+                        userId,
+                        displayName,
+                        profilePicture ?? "https://i.pravatar.cc/150?img=1",
+                      );
+                    },
             child: CircleAvatar(
               radius: 20,
               backgroundColor: AppColors.onDarkPrimary.withOpacity(0.1),
@@ -1592,15 +1622,10 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
             child: GestureDetector(
               onTap: () {
                 Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => UserProfileScreen(
-                      username: displayName,
-                      avatarUrl: profilePicture ?? "https://i.pravatar.cc/150?img=1",
-                      userId: userId,
-                    ),
-                  ),
+                widget.onUserTap?.call(
+                  userId,
+                  displayName,
+                  profilePicture ?? "https://i.pravatar.cc/150?img=1",
                 );
               },
               child: Column(

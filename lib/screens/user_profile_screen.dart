@@ -441,8 +441,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
-       children: [
-         IconButton(
+      children: [
+        IconButton(
            onPressed: () {
              if (widget.onBackPressed != null) {
                widget.onBackPressed!();
@@ -450,8 +450,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                Navigator.pop(context);
              }
            },
-           icon: const Icon(Icons.arrow_back, color: AppColors.onDarkSecondary),
-         ),
+          icon: const Icon(Icons.arrow_back, color: AppColors.onDarkSecondary),
+        ),
         const Spacer(),
         Text(
           widget.username,

@@ -4,6 +4,7 @@ import 'package:songbuddy/models/AppUser.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/models/ProfileData.dart';
 import 'backend_api_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // Simple HTTP client with basic configuration
 class SimpleHttpClient {
@@ -28,7 +29,9 @@ class SimpleHttpClient {
 class BackendService {
   // Constant base URL for backend - using computer's IP for mobile debugging
   // Update this IP address whenever your computer's IP changes
-  static const String baseUrl = 'http://192.168.83.108:3000';
+
+
+  static String get baseUrl => dotenv.env['BASE_URL'] ?? '';
   
   // Alternative IPs to try if the main one fails
   static const List<String> alternativeUrls = [

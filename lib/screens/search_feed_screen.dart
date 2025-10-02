@@ -9,6 +9,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:share_plus/share_plus.dart';
 import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/providers/auth_provider.dart';
+import 'package:songbuddy/services/spotify_deep_link_service.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 
 class SearchFeedScreen extends StatefulWidget {
@@ -437,6 +438,42 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
       onShare: () {
         final text = "$username shared a song: $songName by $artistName";
         Share.share(text);
+      },
+      onOpenInSpotify: () async {
+        try {
+          print('🔗 SearchFeedScreen: Opening song in Spotify: $songName by $artistName');
+          final success = await SpotifyDeepLinkService.openSongInSpotify(
+            songName: songName,
+            artistName: artistName,
+          );
+          
+          if (success) {
+            print('✅ SearchFeedScreen: Successfully opened song in Spotify');
+            HapticFeedback.lightImpact();
+          } else {
+            print('❌ SearchFeedScreen: Failed to open song in Spotify');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Could not open Spotify. Please install Spotify app.'),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          print('❌ SearchFeedScreen: Error opening Spotify: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error opening Spotify: $e'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
       },
       onFollowPressed: () {
         // TODO: Implement follow functionality

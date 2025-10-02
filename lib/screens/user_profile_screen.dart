@@ -452,20 +452,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
            },
           icon: const Icon(Icons.arrow_back, color: AppColors.onDarkSecondary),
         ),
-        const Spacer(),
-        Text(
-          widget.username,
-          style: AppTextStyles.heading2OnDark.copyWith(
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-            letterSpacing: 0.6,
-          ),
-        ),
-        const Spacer(),
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(Icons.more_vert, color: AppColors.onDarkSecondary),
-        ),
       ],
       ),
     );

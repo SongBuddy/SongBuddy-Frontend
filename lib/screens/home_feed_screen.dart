@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
 import 'package:songbuddy/screens/notification_screen.dart';
@@ -12,6 +11,7 @@ import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/services/spotify_deep_link_service.dart';
+import 'package:songbuddy/utils/post_sharing_utils.dart';
 
 class HomeFeedScreen extends StatefulWidget {
   const HomeFeedScreen({super.key});
@@ -394,16 +394,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
         }
       },
       onShare: () {
-        final text = """
-🎵 ${post.songName} - ${post.artistName}
-Posted by ${post.username}
-
-${post.description?.isNotEmpty == true ? post.description : ''}
-""";
-        Share.share(
-          text,
-          subject: "Check out this song on SongBuddy!",
-        );
+        PostSharingUtils.sharePost(post);
       },
       onOpenInSpotify: () async {
         try {

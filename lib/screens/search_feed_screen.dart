@@ -6,11 +6,11 @@ import 'package:songbuddy/screens/user_profile_screen.dart';
 import 'package:songbuddy/widgets/music_post_card.dart';
 import 'package:songbuddy/widgets/shimmer_post_card.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:share_plus/share_plus.dart';
 import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/services/spotify_deep_link_service.dart';
 import 'package:songbuddy/constants/app_colors.dart';
+import 'package:songbuddy/utils/post_sharing_utils.dart';
 
 class SearchFeedScreen extends StatefulWidget {
   const SearchFeedScreen({super.key});
@@ -197,30 +197,69 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
 
   Future<void> _listen() async {
     if (!_isListening) {
-      final available = await _speech.initialize();
-      if (!available) return;
+      try {
+        final available = await _speech.initialize();
+        if (!available) {
+          print('❌ SearchFeedScreen: Speech recognition not available');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Voice recognition is not available on this device'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 2),
+            ),
+          );
+          return;
+        }
 
-      _searchFocusNode.requestFocus();
-      setState(() => _isListening = true);
+        _searchFocusNode.requestFocus();
+        setState(() => _isListening = true);
 
-      _speech.listen(
-        onResult: (result) {
-          final recognized = result.recognizedWords;
-          setState(() {
-            query = recognized;
-            _controller.text = recognized;
-            _controller.selection = TextSelection.fromPosition(
-              TextPosition(offset: _controller.text.length),
-            );
-            _isSearching = true;
-          });
-        },
-        listenMode: stt.ListenMode.search,
-        partialResults: true,
-      );
+        _speech.listen(
+          onResult: (result) {
+            final recognized = result.recognizedWords;
+            print('🎤 SearchFeedScreen: Voice recognition result: "$recognized"');
+            
+            setState(() {
+              query = recognized;
+              _controller.text = recognized;
+              _controller.selection = TextSelection.fromPosition(
+                TextPosition(offset: _controller.text.length),
+              );
+              _isSearching = true;
+              _searchError = null;
+            });
+            
+            // Explicitly trigger search since programmatic text changes might not trigger the listener
+            if (recognized.trim().isNotEmpty) {
+              print('🔍 SearchFeedScreen: Triggering search from voice input: "$recognized"');
+              _performSearch(recognized.trim());
+            }
+            
+            // Stop listening after getting a result (for better UX)
+            if (result.finalResult) {
+              print('🎤 SearchFeedScreen: Final result received, stopping voice recognition');
+              _speech.stop();
+              setState(() => _isListening = false);
+            }
+          },
+          listenMode: stt.ListenMode.search,
+          partialResults: true,
+        );
+      } catch (e) {
+        print('❌ SearchFeedScreen: Voice recognition error: $e');
+        setState(() => _isListening = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Voice recognition error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     } else {
       await _speech.stop();
       setState(() => _isListening = false);
+      print('🎤 SearchFeedScreen: Voice recognition stopped manually');
     }
   }
 
@@ -436,8 +475,12 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
         }
       },
       onShare: () {
-        final text = "$username shared a song: $songName by $artistName";
-        Share.share(text);
+        PostSharingUtils.sharePostFromData(
+          songName: songName,
+          artistName: artistName,
+          username: username,
+          description: description,
+        );
       },
       onOpenInSpotify: () async {
         try {

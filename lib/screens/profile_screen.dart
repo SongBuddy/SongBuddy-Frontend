@@ -13,6 +13,7 @@ import 'package:songbuddy/widgets/spotify_login_button.dart';
 import 'package:songbuddy/widgets/create_post_sheet.dart';
 import 'package:songbuddy/widgets/swipeable_post_card.dart';
 import 'package:songbuddy/screens/create_post_screen.dart';
+import 'package:songbuddy/utils/post_sharing_utils.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -1118,8 +1119,7 @@ class ProfileScreenState extends State<ProfileScreen> {
               print('Post tapped: ${post.id}');
             },
         onShare: () {
-          // TODO: Implement share functionality
-          print('Share post: ${post.id}');
+          PostSharingUtils.sharePost(post);
         },
         onOpenInSpotify: () async {
           try {

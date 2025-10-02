@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
 import 'package:songbuddy/screens/notification_screen.dart';
+import 'package:songbuddy/screens/user_profile_screen.dart';
 import 'package:songbuddy/widgets/music_post_card.dart';
 import 'package:songbuddy/widgets/shimmer_post_card.dart';
 import 'package:songbuddy/services/backend_service.dart';
@@ -33,6 +34,13 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
   int _currentPage = 1;
   static const int _postsPerPage = 10;
 
+  // Navigation state for nested navigation
+  final GlobalKey<NavigatorState> _nestedNavigatorKey = GlobalKey<NavigatorState>();
+  bool _showUserProfile = false;
+  String? _selectedUserId;
+  String? _selectedUsername;
+  String? _selectedAvatarUrl;
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +62,26 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
       _loadMorePosts();
     }
+  }
+
+  // Method to navigate to user profile (sub-route)
+  void _navigateToUserProfile(String userId, String username, String avatarUrl) {
+    setState(() {
+      _showUserProfile = true;
+      _selectedUserId = userId;
+      _selectedUsername = username;
+      _selectedAvatarUrl = avatarUrl;
+    });
+  }
+
+  // Method to go back to home feed
+  void _goBackToHomeFeed() {
+    setState(() {
+      _showUserProfile = false;
+      _selectedUserId = null;
+      _selectedUsername = null;
+      _selectedAvatarUrl = null;
+    });
   }
 
   Future<void> _initializeData() async {
@@ -192,48 +220,68 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
           ),
         ),
         child: SafeArea(
-          child: Column(
+          child: _showUserProfile ? _buildUserProfileView() : _buildHomeFeedView(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserProfileView() {
+    return Navigator(
+      key: _nestedNavigatorKey,
+      onGenerateRoute: (settings) {
+        return MaterialPageRoute(
+          builder: (context) => UserProfileScreen(
+            username: _selectedUsername ?? '',
+            avatarUrl: _selectedAvatarUrl ?? '',
+            userId: _selectedUserId,
+            onBackPressed: _goBackToHomeFeed,
+            nestedNavigatorKey: _nestedNavigatorKey, // Pass navigator key for nested navigation
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHomeFeedView() {
+    return Column(
+      children: [
+        // Top bar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
+          child: Row(
             children: [
-              // Top bar
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
-                child: Row(
-                  children: [
-                    Text(
-                      "SongBuddy",
-                      style: AppTextStyles.heading2OnDark.copyWith(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 20,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (context)=> NotificationScreen()));
-                      },
-                      icon: const Icon(
-                        Icons.notifications_outlined,
-                        color: AppColors.onDarkSecondary,
-                      ),
-                    ),
-                  ],
+              Text(
+                "SongBuddy",
+                style: AppTextStyles.heading2OnDark.copyWith(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  letterSpacing: 0.6,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Divider(color: Colors.white.withOpacity(0.04), height: 1),
-              ),
-
-              // Feed
-              Expanded(
-                child: _buildFeedContent(),
+              const Spacer(),
+              IconButton(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (context)=> NotificationScreen()));
+                },
+                icon: const Icon(
+                  Icons.notifications_outlined,
+                  color: AppColors.onDarkSecondary,
+                ),
               ),
             ],
           ),
         ),
-      ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Divider(color: Colors.white.withOpacity(0.04), height: 1),
+        ),
+
+        // Feed
+        Expanded(
+          child: _buildFeedContent(),
+        ),
+      ],
     );
   }
 
@@ -357,7 +405,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
       coverUrl: post.songImage,
       description: post.description ?? '',
       initialLikes: post.likeCount,
-      isInitiallyLiked: post.isLikedByCurrentUser ?? false,
+      isInitiallyLiked: post.isLikedByCurrentUser,
       timeAgo: post.timeline,
       height: 180,
       avatarVerticalPadding: 6,
@@ -427,6 +475,14 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
             ),
           );
         }
+      },
+      onUserTap: () {
+        print('👤 HomeFeedScreen: User tapped on ${post.username}');
+        _navigateToUserProfile(
+          post.userId,
+          post.username,
+          post.userProfilePicture,
+        );
       },
     );
   }

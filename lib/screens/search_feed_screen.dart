@@ -258,6 +258,15 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
                 style: const TextStyle(color: Colors.white54),
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  if (query.trim().isNotEmpty) {
+                    _searchUsers(query.trim());
+                  }
+                },
+                child: const Text('Retry'),
+              ),
             ],
           ),
         ),
@@ -274,6 +283,8 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
               Icon(Icons.search_off, color: Colors.white54, size: 48),
               SizedBox(height: 16),
               Text("No users found", style: TextStyle(color: Colors.white54)),
+              SizedBox(height: 8),
+              Text("Try a different search term", style: TextStyle(color: Colors.white38, fontSize: 12)),
             ],
           ),
         ),
@@ -436,75 +447,6 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildMusicPost(Map<String, dynamic> post, int index) {
-    final username = post['user'] as String;
-    final postId = post['id'] as String? ?? 'post-$index';
-    final likeCount = _likeCounts[postId] ?? 0;
-    final isLiked = _likedPosts[postId] ?? false;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: MusicPostCard(
-        username: username,
-        avatarUrl: "https://i.pravatar.cc/150?img=3",
-        trackTitle: post['track'] as String,
-        artist: post['artist'] as String,
-        coverUrl: post['coverUrl'] as String,
-        timeAgo: post['time'] as String,
-        description: post['desc'] as String,
-        height: 190,
-        borderRadius: 20,
-        overlayOpacity: 0.36,
-        initialLikes: likeCount,
-        isInitiallyLiked: isLiked,
-        showFollowButton: true,
-        onCardTap: () {
-          _navigateToUserProfile(
-            post['userId'] as String,
-            username,
-            "https://i.pravatar.cc/150?img=1",
-          );
-        },
-        onLikeChanged: (newLiked, newLikes) async {
-          try {
-            final userId = _authProvider.userId;
-            if (userId == null) {
-              print('❌ SearchFeedScreen: User not authenticated for like');
-              return;
-            }
-            
-            print('🔍 SearchFeedScreen: Toggling like for post: $postId, isLiked: $newLiked');
-            final result = await _backendService.togglePostLike(postId, userId, !newLiked);
-            print('✅ SearchFeedScreen: Like toggled successfully, result: $result');
-            
-            setState(() {
-              _likedPosts[postId] = newLiked;
-              _likeCounts[postId] = newLikes;
-            });
-            
-            HapticFeedback.lightImpact();
-          } catch (e) {
-            print('❌ SearchFeedScreen: Failed to toggle like: $e');
-            // Show error message to user
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to update like: $e'),
-                backgroundColor: Colors.red,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          }
-        },
-        onShare: () {
-          final text =
-              "$username shared a song: ${post['track']} by ${post['artist']}";
-          Share.share(text);
-        },
-        onFollowPressed: () {},
-      ),
     );
   }
 
@@ -720,9 +662,10 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
 
     return Expanded(
       child: RefreshIndicator(
-        onRefresh: _loadDiscoveryPosts,
+        onRefresh: _refreshDiscoveryFeed,
         child: ListView.builder(
           controller: _discoveryScrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           itemCount: _discoveryPosts.length + (_isLoadingMoreDiscovery ? 1 : 0),
           itemBuilder: (context, index) {
@@ -885,6 +828,27 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
           ],
         );
    
+  }
+
+  /// Refresh discovery feed with haptic feedback
+  Future<void> _refreshDiscoveryFeed() async {
+    HapticFeedback.lightImpact();
+    
+    setState(() {
+      _isLoadingDiscovery = true;
+    });
+    
+    try {
+      await _loadDiscoveryPosts();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingDiscovery = false;
+        });
+      }
+    }
+    
+    HapticFeedback.selectionClick();
   }
 
   /// Scroll to top and refresh the discovery feed

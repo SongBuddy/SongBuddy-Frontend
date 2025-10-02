@@ -95,18 +95,21 @@ class _SwipeablePostCardState extends State<SwipeablePostCard>
     
     _isDragging = false;
     
-    // Check if threshold was reached
+    // Check if threshold was reached and actions are available
     if (_dragOffset.abs() > _triggerThreshold && !_hasTriggeredAction) {
       _hasTriggeredAction = true;
       
-      if (_dragOffset < 0) {
-        // Swipe left - Delete
+      if (_dragOffset < 0 && widget.onDelete != null) {
+        // Swipe left - Delete (only if delete is available)
         HapticFeedback.mediumImpact();
         _showDeleteConfirmation();
-      } else {
-        // Swipe right - Edit  
+      } else if (_dragOffset > 0 && widget.onEditDescription != null) {
+        // Swipe right - Edit (only if edit is available)
         HapticFeedback.lightImpact();
         _showEditOptions();
+      } else {
+        // No action available, reset position
+        _resetPosition();
       }
     } else {
       // Reset position smoothly
@@ -204,8 +207,8 @@ class _SwipeablePostCardState extends State<SwipeablePostCard>
         
         return Stack(
           children: [
-            // Optimized background indicators - only show when dragging
-            if (currentOffset < -10) // Swipe left - Delete indicator
+            // Optimized background indicators - only show when dragging and action is available
+            if (currentOffset < -10 && widget.onDelete != null) // Swipe left - Delete indicator (only if delete is available)
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
@@ -242,7 +245,7 @@ class _SwipeablePostCardState extends State<SwipeablePostCard>
                 ),
               ),
             
-            if (currentOffset > 10) // Swipe right - Edit indicator
+            if (currentOffset > 10 && widget.onEditDescription != null) // Swipe right - Edit indicator (only if edit is available)
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
@@ -279,11 +282,12 @@ class _SwipeablePostCardState extends State<SwipeablePostCard>
                 ),
               ),
 
-            // Main post card with optimized transform
+            // Main post card with conditional swipe gestures
             GestureDetector(
-              onPanStart: _onPanStart,
-              onPanUpdate: _onPanUpdate,
-              onPanEnd: _onPanEnd,
+              // Only enable pan gestures if delete or edit actions are available
+              onPanStart: (widget.onDelete != null || widget.onEditDescription != null) ? _onPanStart : null,
+              onPanUpdate: (widget.onDelete != null || widget.onEditDescription != null) ? _onPanUpdate : null,
+              onPanEnd: (widget.onDelete != null || widget.onEditDescription != null) ? _onPanEnd : null,
               child: Transform.translate(
                 offset: Offset(currentOffset, 0),
                 child: MusicPostCard(

@@ -47,6 +47,12 @@ class ProfileScreenState extends State<ProfileScreen> {
   
   // Profile data (includes follow status)
   ProfileData? _profileData;
+  
+  // Smart FAB positioning
+  bool _shouldUseFAB = true;
+  bool _isScrollingDown = false;
+  bool _showFAB = true;
+  double _lastScrollPosition = 0.0;
 
   bool _loadingTop = false; // non-blocking loading for top artists/tracks (kept for future use)
   static const Duration _animDur = Duration(milliseconds: 250);
@@ -58,6 +64,10 @@ class ProfileScreenState extends State<ProfileScreen> {
     _spotifyService = SpotifyService();
     _backendService = BackendService();
     _scrollController = ScrollController();
+    
+    // Add scroll listener for smart FAB behavior
+    _scrollController.addListener(_onScroll);
+    
     _initialize();
   }
 
@@ -88,6 +98,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     if (_initialized) {
       _authProvider.removeListener(_onAuthChanged);
     }
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
@@ -95,6 +106,91 @@ class ProfileScreenState extends State<ProfileScreen> {
   void _onAuthChanged() {
     if (!mounted) return;
     setState(() {});
+  }
+
+  /// Handle scroll events for smart FAB behavior
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    
+    final currentScrollPosition = _scrollController.position.pixels;
+    final isScrollingDown = currentScrollPosition > _lastScrollPosition;
+    final isAtTop = currentScrollPosition <= 0;
+    
+    // Update FAB visibility based on scroll direction
+    if (isScrollingDown && !_isScrollingDown && currentScrollPosition > 100) {
+      // Started scrolling down, hide FAB
+      setState(() {
+        _isScrollingDown = true;
+        _showFAB = false;
+      });
+    } else if (!isScrollingDown && _isScrollingDown) {
+      // Started scrolling up, show FAB
+      setState(() {
+        _isScrollingDown = false;
+        _showFAB = true;
+      });
+    } else if (isAtTop) {
+      // At top, always show FAB
+      setState(() {
+        _showFAB = true;
+        _isScrollingDown = false;
+      });
+    }
+    
+    _lastScrollPosition = currentScrollPosition;
+  }
+
+  /// Calculate if content is long enough to warrant scroll-aware FAB
+  bool get _hasEnoughContentToScroll {
+    if (!mounted) return false;
+    
+    final screenHeight = MediaQuery.of(context).size.height;
+    final appBarHeight = AppBar().preferredSize.height;
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+    final bottomNavHeight = kBottomNavigationBarHeight;
+    
+    final availableHeight = screenHeight - appBarHeight - statusBarHeight - bottomNavHeight;
+    
+    // Estimate content height based on posts and other content
+    final estimatedContentHeight = _calculateEstimatedContentHeight();
+    
+    // Use 80% threshold - if content is less than 80% of available height, don't use FAB
+    return estimatedContentHeight > availableHeight * 0.8;
+  }
+
+  /// Estimate total content height
+  double _calculateEstimatedContentHeight() {
+    double totalHeight = 0;
+    
+    // Profile header section (~300px)
+    totalHeight += 300;
+    
+    // Music sections (currently playing, top artists, tracks, recently played)
+    if (_currentlyPlaying != null) totalHeight += 120;
+    if (_topArtists.isNotEmpty) totalHeight += 150;
+    if (_topTracks.isNotEmpty) totalHeight += 150;
+    if (_recentlyPlayed.isNotEmpty) totalHeight += 150;
+    
+    // Posts section - estimate ~200px per post
+    totalHeight += _userPosts.length * 200.0;
+    
+    // Add some padding
+    totalHeight += 100;
+    
+    return totalHeight;
+  }
+
+  /// Update FAB strategy based on content
+  void _updateFABStrategy() {
+    final shouldUseFAB = _hasEnoughContentToScroll;
+    if (shouldUseFAB != _shouldUseFAB) {
+      setState(() {
+        _shouldUseFAB = shouldUseFAB;
+        if (!_shouldUseFAB) {
+          _showFAB = false; // Hide FAB when switching to header mode
+        }
+      });
+    }
   }
 
   Future<void> _fetchAll() async {
@@ -256,6 +352,11 @@ class ProfileScreenState extends State<ProfileScreen> {
         _profileData = profileData;
       });
       
+      // Update FAB strategy based on new content
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _updateFABStrategy();
+      });
+      
       print('✅ ProfileScreen: Successfully updated _userPosts with ${_userPosts.length} posts');
       
       // Debug: Check final posts state
@@ -321,6 +422,12 @@ class ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _userPosts.removeWhere((post) => post.id == postId);
       });
+      
+      // Update FAB strategy after post deletion
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _updateFABStrategy();
+      });
+      
       HapticFeedback.lightImpact();
       
       // Show success message
@@ -464,28 +571,8 @@ class ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'fab-create-post',
-        backgroundColor: AppColors.primary,
-        elevation: 0,
-        focusElevation: 0,
-        hoverElevation: 0,
-        highlightElevation: 0,
-        onPressed: () {
-          showCreatePostSheet(
-            context,
-            nowPlaying: _currentlyPlaying,
-            topTracks: _topTracks,
-            recentPlayed: _recentlyPlayed,
-          ).then((success) {
-            if (success == true) {
-              _fetchUserProfile();
-            }
-          });
-        },
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Create post', style: TextStyle(color: Colors.white)),
-      ),
+      // Smart FAB - only show when content is long enough and user isn't scrolling down
+      floatingActionButton: _shouldUseFAB ? _buildScrollAwareFAB() : null,
     );
   }
 
@@ -498,6 +585,41 @@ class ProfileScreenState extends State<ProfileScreen> {
         curve: Curves.easeInOut,
       );
     }
+  }
+
+
+  /// Build scroll-aware FAB with smooth animations
+  Widget _buildScrollAwareFAB() {
+    return AnimatedSlide(
+      duration: const Duration(milliseconds: 200),
+      offset: _showFAB ? Offset.zero : const Offset(0, 2),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 200),
+        opacity: _showFAB ? 1.0 : 0.0,
+        child: FloatingActionButton.extended(
+          heroTag: 'fab-create-post',
+          backgroundColor: AppColors.primary,
+          elevation: _showFAB ? 6 : 0,
+          focusElevation: 0,
+          hoverElevation: 0,
+          highlightElevation: 0,
+          onPressed: _showFAB ? () {
+            showCreatePostSheet(
+              context,
+              nowPlaying: _currentlyPlaying,
+              topTracks: _topTracks,
+              recentPlayed: _recentlyPlayed,
+            ).then((success) {
+              if (success == true) {
+                _fetchUserProfile();
+              }
+            });
+          } : null,
+          icon: const Icon(Icons.add, color: Colors.white),
+          label: const Text('Create post', style: TextStyle(color: Colors.white)),
+        ),
+      ),
+    );
   }
 
   SliverAppBar _buildHeader(BuildContext context) {

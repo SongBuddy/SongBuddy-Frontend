@@ -6,10 +6,11 @@ import 'package:songbuddy/screens/user_profile_screen.dart';
 import 'package:songbuddy/widgets/music_post_card.dart';
 import 'package:songbuddy/widgets/shimmer_post_card.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:share_plus/share_plus.dart';
 import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/providers/auth_provider.dart';
+import 'package:songbuddy/services/spotify_deep_link_service.dart';
 import 'package:songbuddy/constants/app_colors.dart';
+import 'package:songbuddy/utils/post_sharing_utils.dart';
 
 class SearchFeedScreen extends StatefulWidget {
   const SearchFeedScreen({super.key});
@@ -196,30 +197,69 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
 
   Future<void> _listen() async {
     if (!_isListening) {
-      final available = await _speech.initialize();
-      if (!available) return;
+      try {
+        final available = await _speech.initialize();
+        if (!available) {
+          print('❌ SearchFeedScreen: Speech recognition not available');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Voice recognition is not available on this device'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 2),
+            ),
+          );
+          return;
+        }
 
-      _searchFocusNode.requestFocus();
-      setState(() => _isListening = true);
+        _searchFocusNode.requestFocus();
+        setState(() => _isListening = true);
 
-      _speech.listen(
-        onResult: (result) {
-          final recognized = result.recognizedWords;
-          setState(() {
-            query = recognized;
-            _controller.text = recognized;
-            _controller.selection = TextSelection.fromPosition(
-              TextPosition(offset: _controller.text.length),
-            );
-            _isSearching = true;
-          });
-        },
-        listenMode: stt.ListenMode.search,
-        partialResults: true,
-      );
+        _speech.listen(
+          onResult: (result) {
+            final recognized = result.recognizedWords;
+            print('🎤 SearchFeedScreen: Voice recognition result: "$recognized"');
+            
+            setState(() {
+              query = recognized;
+              _controller.text = recognized;
+              _controller.selection = TextSelection.fromPosition(
+                TextPosition(offset: _controller.text.length),
+              );
+              _isSearching = true;
+              _searchError = null;
+            });
+            
+            // Explicitly trigger search since programmatic text changes might not trigger the listener
+            if (recognized.trim().isNotEmpty) {
+              print('🔍 SearchFeedScreen: Triggering search from voice input: "$recognized"');
+              _performSearch(recognized.trim());
+            }
+            
+            // Stop listening after getting a result (for better UX)
+            if (result.finalResult) {
+              print('🎤 SearchFeedScreen: Final result received, stopping voice recognition');
+              _speech.stop();
+              setState(() => _isListening = false);
+            }
+          },
+          listenMode: stt.ListenMode.search,
+          partialResults: true,
+        );
+      } catch (e) {
+        print('❌ SearchFeedScreen: Voice recognition error: $e');
+        setState(() => _isListening = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Voice recognition error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     } else {
       await _speech.stop();
       setState(() => _isListening = false);
+      print('🎤 SearchFeedScreen: Voice recognition stopped manually');
     }
   }
 
@@ -258,6 +298,15 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
                 style: const TextStyle(color: Colors.white54),
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  if (query.trim().isNotEmpty) {
+                    _searchUsers(query.trim());
+                  }
+                },
+                child: const Text('Retry'),
+              ),
             ],
           ),
         ),
@@ -274,6 +323,8 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
               Icon(Icons.search_off, color: Colors.white54, size: 48),
               SizedBox(height: 16),
               Text("No users found", style: TextStyle(color: Colors.white54)),
+              SizedBox(height: 8),
+              Text("Try a different search term", style: TextStyle(color: Colors.white38, fontSize: 12)),
             ],
           ),
         ),
@@ -424,8 +475,48 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
         }
       },
       onShare: () {
-        final text = "$username shared a song: $songName by $artistName";
-        Share.share(text);
+        PostSharingUtils.sharePostFromData(
+          songName: songName,
+          artistName: artistName,
+          username: username,
+          description: description,
+        );
+      },
+      onOpenInSpotify: () async {
+        try {
+          print('🔗 SearchFeedScreen: Opening song in Spotify: $songName by $artistName');
+          final success = await SpotifyDeepLinkService.openSongInSpotify(
+            songName: songName,
+            artistName: artistName,
+          );
+          
+          if (success) {
+            print('✅ SearchFeedScreen: Successfully opened song in Spotify');
+            HapticFeedback.lightImpact();
+          } else {
+            print('❌ SearchFeedScreen: Failed to open song in Spotify');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Could not open Spotify. Please install Spotify app.'),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          print('❌ SearchFeedScreen: Error opening Spotify: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error opening Spotify: $e'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
       },
       onFollowPressed: () {
         // TODO: Implement follow functionality
@@ -436,75 +527,6 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildMusicPost(Map<String, dynamic> post, int index) {
-    final username = post['user'] as String;
-    final postId = post['id'] as String? ?? 'post-$index';
-    final likeCount = _likeCounts[postId] ?? 0;
-    final isLiked = _likedPosts[postId] ?? false;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: MusicPostCard(
-        username: username,
-        avatarUrl: "https://i.pravatar.cc/150?img=3",
-        trackTitle: post['track'] as String,
-        artist: post['artist'] as String,
-        coverUrl: post['coverUrl'] as String,
-        timeAgo: post['time'] as String,
-        description: post['desc'] as String,
-        height: 190,
-        borderRadius: 20,
-        overlayOpacity: 0.36,
-        initialLikes: likeCount,
-        isInitiallyLiked: isLiked,
-        showFollowButton: true,
-        onCardTap: () {
-          _navigateToUserProfile(
-            post['userId'] as String,
-            username,
-            "https://i.pravatar.cc/150?img=1",
-          );
-        },
-        onLikeChanged: (newLiked, newLikes) async {
-          try {
-            final userId = _authProvider.userId;
-            if (userId == null) {
-              print('❌ SearchFeedScreen: User not authenticated for like');
-              return;
-            }
-            
-            print('🔍 SearchFeedScreen: Toggling like for post: $postId, isLiked: $newLiked');
-            final result = await _backendService.togglePostLike(postId, userId, !newLiked);
-            print('✅ SearchFeedScreen: Like toggled successfully, result: $result');
-            
-            setState(() {
-              _likedPosts[postId] = newLiked;
-              _likeCounts[postId] = newLikes;
-            });
-            
-            HapticFeedback.lightImpact();
-          } catch (e) {
-            print('❌ SearchFeedScreen: Failed to toggle like: $e');
-            // Show error message to user
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to update like: $e'),
-                backgroundColor: Colors.red,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          }
-        },
-        onShare: () {
-          final text =
-              "$username shared a song: ${post['track']} by ${post['artist']}";
-          Share.share(text);
-        },
-        onFollowPressed: () {},
-      ),
     );
   }
 
@@ -720,9 +742,10 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
 
     return Expanded(
       child: RefreshIndicator(
-        onRefresh: _loadDiscoveryPosts,
+        onRefresh: _refreshDiscoveryFeed,
         child: ListView.builder(
           controller: _discoveryScrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           itemCount: _discoveryPosts.length + (_isLoadingMoreDiscovery ? 1 : 0),
           itemBuilder: (context, index) {
@@ -885,6 +908,27 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
           ],
         );
    
+  }
+
+  /// Refresh discovery feed with haptic feedback
+  Future<void> _refreshDiscoveryFeed() async {
+    HapticFeedback.lightImpact();
+    
+    setState(() {
+      _isLoadingDiscovery = true;
+    });
+    
+    try {
+      await _loadDiscoveryPosts();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingDiscovery = false;
+        });
+      }
+    }
+    
+    HapticFeedback.selectionClick();
   }
 
   /// Scroll to top and refresh the discovery feed

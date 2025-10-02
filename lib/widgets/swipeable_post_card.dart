@@ -34,60 +34,60 @@ class SwipeablePostCard extends StatefulWidget {
 
 class _SwipeablePostCardState extends State<SwipeablePostCard>
     with TickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _animation;
+  late AnimationController _resetController;
+  
   double _dragOffset = 0.0;
   bool _isDragging = false;
   bool _hasTriggeredAction = false;
+  
+  // Performance optimizations
+  static const double _maxDragDistance = 250.0;
+  static const double _triggerThreshold = 100.0;
+  static const double _hapticThreshold = 80.0;
+  bool _hasTriggeredHaptic = false;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
+    _resetController = AnimationController(
+      duration: const Duration(milliseconds: 200), // Faster reset
       vsync: this,
-    );
-    _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _resetController.dispose();
     super.dispose();
   }
 
   void _onPanStart(DragStartDetails details) {
     _isDragging = true;
     _hasTriggeredAction = false;
-    _animationController.stop();
+    _hasTriggeredHaptic = false;
+    _resetController.stop();
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
-    if (!_isDragging) return;
+    if (!_isDragging || _hasTriggeredAction) return;
     
-    setState(() {
-      _dragOffset += details.delta.dx;
-      _dragOffset = _dragOffset.clamp(-300.0, 300.0);
-      
-      // Auto-trigger when swiped far enough
-      const double triggerThreshold = 120.0;
-      
-      if (!_hasTriggeredAction) {
-        if (_dragOffset < -triggerThreshold) {
-          // Swipe left - Auto trigger delete
-          _hasTriggeredAction = true;
-          HapticFeedback.mediumImpact();
-          _showDeleteConfirmation();
-        } else if (_dragOffset > triggerThreshold) {
-          // Swipe right - Auto trigger edit
-          _hasTriggeredAction = true;
-          HapticFeedback.lightImpact();
-          _showEditOptions();
-        }
-      }
-    });
+    // Optimize: Only update if significant movement
+    final newOffset = (_dragOffset + details.delta.dx).clamp(-_maxDragDistance, _maxDragDistance);
+    
+    if ((newOffset - _dragOffset).abs() < 2.0) return; // Skip micro-movements
+    
+    _dragOffset = newOffset;
+    
+    // Haptic feedback at threshold (only once per swipe)
+    if (!_hasTriggeredHaptic && _dragOffset.abs() > _hapticThreshold) {
+      _hasTriggeredHaptic = true;
+      HapticFeedback.selectionClick();
+    }
+    
+    // Only rebuild when necessary
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _onPanEnd(DragEndDetails details) {
@@ -95,19 +95,41 @@ class _SwipeablePostCardState extends State<SwipeablePostCard>
     
     _isDragging = false;
     
-    // Reset position if no action was triggered
-    if (!_hasTriggeredAction) {
+    // Check if threshold was reached and actions are available
+    if (_dragOffset.abs() > _triggerThreshold && !_hasTriggeredAction) {
+      _hasTriggeredAction = true;
+      
+      if (_dragOffset < 0 && widget.onDelete != null) {
+        // Swipe left - Delete (only if delete is available)
+        HapticFeedback.mediumImpact();
+        _showDeleteConfirmation();
+      } else if (_dragOffset > 0 && widget.onEditDescription != null) {
+        // Swipe right - Edit (only if edit is available)
+        HapticFeedback.lightImpact();
+        _showEditOptions();
+      } else {
+        // No action available, reset position
+        _resetPosition();
+      }
+    } else {
+      // Reset position smoothly
       _resetPosition();
     }
   }
 
   void _resetPosition() {
-    _animationController.forward().then((_) {
-      setState(() {
-        _dragOffset = 0.0;
-        _hasTriggeredAction = false;
-      });
-      _animationController.reset();
+    if (_dragOffset == 0.0) return;
+    
+    // Simple and reliable reset using AnimatedBuilder pattern
+    _resetController.reset();
+    _resetController.forward().then((_) {
+      if (mounted) {
+        setState(() {
+          _dragOffset = 0.0;
+          _hasTriggeredAction = false;
+          _hasTriggeredHaptic = false;
+        });
+      }
     });
   }
 
@@ -172,82 +194,102 @@ class _SwipeablePostCardState extends State<SwipeablePostCard>
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _animation,
+      animation: _resetController,
       builder: (context, child) {
+        // Calculate current offset (either from drag or reset animation)
+        final currentOffset = _isDragging 
+            ? _dragOffset 
+            : _dragOffset * (1.0 - _resetController.value);
+        
+        // Calculate opacity based on drag distance for smooth visual feedback
+        final dragProgress = (currentOffset.abs() / _triggerThreshold).clamp(0.0, 1.0);
+        final backgroundOpacity = (dragProgress * 0.9).clamp(0.0, 0.9);
+        
         return Stack(
           children: [
-            // Background indicators
-            if (_dragOffset < 0) // Swipe left - Delete indicator
+            // Optimized background indicators - only show when dragging and action is available
+            if (currentOffset < -10 && widget.onDelete != null) // Swipe left - Delete indicator (only if delete is available)
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.8),
+                    color: Colors.red.withOpacity(backgroundOpacity),
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: const Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Icon(
-                          Icons.delete_outline,
-                          color: Colors.white,
-                          size: 32,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Opacity(
+                        opacity: dragProgress,
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.delete_outline,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'DELETE',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-                        SizedBox(width: 8),
-                        Text(
-                          'DELETE',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(width: 20),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 16),
+                    ],
                   ),
                 ),
               ),
             
-            if (_dragOffset > 0) // Swipe right - Edit indicator
+            if (currentOffset > 10 && widget.onEditDescription != null) // Swipe right - Edit indicator (only if edit is available)
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.8),
+                    color: Colors.green.withOpacity(backgroundOpacity),
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: const Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 20),
-                        Text(
-                          'EDIT',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      const SizedBox(width: 16),
+                      Opacity(
+                        opacity: dragProgress,
+                        child: const Row(
+                          children: [
+                            Text(
+                              'EDIT',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(width: 6),
+                            Icon(
+                              Icons.edit_outlined,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ],
                         ),
-                        SizedBox(width: 8),
-                        Icon(
-                          Icons.edit_outlined,
-                          color: Colors.white,
-                          size: 32,
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
 
-            // Main post card with transform
+            // Main post card with conditional swipe gestures
             GestureDetector(
-              onPanStart: _onPanStart,
-              onPanUpdate: _onPanUpdate,
-              onPanEnd: _onPanEnd,
+              // Only enable pan gestures if delete or edit actions are available
+              onPanStart: (widget.onDelete != null || widget.onEditDescription != null) ? _onPanStart : null,
+              onPanUpdate: (widget.onDelete != null || widget.onEditDescription != null) ? _onPanUpdate : null,
+              onPanEnd: (widget.onDelete != null || widget.onEditDescription != null) ? _onPanEnd : null,
               child: Transform.translate(
-                offset: Offset(_dragOffset, 0),
+                offset: Offset(currentOffset, 0),
                 child: MusicPostCard(
                   username: widget.showUserInfo ? widget.post.username : '',
                   avatarUrl: widget.showUserInfo ? widget.post.userProfilePicture : '',

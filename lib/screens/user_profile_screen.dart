@@ -9,6 +9,7 @@ import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/models/ProfileData.dart';
 import 'package:songbuddy/widgets/swipeable_post_card.dart';
+import 'package:songbuddy/utils/post_sharing_utils.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final String username;
@@ -451,20 +452,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
              }
            },
           icon: const Icon(Icons.arrow_back, color: AppColors.onDarkSecondary),
-        ),
-        const Spacer(),
-        Text(
-          widget.username,
-          style: AppTextStyles.heading2OnDark.copyWith(
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-            letterSpacing: 0.6,
-          ),
-        ),
-        const Spacer(),
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(Icons.more_vert, color: AppColors.onDarkSecondary),
         ),
       ],
       ),
@@ -1064,8 +1051,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           print('Post tapped: ${post.id}');
         },
         onShare: () {
-          // TODO: Implement share functionality
-          print('Share post: ${post.id}');
+          PostSharingUtils.sharePost(post);
         },
             onOpenInSpotify: () async {
               try {

@@ -3,6 +3,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:songbuddy/screens/search_feed_Screen.dart';
 import 'package:songbuddy/screens/splash_screen.dart';
 import 'package:songbuddy/theme/app_theme.dart';
+import 'package:songbuddy/services/http_client_service.dart';
+import 'package:songbuddy/providers/auth_provider.dart';
 import 'screens/home_feed_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
@@ -13,6 +15,12 @@ void main() async {
   
   // Load environment variables
   await dotenv.load(fileName: ".env");
+  
+  // Initialize HTTP client service
+  HttpClientService.instance;
+  
+  // Initialize auth provider
+  await AuthProvider().initialize();
   
   runApp(const SongBuddyApp());
 }

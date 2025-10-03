@@ -22,6 +22,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   final PageController _controller = PageController();
   int _currentPage = 0;
   late final AuthProvider _authProvider;
+  bool _isErrorDialogVisible = false; // Guard to prevent conflicting dialogs
 
   late AnimationController _backgroundAnimationController;
   late Animation<double> _backgroundAnimation;
@@ -50,27 +51,46 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   void dispose() {
+    // Ensure any error dialog is dismissed when leaving the screen
+    _dismissErrorDialog();
     _authProvider.removeListener(_onAuthStateChanged);
     _backgroundAnimationController.dispose();
     super.dispose();
   }
 
+  void _dismissErrorDialog() {
+    if (_isErrorDialogVisible && mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      _isErrorDialogVisible = false;
+    }
+  }
+
   void _onAuthStateChanged() {
+    // While authenticating, make sure no stale error dialog is visible
+    if (_authProvider.state == AuthState.authenticating) {
+      _dismissErrorDialog();
+      return;
+    }
+
     if (_authProvider.isAuthenticated) {
-      
+      _dismissErrorDialog();
       // Show success animation before navigating
       _showSuccessAnimation();
     } else if (_authProvider.state == AuthState.error) {
+      if (_isErrorDialogVisible) return; // Avoid stacking dialogs
+      _isErrorDialogVisible = true;
       SpotifyStylePopup.show(
         context: context,
         title: 'Connection Error',
         message: _authProvider.errorMessage ?? 'Something went wrong. Please try again.',
         onRetry: () {
-          Navigator.of(context).pop(); // Close dialog
+          Navigator.of(context, rootNavigator: true).pop(); // Close dialog
+          _isErrorDialogVisible = false;
           _handleSpotifyLogin(); // Retry connection
         },
         onCancel: () {
-          Navigator.of(context).pop(); // Close dialog
+          Navigator.of(context, rootNavigator: true).pop(); // Close dialog
+          _isErrorDialogVisible = false;
         },
       );
     }

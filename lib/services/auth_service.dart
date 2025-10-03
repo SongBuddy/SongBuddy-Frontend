@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:http/http.dart' as http;
 import 'spotify_service.dart';
 import 'package:songbuddy/models/AppUser.dart';
 import 'package:songbuddy/services/backend_service.dart';
@@ -28,6 +29,7 @@ class AuthService extends ChangeNotifier {
   final SpotifyService _spotifyService;
   final FlutterSecureStorage _secureStorage;
   StreamSubscription<Uri>? _linkSubscription;
+  Timer? _timeoutTimer;
 
   AuthState _state = AuthState.unauthenticated;
   String? _accessToken;
@@ -90,15 +92,47 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Check internet connectivity
+  /// Check internet connectivity with actual network test
   Future<bool> _checkConnectivity() async {
     try {
+      // First check connectivity status
       final connectivityResult = await Connectivity().checkConnectivity();
-      return connectivityResult != ConnectivityResult.none;
+      if (connectivityResult == ConnectivityResult.none) {
+        return false;
+      }
+      
+      // Then test actual network connectivity with a quick request
+      final response = await http.get(
+        Uri.parse('https://www.google.com'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 3));
+      
+      return response.statusCode == 200;
     } catch (e) {
       debugPrint('Connectivity check failed: $e');
-      return true; // Assume connected if check fails
+      return false; // Return false if any network test fails
     }
+  }
+
+  /// Check backend health
+  Future<bool> _checkBackendHealth() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${BackendService.baseUrl}/health'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 3));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('Backend health check failed: $e');
+      return false;
+    }
+  }
+
+  /// Handle connection errors consistently
+  void _handleConnectionError(String message) {
+    _state = AuthState.error;
+    _errorMessage = message;
+    notifyListeners();
   }
 
   /// Start the Spotify OAuth flow
@@ -169,17 +203,30 @@ class AuthService extends ChangeNotifier {
       // Set a timeout for the authentication process
       Timer(const Duration(minutes: 5), () {
         if (_state == AuthState.authenticating) {
-          _state = AuthState.error;
-          _errorMessage = 'Authentication timed out. Please try again.';
-          notifyListeners();
+          _handleConnectionError('Connection timeout. Please try again.');
           _linkSubscription?.cancel();
         }
       });
     } catch (e) {
       debugPrint('Login error: $e');
-      _state = AuthState.error;
-      _errorMessage = e.toString();
-      notifyListeners();
+      
+      // Determine error type and provide appropriate message
+      String errorMessage;
+      final error = e.toString().toLowerCase();
+      
+      if (error.contains('timeout')) {
+        errorMessage = 'Connection timeout. Please try again.';
+      } else if (error.contains('network') || error.contains('connection')) {
+        errorMessage = 'Network connection failed. Please check your internet connection.';
+      } else if (error.contains('server') || error.contains('backend')) {
+        errorMessage = 'Server is currently unavailable. Please try again later.';
+      } else if (error.contains('browser') || error.contains('launch')) {
+        errorMessage = 'Cannot open Spotify authorization page. Please install a web browser and try again.';
+      } else {
+        errorMessage = 'An unexpected error occurred. Please try again.';
+      }
+      
+      _handleConnectionError(errorMessage);
     }
   }
 
@@ -201,6 +248,11 @@ class AuthService extends ChangeNotifier {
   /// Handle OAuth callback from deep link
   Future<void> _handleOAuthCallback(Uri uri) async {
     debugPrint('Deep link received: $uri');
+    
+    // Cancel any timeout timer since we received the callback
+    _timeoutTimer?.cancel();
+    _timeoutTimer = null;
+    
     try {
       if (uri.scheme == 'songbuddy' && uri.host == 'callback') {
         debugPrint('Processing Spotify callback...');
@@ -574,6 +626,7 @@ class AuthService extends ChangeNotifier {
   @override
   void dispose() {
     _linkSubscription?.cancel();
+    _timeoutTimer?.cancel();
     super.dispose();
   }
 }

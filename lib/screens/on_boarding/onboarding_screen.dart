@@ -4,6 +4,7 @@ import 'onboarding_page.dart';
 import '../../main.dart';
 import '../../widgets/spotify_login_button.dart';
 import '../../widgets/success_dialog.dart';
+import '../../widgets/spotify_style_popup.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart' show AuthState;
 import '../../constants/app_colors.dart';
@@ -21,6 +22,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   final PageController _controller = PageController();
   int _currentPage = 0;
   late final AuthProvider _authProvider;
+  bool _isErrorDialogVisible = false; // Guard to prevent conflicting dialogs
 
   late AnimationController _backgroundAnimationController;
   late Animation<double> _backgroundAnimation;
@@ -49,26 +51,47 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   void dispose() {
+    // Ensure any error dialog is dismissed when leaving the screen
+    _dismissErrorDialog();
     _authProvider.removeListener(_onAuthStateChanged);
     _backgroundAnimationController.dispose();
     super.dispose();
   }
 
+  void _dismissErrorDialog() {
+    if (_isErrorDialogVisible && mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+      _isErrorDialogVisible = false;
+    }
+  }
+
   void _onAuthStateChanged() {
+    // While authenticating, make sure no stale error dialog is visible
+    if (_authProvider.state == AuthState.authenticating) {
+      _dismissErrorDialog();
+      return;
+    }
+
     if (_authProvider.isAuthenticated) {
-      
+      _dismissErrorDialog();
       // Show success animation before navigating
       _showSuccessAnimation();
     } else if (_authProvider.state == AuthState.error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Authentication failed: ${_authProvider.errorMessage}'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
+      if (_isErrorDialogVisible) return; // Avoid stacking dialogs
+      _isErrorDialogVisible = true;
+      SpotifyStylePopup.show(
+        context: context,
+        title: 'Connection Error',
+        message: _authProvider.errorMessage ?? 'Something went wrong. Please try again.',
+        onRetry: () {
+          Navigator.of(context, rootNavigator: true).pop(); // Close dialog
+          _isErrorDialogVisible = false;
+          _handleSpotifyLogin(); // Retry connection
+        },
+        onCancel: () {
+          Navigator.of(context, rootNavigator: true).pop(); // Close dialog
+          _isErrorDialogVisible = false;
+        },
       );
     }
   }
@@ -157,6 +180,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   void _handleSpotifyLogin() async {
+    // Use the existing AuthProvider with enhanced error handling
     await _authProvider.login();
   }
 

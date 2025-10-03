@@ -402,6 +402,7 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
   /// Build discovery post widget (similar to music post but for discovery posts)
   Widget _buildDiscoveryPost(Map<String, dynamic> post) {
     final postId = post['id'] as String;
+    final userId = post['userId'] as String? ?? '';
     final username = post['username'] as String? ?? 'Unknown User';
     final userAvatar = post['userAvatar'] as String? ?? 'https://i.pravatar.cc/150?img=1';
     final songName = post['songName'] as String? ?? 'Unknown Track';
@@ -525,6 +526,14 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
             content: Text('Follow $username'),
             duration: const Duration(seconds: 1),
           ),
+        );
+      },
+      onUserTap: () {
+        print('👤 SearchFeedScreen: User tapped on $username');
+        _navigateToUserProfile(
+          userId,
+          username,
+          userAvatar,
         );
       },
     );

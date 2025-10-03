@@ -9,7 +9,6 @@ import 'package:songbuddy/services/spotify_deep_link_service.dart';
 import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/models/ProfileData.dart';
-import 'package:songbuddy/widgets/spotify_login_button.dart';
 import 'package:songbuddy/widgets/create_post_sheet.dart';
 import 'package:songbuddy/widgets/swipeable_post_card.dart';
 import 'package:songbuddy/screens/create_post_screen.dart';
@@ -62,6 +61,7 @@ class ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _authProvider = AuthProvider();
+    _authProvider.addListener(_onAuthChanged);
     _spotifyService = SpotifyService();
     _backendService = BackendService();
     _scrollController = ScrollController();
@@ -272,12 +272,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _handleConnect() async {
-    await _authProvider.login();
-    if (_authProvider.isAuthenticated) {
-      await _fetchAll();
-    }
-  }
+
 
   void _toggleSelectionMode() {
     setState(() {
@@ -477,42 +472,6 @@ class ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
-    if (!_authProvider.isAuthenticated) {
-      return Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
-            ),
-          ),
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.person_outline, size: 72, color: AppColors.onDarkSecondary),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Connect your Spotify to see your profile',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.bodyOnDark,
-                  ),
-                  const SizedBox(height: 16),
-                  SpotifyLoginButton(
-                    onPressed: _handleConnect,
-                    text: 'Connect Spotify',
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -598,26 +557,26 @@ class ProfileScreenState extends State<ProfileScreen> {
         duration: const Duration(milliseconds: 200),
         opacity: _showFAB ? 1.0 : 0.0,
         child: FloatingActionButton.extended(
-          heroTag: 'fab-create-post',
-          backgroundColor: AppColors.primary,
+        heroTag: 'fab-create-post',
+        backgroundColor: AppColors.primary,
           elevation: _showFAB ? 6 : 0,
-          focusElevation: 0,
-          hoverElevation: 0,
-          highlightElevation: 0,
+        focusElevation: 0,
+        hoverElevation: 0,
+        highlightElevation: 0,
           onPressed: _showFAB ? () {
-            showCreatePostSheet(
-              context,
-              nowPlaying: _currentlyPlaying,
-              topTracks: _topTracks,
-              recentPlayed: _recentlyPlayed,
-            ).then((success) {
-              if (success == true) {
-                _fetchUserProfile();
-              }
-            });
+          showCreatePostSheet(
+            context,
+            nowPlaying: _currentlyPlaying,
+            topTracks: _topTracks,
+            recentPlayed: _recentlyPlayed,
+          ).then((success) {
+            if (success == true) {
+              _fetchUserProfile();
+            }
+          });
           } : null,
-          icon: const Icon(Icons.add, color: Colors.white),
-          label: const Text('Create post', style: TextStyle(color: Colors.white)),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Create post', style: TextStyle(color: Colors.white)),
         ),
       ),
     );

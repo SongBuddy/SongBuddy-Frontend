@@ -18,6 +18,7 @@ class MusicPostCard extends StatefulWidget {
   final void Function(bool isLiked, int likes)? onLikeChanged;
   final VoidCallback? onFollowPressed;
   final VoidCallback? onOpenInSpotify;
+  final VoidCallback? onUserTap;
 
   final bool showFollowButton;
   final bool showUserInfo;
@@ -40,6 +41,7 @@ class MusicPostCard extends StatefulWidget {
     this.onLikeChanged,
     this.onFollowPressed,
     this.onOpenInSpotify,
+    this.onUserTap,
     this.showFollowButton = false,
     this.showUserInfo = true,
     this.height = 180,
@@ -137,14 +139,17 @@ class _MusicPostCardState extends State<MusicPostCard> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Text(
-                              widget.username,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                            child: GestureDetector(
+                              onTap: widget.onUserTap,
+                              child: Text(
+                                widget.username,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Text(
@@ -303,11 +308,12 @@ class _MusicPostCardState extends State<MusicPostCard> {
                             size: 18,
                           ),
                         ),
+                        const SizedBox(width: 4),
                         Text(
                           "$likes",
                           style: const TextStyle(color: Colors.white70, fontSize: 12),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 16),
                         IconButton(
                           onPressed: widget.onOpenInSpotify,
                           icon: const Icon(
@@ -316,7 +322,7 @@ class _MusicPostCardState extends State<MusicPostCard> {
                             size: 18,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 16),
                         IconButton(
                           onPressed: widget.onShare,
                           icon: const Icon(

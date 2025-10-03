@@ -398,9 +398,13 @@ class BackendService {
         "$baseUrl/api/posts/feed/$userId?limit=$limit&offset=$offset${currentUserId != null ? '&currentUserId=$currentUserId' : ''}";
     print('🔗 BackendService: Getting feed posts from: $url');
 
-    final response = await SimpleHttpClient.get(
+    final response = await _httpClient.get(
       url,
-      headers: {"Content-Type": "application/json"},
+      options: Options(
+        headers: {"Content-Type": "application/json"},
+        // Allow longer response time for hosted backends with cold starts
+        receiveTimeout: const Duration(seconds: 75),
+      ),
     );
 
     print('📡 BackendService: Feed response - Status: ${response.statusCode}');

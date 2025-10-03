@@ -5,6 +5,7 @@ import 'package:songbuddy/screens/splash_screen.dart';
 import 'package:songbuddy/theme/app_theme.dart';
 import 'package:songbuddy/services/http_client_service.dart';
 import 'package:songbuddy/providers/auth_provider.dart';
+import 'package:songbuddy/services/backend_service.dart';
 import 'screens/home_feed_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
@@ -21,6 +22,14 @@ void main() async {
   
   // Initialize auth provider
   await AuthProvider().initialize();
+
+  // Warm up backend (helps hosted backends avoid cold-start delays)
+  try {
+    final backendService = BackendService();
+    await backendService.testConnection();
+  } catch (_) {
+    // Ignore failures; UI will handle with normal error flow
+  }
   
   runApp(const SongBuddyApp());
 }

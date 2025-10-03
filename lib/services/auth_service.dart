@@ -285,7 +285,7 @@ class AuthService extends ChangeNotifier {
           final errorMsg = errorDescription ?? error;
           debugPrint('OAuth error received: $errorMsg');
           if (error == 'access_denied') {
-            throw Exception('You denied access. Please grant permissions to continue.');
+            throw 'You denied access. Please grant permissions to continue.';
           }
           throw Exception('OAuth error: $errorMsg');
         }

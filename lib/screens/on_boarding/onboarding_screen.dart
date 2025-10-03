@@ -4,6 +4,7 @@ import 'onboarding_page.dart';
 import '../../main.dart';
 import '../../widgets/spotify_login_button.dart';
 import '../../widgets/success_dialog.dart';
+import '../../widgets/spotify_style_popup.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart' show AuthState;
 import '../../constants/app_colors.dart';
@@ -60,15 +61,17 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       // Show success animation before navigating
       _showSuccessAnimation();
     } else if (_authProvider.state == AuthState.error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Authentication failed: ${_authProvider.errorMessage}'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
+      SpotifyStylePopup.show(
+        context: context,
+        title: 'Connection Error',
+        message: _authProvider.errorMessage ?? 'Something went wrong. Please try again.',
+        onRetry: () {
+          Navigator.of(context).pop(); // Close dialog
+          _handleSpotifyLogin(); // Retry connection
+        },
+        onCancel: () {
+          Navigator.of(context).pop(); // Close dialog
+        },
       );
     }
   }
@@ -157,6 +160,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   void _handleSpotifyLogin() async {
+    // Use the existing AuthProvider with enhanced error handling
     await _authProvider.login();
   }
 

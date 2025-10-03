@@ -308,11 +308,12 @@ class _MusicPostCardState extends State<MusicPostCard> {
                             size: 18,
                           ),
                         ),
+                        const SizedBox(width: 4),
                         Text(
                           "$likes",
                           style: const TextStyle(color: Colors.white70, fontSize: 12),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 16),
                         IconButton(
                           onPressed: widget.onOpenInSpotify,
                           icon: const Icon(
@@ -321,7 +322,7 @@ class _MusicPostCardState extends State<MusicPostCard> {
                             size: 18,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 16),
                         IconButton(
                           onPressed: widget.onShare,
                           icon: const Icon(

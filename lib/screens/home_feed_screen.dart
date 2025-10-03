@@ -13,6 +13,7 @@ import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/services/spotify_deep_link_service.dart';
 import 'package:songbuddy/utils/post_sharing_utils.dart';
+import 'package:songbuddy/screens/user_profile_screen.dart';
 
 class HomeFeedScreen extends StatefulWidget {
   const HomeFeedScreen({super.key});
@@ -98,6 +99,11 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
 
     try {
       await _fetchFollowingPosts();
+      
+      // If no posts found, load suggested users
+      if (_posts.isEmpty) {
+        await _loadSuggestedUsers();
+      }
     } catch (e) {
       print('❌ HomeFeedScreen: Failed to fetch posts: $e');
     } finally {
@@ -285,6 +291,117 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
     );
   }
 
+  Future<void> _loadSuggestedUsers() async {
+    setState(() {
+      _loadingSuggestedUsers = true;
+    });
+
+    try {
+      // Try multiple search strategies to find users
+      List<Map<String, dynamic>> allUsers = [];
+      
+      // Strategy 1: Search with common letters
+      final commonLetters = ['a', 'e', 'i', 'o', 'u'];
+      for (final letter in commonLetters) {
+        try {
+          print('🔍 HomeFeedScreen: Trying search with letter "$letter"');
+          final users = await _backendService.searchUsers(letter, limit: 2);
+          print('✅ HomeFeedScreen: Found ${users.length} users with letter "$letter"');
+          allUsers.addAll(users);
+          
+          if (allUsers.length >= 6) break;
+        } catch (e) {
+          print('❌ HomeFeedScreen: Search failed for letter "$letter": $e');
+        }
+      }
+      
+      // Strategy 2: If still no users, try common words
+      if (allUsers.isEmpty) {
+        final commonWords = ['user', 'music', 'song'];
+        for (final word in commonWords) {
+          try {
+            print('🔍 HomeFeedScreen: Trying search with word "$word"');
+            final users = await _backendService.searchUsers(word, limit: 3);
+            print('✅ HomeFeedScreen: Found ${users.length} users with word "$word"');
+            allUsers.addAll(users);
+            
+            if (allUsers.length >= 6) break;
+          } catch (e) {
+            print('❌ HomeFeedScreen: Search failed for word "$word": $e');
+          }
+        }
+      }
+      
+      // Remove duplicates and current user, limit to 6
+      final uniqueUsers = <String, Map<String, dynamic>>{};
+      final currentUserId = _authProvider.userId;
+      
+      for (final user in allUsers) {
+        final userId = user['id'] as String;
+        
+        // Skip current user and duplicates
+        if (userId != currentUserId && !uniqueUsers.containsKey(userId)) {
+          uniqueUsers[userId] = user;
+        }
+      }
+      
+      final finalUsers = uniqueUsers.values.take(6).toList();
+      
+      print('✅ HomeFeedScreen: Final suggested users: ${finalUsers.length} (current user filtered out)');
+      for (final user in finalUsers) {
+        print('   - ${user['displayName']} (@${user['username']})');
+      }
+      
+      setState(() {
+        _suggestedUsers = finalUsers;
+      });
+    } catch (e) {
+      print('❌ HomeFeedScreen: Failed to load suggested users: $e');
+      // Set empty list on error
+      setState(() {
+        _suggestedUsers = [];
+      });
+    } finally {
+      setState(() {
+        _loadingSuggestedUsers = false;
+      });
+    }
+  }
+
+  Future<void> _handleFollowUser(String userId) async {
+    try {
+      await _backendService.followUser(_authProvider.userId!, userId);
+      
+      // Remove the followed user from suggestions
+      setState(() {
+        _suggestedUsers.removeWhere((user) => user['id'] == userId);
+      });
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User followed successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+      
+    } catch (e) {
+      print('❌ HomeFeedScreen: Failed to follow user: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to follow user: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildFeedContent() {
     if (!_initialized) {
       return ShimmerPostList(
@@ -327,37 +444,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
     }
 
     if (_posts.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.people_outline,
-              size: 64,
-              color: AppColors.onDarkSecondary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No posts from people you follow',
-              style: AppTextStyles.heading2OnDark.copyWith(
-                color: AppColors.onDarkSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Follow some users to see their posts here',
-              style: AppTextStyles.bodyOnDark.copyWith(
-                color: AppColors.onDarkSecondary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _fetchFollowingPosts,
-              child: const Text('Refresh'),
-            ),
-          ],
-        ),
-      );
+      return _buildEmptyStateWithSuggestions();
     }
 
     return RefreshIndicator(
@@ -392,6 +479,192 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
           final post = _posts[index];
           return _buildPostCard(post);
         },
+      ),
+    );
+  }
+
+  void _navigateToUserProfile(Map<String, dynamic> user) {
+    final userId = user['id'] as String;
+    final username = user['username'] as String? ?? '';
+    final avatarUrl = user['profilePicture'] as String? ?? '';
+    
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => UserProfileScreen(
+          username: username,
+          avatarUrl: avatarUrl,
+          userId: userId,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyStateWithSuggestions() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // Header
+          const Icon(
+            Icons.people_outline,
+            size: 64,
+            color: AppColors.onDarkSecondary,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No posts from people you follow',
+            style: AppTextStyles.heading2OnDark.copyWith(
+              color: AppColors.onDarkSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Follow some users to see their posts here',
+            style: AppTextStyles.bodyOnDark.copyWith(
+              color: AppColors.onDarkSecondary,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Suggested users header
+          Text(
+            'Suggested for you',
+            style: AppTextStyles.heading2OnDark.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Users list
+          if (_loadingSuggestedUsers)
+            const Center(
+              child: CircularProgressIndicator(color: Colors.purple),
+            )
+          else if (_suggestedUsers.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.06),
+                  width: 1,
+                ),
+              ),
+              child: const Center(
+                child: Text(
+                  'No users to suggest at the moment',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _suggestedUsers.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                final user = _suggestedUsers[index];
+                return _buildSuggestedUserCard(user);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSuggestedUserCard(Map<String, dynamic> user) {
+    final displayName = user['displayName'] as String? ?? 'Unknown User';
+    final username = user['username'] as String? ?? '';
+    final followersCount = user['followersCount'] as int? ?? 0;
+    final profilePicture = user['profilePicture'] as String? ?? '';
+    final userId = user['id'] as String;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.06),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => _navigateToUserProfile(user),
+            child: CircleAvatar(
+              radius: 24,
+              backgroundColor: Colors.purple,
+              backgroundImage: profilePicture.isNotEmpty
+                  ? NetworkImage(profilePicture)
+                  : null,
+              child: profilePicture.isEmpty
+                  ? const Icon(Icons.person, color: Colors.white)
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _navigateToUserProfile(user),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  if (username.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '@$username',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 4),
+                  Text(
+                    '$followersCount followers',
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          ElevatedButton(
+            onPressed: () => _handleFollowUser(userId),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(80, 36),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+            ),
+            child: const Text(
+              'Follow',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

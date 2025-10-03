@@ -12,6 +12,7 @@ import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/services/spotify_deep_link_service.dart';
 import 'package:songbuddy/utils/post_sharing_utils.dart';
+import 'package:songbuddy/screens/user_profile_screen.dart';
 
 class HomeFeedScreen extends StatefulWidget {
   const HomeFeedScreen({super.key});
@@ -342,9 +343,6 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
           ),
         );
       }
-
-      // Refresh the feed to show new posts
-      await _fetchFollowingPosts();
       
     } catch (e) {
       print('❌ HomeFeedScreen: Failed to follow user: $e');
@@ -441,6 +439,22 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
     );
   }
 
+  void _navigateToUserProfile(Map<String, dynamic> user) {
+    final userId = user['id'] as String;
+    final username = user['username'] as String? ?? '';
+    final avatarUrl = user['profilePicture'] as String? ?? '';
+    
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => UserProfileScreen(
+          username: username,
+          avatarUrl: avatarUrl,
+          userId: userId,
+        ),
+      ),
+    );
+  }
+
   Widget _buildEmptyStateWithSuggestions() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -468,27 +482,14 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
           ),
           const SizedBox(height: 24),
 
-          // Suggested users header with refresh button
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Suggested for you',
-                style: AppTextStyles.heading2OnDark.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 18,
-                ),
-              ),
-              if (!_loadingSuggestedUsers)
-                TextButton(
-                  onPressed: _loadSuggestedUsers,
-                  child: const Text(
-                    'Refresh',
-                    style: TextStyle(color: Colors.purple),
-                  ),
-                ),
-            ],
+          // Suggested users header
+          Text(
+            'Suggested for you',
+            style: AppTextStyles.heading2OnDark.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 18,
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -550,55 +551,61 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: Colors.purple,
-            backgroundImage: profilePicture.isNotEmpty
-                ? NetworkImage(profilePicture)
-                : null,
-            child: profilePicture.isEmpty
-                ? const Icon(Icons.person, color: Colors.white)
-                : null,
+          GestureDetector(
+            onTap: () => _navigateToUserProfile(user),
+            child: CircleAvatar(
+              radius: 24,
+              backgroundColor: Colors.purple,
+              backgroundImage: profilePicture.isNotEmpty
+                  ? NetworkImage(profilePicture)
+                  : null,
+              child: profilePicture.isEmpty
+                  ? const Icon(Icons.person, color: Colors.white)
+                  : null,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  displayName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-                if (username.isNotEmpty) ...[
-                  const SizedBox(height: 2),
+            child: GestureDetector(
+              onTap: () => _navigateToUserProfile(user),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    '@$username',
+                    displayName,
                     style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                  if (username.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '@$username',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 4),
+                  Text(
+                    '$followersCount followers',
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
                     ),
                   ),
                 ],
-                const SizedBox(height: 4),
-                Text(
-                  '$followersCount followers',
-                  style: const TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
           const SizedBox(width: 12),
           ElevatedButton(
             onPressed: () => _handleFollowUser(userId),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple,
+              backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
               minimumSize: const Size(80, 36),
               shape: RoundedRectangleBorder(

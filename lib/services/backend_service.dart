@@ -10,23 +10,31 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // Simple HTTP client with basic configuration (for health checks only)
 class SimpleHttpClient {
-  static Future<Response> delete(String url, {Map<String, String>? headers, Object? body}) async {
-    final response = await HttpClientService.instance.delete(url, options: Options(headers: headers), data: body);
+  static Future<Response> delete(String url,
+      {Map<String, String>? headers, Object? body}) async {
+    final response = await HttpClientService.instance
+        .delete(url, options: Options(headers: headers), data: body);
     return response;
   }
-  
-  static Future<Response> post(String url, {Map<String, String>? headers, Object? body}) async {
-    final response = await HttpClientService.instance.post(url, options: Options(headers: headers), data: body);
+
+  static Future<Response> post(String url,
+      {Map<String, String>? headers, Object? body}) async {
+    final response = await HttpClientService.instance
+        .post(url, options: Options(headers: headers), data: body);
     return response;
   }
-  
-  static Future<Response> get(String url, {Map<String, String>? headers}) async {
-    final response = await HttpClientService.instance.get(url, options: Options(headers: headers));
+
+  static Future<Response> get(String url,
+      {Map<String, String>? headers}) async {
+    final response = await HttpClientService.instance
+        .get(url, options: Options(headers: headers));
     return response;
   }
-  
-  static Future<Response> put(String url, {Map<String, String>? headers, Object? body}) async {
-    final response = await HttpClientService.instance.put(url, options: Options(headers: headers), data: body);
+
+  static Future<Response> put(String url,
+      {Map<String, String>? headers, Object? body}) async {
+    final response = await HttpClientService.instance
+        .put(url, options: Options(headers: headers), data: body);
     return response;
   }
 }
@@ -401,7 +409,8 @@ class BackendService {
     if (response.statusCode == 200) {
       final data = response.data;
       print('🔍 BackendService: Parsed JSON data: $data');
-      print('🔍 BackendService: Data keys: ${data is Map ? data.keys.toList() : 'Not a Map'}');
+      print(
+          '🔍 BackendService: Data keys: ${data is Map ? data.keys.toList() : 'Not a Map'}');
 
       // Check different possible response structures
       List<dynamic> postsList = [];

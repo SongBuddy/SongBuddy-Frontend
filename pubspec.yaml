@@ -33,6 +33,8 @@ dependencies:
 
   # HTTP client for API calls
   http: ^1.1.0
+  # Advanced HTTP client with interceptors for token management
+  dio: ^5.4.0
   # Environment variables
   flutter_dotenv: ^5.1.0
   # URL launcher for opening Spotify auth URL

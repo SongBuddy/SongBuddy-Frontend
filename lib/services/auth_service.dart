@@ -43,7 +43,7 @@ class AuthService extends ChangeNotifier {
   AuthService({
     SpotifyService? spotifyService,
     FlutterSecureStorage? secureStorage,
-  }) : _spotifyService = spotifyService ?? SpotifyService(),
+  })  : _spotifyService = spotifyService ?? SpotifyService(),
         _secureStorage = secureStorage ?? const FlutterSecureStorage() {
     _initializeAuth();
   }
@@ -55,7 +55,8 @@ class AuthService extends ChangeNotifier {
   DateTime? get expiresAt => _expiresAt;
   String? get userId => _userId;
   String? get errorMessage => _errorMessage;
-  bool get isAuthenticated => _state == AuthState.authenticated && _accessToken != null;
+  bool get isAuthenticated =>
+      _state == AuthState.authenticated && _accessToken != null;
   AppUser? get appUser => _appUser;
   bool get isLoadingUserData => _loadingUserData;
 
@@ -68,7 +69,7 @@ class AuthService extends ChangeNotifier {
 
       if (storedToken != null && storedExpiresAt != null) {
         final expiresAt = DateTime.parse(storedExpiresAt);
-        
+
         if (expiresAt.isAfter(DateTime.now())) {
           _accessToken = storedToken;
           _expiresAt = expiresAt;
@@ -86,7 +87,7 @@ class AuthService extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error initializing auth: $e');
     }
-    
+
     _state = AuthState.unauthenticated;
     notifyListeners();
   }
@@ -146,21 +147,8 @@ class AuthService extends ChangeNotifier {
       // Check internet connectivity first
       final hasInternet = await _checkConnectivity();
       if (!hasInternet) {
-        _handleConnectionError('No internet connection. Please check your network and try again.');
-        return;
-      }
-
-      // Check backend health BEFORE proceeding to Spotify
-      try {
-        final backendHealthy = await _checkBackendHealth();
-        if (!backendHealthy) {
-          _handleConnectionError('Server is currently unavailable. Please try again later.');
-          return;
-        }
-      } catch (e) {
-        debugPrint('Backend health check failed: $e');
-        _handleConnectionError('Server is currently unavailable. Please try again later.');
-        return;
+        throw Exception(
+            'No internet connection. Please check your network and try again.');
       }
 
       // Generate and persist secure state
@@ -173,10 +161,10 @@ class AuthService extends ChangeNotifier {
       // Generate authorization URL with state
       final authUrl = _spotifyService.getAuthorizationUrl(state: stateParam);
       debugPrint('Generated auth URL: $authUrl');
-      
+
       // Launch the authorization URL
       final uri = Uri.parse(authUrl);
-      
+
       // Use external application mode to open in browser
       bool launched = false;
       try {
@@ -191,7 +179,8 @@ class AuthService extends ChangeNotifier {
           launched = await launchUrl(
             uri,
             mode: LaunchMode.inAppWebView,
-            webViewConfiguration: const WebViewConfiguration(enableJavaScript: true),
+            webViewConfiguration:
+                const WebViewConfiguration(enableJavaScript: true),
           );
           debugPrint('In-app webview launch: $launched');
         }
@@ -205,14 +194,14 @@ class AuthService extends ChangeNotifier {
       }
 
       if (!launched) {
-        _handleConnectionError('Cannot open Spotify authorization page. Please install a web browser and try again.');
-        return;
+        throw Exception(
+            'Could not open Spotify authorization page. Install or enable a web browser, or try again later.');
       }
-      
+
       debugPrint('URL launched successfully');
-      
-      // Set 7-second timeout for the authentication process
-      _timeoutTimer = Timer(const Duration(seconds: 7), () {
+
+      // Set a timeout for the authentication process
+      Timer(const Duration(minutes: 5), () {
         if (_state == AuthState.authenticating) {
           _handleConnectionError('Connection timeout. Please try again.');
           _linkSubscription?.cancel();
@@ -244,7 +233,7 @@ class AuthService extends ChangeNotifier {
   /// Set up deep link listener for OAuth callback
   void _setupDeepLinkListener() {
     _linkSubscription?.cancel();
-    
+
     _linkSubscription = const EventChannel('songbuddy/oauth')
         .receiveBroadcastStream()
         .map((dynamic event) => Uri.parse(event as String))
@@ -272,7 +261,8 @@ class AuthService extends ChangeNotifier {
         final errorDescription = uri.queryParameters['error_description'];
         final state = uri.queryParameters['state'];
 
-        debugPrint('Callback parameters - code: ${code != null ? "present" : "missing"}, error: $error');
+        debugPrint(
+            'Callback parameters - code: ${code != null ? "present" : "missing"}, error: $error');
 
         // Validate state parameter to prevent CSRF
         final expectedState = await _secureStorage.read(key: _oauthStateKey);
@@ -285,7 +275,8 @@ class AuthService extends ChangeNotifier {
           final errorMsg = errorDescription ?? error;
           debugPrint('OAuth error received: $errorMsg');
           if (error == 'access_denied') {
-            throw 'You denied access. Please grant permissions to continue.';
+            throw Exception(
+                'You denied access. Please grant permissions to continue.');
           }
           throw Exception('OAuth error: $errorMsg');
         }
@@ -299,7 +290,8 @@ class AuthService extends ChangeNotifier {
         // Exchange code for token
         await _exchangeCodeForToken(code);
       } else {
-        debugPrint('Received non-Spotify deep link: ${uri.scheme}://${uri.host}');
+        debugPrint(
+            'Received non-Spotify deep link: ${uri.scheme}://${uri.host}');
       }
     } catch (e) {
       debugPrint('Error in OAuth callback: $e');
@@ -315,11 +307,11 @@ class AuthService extends ChangeNotifier {
   Future<void> _exchangeCodeForToken(String code) async {
     try {
       final tokenResponse = await _spotifyService.exchangeCodeForToken(code);
-      
+
       // Parse token response
       _accessToken = tokenResponse['access_token'] as String?;
       _refreshToken = tokenResponse['refresh_token'] as String?;
-      
+
       // Calculate expiration time
       final expiresIn = tokenResponse['expires_in'] as int?;
       if (expiresIn != null) {
@@ -328,16 +320,16 @@ class AuthService extends ChangeNotifier {
         // Default to 1 hour if expires_in is not provided
         _expiresAt = DateTime.now().add(const Duration(hours: 1));
       }
-      
+
       if (_accessToken == null) {
         throw Exception('No access token received from Spotify');
       }
-      
+
       // Validate token by getting user info
       try {
         final userInfo = await _spotifyService.getCurrentUser(_accessToken!);
         _userId = userInfo['id'] as String?;
-        
+
         if (_userId == null) {
           throw Exception('Unable to retrieve user information from Spotify');
         }
@@ -353,38 +345,45 @@ class AuthService extends ChangeNotifier {
       try {
         debugPrint('Attempting to save user to backend...');
         final backendService = BackendService();
+        // Initialize the backend service with auth service for token management
+        backendService.initializeAuth(this);
         final authFlow = AuthFlow(_spotifyService, backendService);
         _appUser = await authFlow.loginAndSave(_accessToken!);
         debugPrint('✅ User successfully saved to backend!');
-        
+
         // Ensure user data is properly loaded
         if (_appUser == null) {
-          debugPrint('⚠️ AppUser is null after backend save, loading from Spotify...');
+          debugPrint(
+              '⚠️ AppUser is null after backend save, loading from Spotify...');
           await _loadUserData();
         }
       } catch (e) {
         // Backend save failure - fallback to loading user data directly from Spotify
         debugPrint('❌ Backend save failed: $e');
-        debugPrint('🔄 Falling back to loading user data directly from Spotify...');
-        
+        debugPrint(
+            '🔄 Falling back to loading user data directly from Spotify...');
+
         try {
           // Load user data directly from Spotify as fallback
           await _loadUserData();
           debugPrint('✅ User data loaded from Spotify as fallback');
         } catch (spotifyError) {
           debugPrint('❌ Failed to load user data from Spotify: $spotifyError');
-          
+
           String errorMessage;
-          if (e.toString().contains('Connection refused') || e.toString().contains('Failed to connect')) {
-            errorMessage = 'Backend server is not running. Please start your backend server on localhost:3000';
+          if (e.toString().contains('Connection refused') ||
+              e.toString().contains('Failed to connect')) {
+            errorMessage =
+                'Backend server is not running. Please start your backend server on localhost:3000';
           } else if (e.toString().contains('404')) {
-            errorMessage = 'Backend endpoint not found. Check if /api/users/save exists';
+            errorMessage =
+                'Backend endpoint not found. Check if /api/users/save exists';
           } else if (e.toString().contains('500')) {
             errorMessage = 'Backend server error. Check your backend logs';
           } else {
             errorMessage = 'Backend connection failed: ${e.toString()}';
           }
-          
+
           _state = AuthState.error;
           _errorMessage = errorMessage;
           notifyListeners();
@@ -410,11 +409,17 @@ class AuthService extends ChangeNotifier {
       await _secureStorage.write(key: _refreshTokenKey, value: _refreshToken!);
     }
     if (_expiresAt != null) {
-      await _secureStorage.write(key: _expiresAtKey, value: _expiresAt!.toIso8601String());
+      await _secureStorage.write(
+          key: _expiresAtKey, value: _expiresAt!.toIso8601String());
     }
     if (_userId != null) {
       await _secureStorage.write(key: _userIdKey, value: _userId!);
     }
+  }
+
+  /// Public method to refresh token if needed (called by HTTP interceptor)
+  Future<void> refreshTokenIfNeeded() async {
+    await _refreshTokenIfNeeded();
   }
 
   /// Refresh access token if needed
@@ -433,7 +438,8 @@ class AuthService extends ChangeNotifier {
         _refreshToken = storedRefresh;
       }
 
-      if (_expiresAt != null && _expiresAt!.isAfter(DateTime.now().add(const Duration(minutes: 1)))) {
+      if (_expiresAt != null &&
+          _expiresAt!.isAfter(DateTime.now().add(const Duration(minutes: 1)))) {
         // Token still valid
         return;
       }
@@ -447,7 +453,8 @@ class AuthService extends ChangeNotifier {
 
       final newAccessToken = response['access_token'] as String?;
       final newExpiresIn = response['expires_in'] as int?;
-      final maybeNewRefreshToken = response['refresh_token'] as String?; // Spotify may not always return this
+      final maybeNewRefreshToken = response['refresh_token']
+          as String?; // Spotify may not always return this
 
       if (newAccessToken == null) {
         throw Exception('Failed to refresh access token');
@@ -465,9 +472,12 @@ class AuthService extends ChangeNotifier {
 
       _state = AuthState.authenticated;
       notifyListeners();
+      debugPrint('✅ Token refreshed successfully');
     } catch (e) {
-      debugPrint('Token refresh failed: $e');
-      await logout();
+      debugPrint('❌ Token refresh failed: $e');
+      // Don't automatically logout here - let the calling code decide
+      // This allows for better error handling in different contexts
+      rethrow;
     }
   }
 
@@ -506,7 +516,7 @@ class AuthService extends ChangeNotifier {
     _appUser = null;
     _errorMessage = null;
     _state = AuthState.unauthenticated;
-    
+
     notifyListeners();
   }
 
@@ -541,49 +551,52 @@ class AuthService extends ChangeNotifier {
     _appUser = null;
     _errorMessage = null;
     _state = AuthState.unauthenticated;
-    
+
     notifyListeners();
   }
 
   /// Load user data directly from Spotify
   Future<void> _loadUserData() async {
     if (_accessToken == null) return;
-    
+
     _loadingUserData = true;
     notifyListeners();
-    
+
     int retryCount = 0;
     const maxRetries = 3;
-    
+
     while (retryCount < maxRetries) {
       try {
         // Get user data directly from Spotify API
-        final spotifyUserData = await _spotifyService.getCurrentUser(_accessToken!);
-        
+        final spotifyUserData =
+            await _spotifyService.getCurrentUser(_accessToken!);
+
         // Create AppUser from Spotify data
         _appUser = AppUser(
           id: spotifyUserData['id'] ?? '',
           country: spotifyUserData['country'] ?? 'US',
           displayName: spotifyUserData['display_name'] ?? '',
           email: spotifyUserData['email'] ?? '',
-          profilePicture: (spotifyUserData['images'] != null && spotifyUserData['images'].isNotEmpty)
+          profilePicture: (spotifyUserData['images'] != null &&
+                  spotifyUserData['images'].isNotEmpty)
               ? spotifyUserData['images'][0]['url'] ?? ''
               : '',
         );
-        
+
         debugPrint('✅ User data loaded from Spotify: ${_appUser!.displayName}');
         break; // Success, exit retry loop
       } catch (e) {
         retryCount++;
-        debugPrint('Failed to load user data from Spotify (attempt $retryCount): $e');
-        
+        debugPrint(
+            'Failed to load user data from Spotify (attempt $retryCount): $e');
+
         if (retryCount < maxRetries) {
           // Wait before retrying
           await Future.delayed(Duration(milliseconds: 500 * retryCount));
         }
       }
     }
-    
+
     _loadingUserData = false;
     notifyListeners();
   }
@@ -596,7 +609,7 @@ class AuthService extends ChangeNotifier {
   /// Force refresh user data (useful after login)
   Future<void> refreshUserData() async {
     if (_accessToken == null) return;
-    
+
     debugPrint('🔄 Force refreshing user data...');
     await _loadUserData();
   }

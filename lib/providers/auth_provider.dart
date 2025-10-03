@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:songbuddy/models/AppUser.dart';
 import '../services/auth_service.dart';
+import '../services/http_client_service.dart';
 
 /// Global authentication provider that can be used throughout the app
 class AuthProvider extends ChangeNotifier {
@@ -17,6 +18,10 @@ class AuthProvider extends ChangeNotifier {
 
     _authService = AuthService();
     _authService.addListener(_onAuthStateChanged);
+    
+    // Initialize HTTP client service with auth service for token management
+    HttpClientService.instance.setAuthService(_authService);
+    
     _initialized = true;
   }
 

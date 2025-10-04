@@ -32,6 +32,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
   bool _loadingMore = false;
   bool _hasMorePosts = true;
   bool _initialized = false;
+  bool _hasError = false;
   int _currentPage = 1;
   static const int _postsPerPage = 10;
 
@@ -106,13 +107,16 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
 
     try {
       await _fetchFollowingPosts();
+      _hasError = false; // Reset error state on success
 
-      // If no posts found, load suggested users
-      if (_posts.isEmpty) {
+      // Only load suggested users if we successfully fetched posts but found none
+      // This means user has no following, not that there was an error
+      if (_posts.isEmpty && !_hasError) {
         await _loadSuggestedUsers();
       }
     } catch (e) {
       print('❌ HomeFeedScreen: Failed to fetch posts: $e');
+      _hasError = true; // Set error state
       if (mounted) {
         ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'load_posts');
       }
@@ -157,17 +161,11 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
       print('❌ HomeFeedScreen: Error type: ${e.runtimeType}');
       print('❌ HomeFeedScreen: Error details: $e');
 
-      // Show error message to user
-      if (mounted) {
-        ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'load_posts');
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-      }
+      // Don't show error here - let the caller handle it
+      // Just rethrow the error so the caller knows it failed
+      rethrow;
     }
+    // Removed finally block - let the caller handle loading state
   }
 
   Future<void> _loadMorePosts() async {
@@ -448,7 +446,13 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
     }
 
     if (_posts.isEmpty) {
-      return _buildEmptyStateWithSuggestions();
+      // Only show suggestions if there's no error (user has no following)
+      // If there's an error, the error snackbar will be shown instead
+      if (!_hasError) {
+        return _buildEmptyStateWithSuggestions();
+      }
+      // If there's an error, show a simple empty state
+      return _buildErrorEmptyState();
     }
 
     return RefreshIndicator(
@@ -456,10 +460,17 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
         HapticFeedback.lightImpact();
         setState(() {
           _loading = true;
+          _hasError = false; // Reset error state on refresh
         });
 
         try {
           await _fetchFollowingPosts();
+          _hasError = false; // Reset error state on success
+        } catch (e) {
+          _hasError = true; // Set error state on failure
+          if (mounted) {
+            ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'load_posts');
+          }
         } finally {
           if (mounted) {
             setState(() {
@@ -483,6 +494,38 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
           final post = _posts[index];
           return _buildPostCard(post);
         },
+      ),
+    );
+  }
+
+  Widget _buildErrorEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 64,
+              color: AppColors.onDarkSecondary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Unable to load posts',
+              style: AppTextStyles.heading2OnDark.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Pull down to refresh',
+              style: AppTextStyles.bodyOnDark.copyWith(
+                color: AppColors.onDarkSecondary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

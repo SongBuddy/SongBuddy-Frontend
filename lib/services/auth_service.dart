@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/widgets.dart';
 import 'spotify_service.dart';
 import 'package:songbuddy/models/AppUser.dart';
 import 'package:songbuddy/services/backend_service.dart';
@@ -19,7 +20,7 @@ enum AuthState {
 }
 
 /// Authentication service to handle Spotify OAuth flow
-class AuthService extends ChangeNotifier {
+class AuthService extends ChangeNotifier with WidgetsBindingObserver {
   static const String _accessTokenKey = 'spotify_access_token';
   static const String _refreshTokenKey = 'spotify_refresh_token';
   static const String _expiresAtKey = 'spotify_expires_at';
@@ -30,6 +31,8 @@ class AuthService extends ChangeNotifier {
   final FlutterSecureStorage _secureStorage;
   StreamSubscription<Uri>? _linkSubscription;
   Timer? _timeoutTimer;
+  bool _isOAuthInProgress = false;
+  DateTime? _oauthStartTime;
 
   AuthState _state = AuthState.unauthenticated;
   String? _accessToken;
@@ -144,11 +147,28 @@ class AuthService extends ChangeNotifier {
       _errorMessage = null;
       notifyListeners();
 
-      // Check internet connectivity first
-      final hasInternet = await _checkConnectivity();
+      // API Response 1: Check internet connectivity with timeout
+      final hasInternet = await _checkConnectivity().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => false,
+      );
       if (!hasInternet) {
-        throw Exception(
-            'No internet connection. Please check your network and try again.');
+        _state = AuthState.error;
+        _errorMessage = 'No internet connection. Please check your network and try again.';
+        notifyListeners();
+        return;
+      }
+
+      // API Response 2: Check backend health with timeout
+      final isBackendHealthy = await _checkBackendHealth().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => false,
+      );
+      if (!isBackendHealthy) {
+        _state = AuthState.error;
+        _errorMessage = 'Server is currently unavailable. Please try again later.';
+        notifyListeners();
+        return;
       }
 
       // Generate and persist secure state
@@ -200,13 +220,10 @@ class AuthService extends ChangeNotifier {
 
       debugPrint('URL launched successfully');
 
-      // Set a timeout for the authentication process
-      Timer(const Duration(minutes: 5), () {
-        if (_state == AuthState.authenticating) {
-          _handleConnectionError('Connection timeout. Please try again.');
-          _linkSubscription?.cancel();
-        }
-      });
+      // Smart OAuth monitoring - no arbitrary timeouts
+      _isOAuthInProgress = true;
+      _oauthStartTime = DateTime.now();
+      _setupSmartOAuthMonitoring();
     } catch (e) {
       debugPrint('Login error: $e');
       
@@ -249,9 +266,11 @@ class AuthService extends ChangeNotifier {
   Future<void> _handleOAuthCallback(Uri uri) async {
     debugPrint('Deep link received: $uri');
     
-    // Cancel any timeout timer since we received the callback
+    // OAuth process completed successfully
+    _isOAuthInProgress = false;
     _timeoutTimer?.cancel();
     _timeoutTimer = null;
+    WidgetsBinding.instance.removeObserver(this);
     
     try {
       if (uri.scheme == 'songbuddy' && uri.host == 'callback') {
@@ -623,10 +642,74 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// Setup smart OAuth monitoring - detects user actions instead of arbitrary timeouts
+  void _setupSmartOAuthMonitoring() {
+    // Register lifecycle observer
+    WidgetsBinding.instance.addObserver(this);
+
+    // Fallback: Only use timeout as last resort (much longer)
+    _timeoutTimer = Timer(const Duration(minutes: 2), () {
+      if (_isOAuthInProgress && _state == AuthState.authenticating) {
+        _handleOAuthInterruption('OAuth process took too long. Please try again.');
+      }
+    });
+  }
+
+  /// Check if OAuth was completed when user returns to app
+  void _checkOAuthCompletion() {
+    if (!_isOAuthInProgress) return;
+    
+    // Check if enough time has passed for user to complete OAuth
+    final elapsedTime = DateTime.now().difference(_oauthStartTime!);
+    
+    if (elapsedTime.inSeconds < 3) {
+      // User returned too quickly - likely cancelled or closed browser
+      _handleOAuthInterruption('OAuth was cancelled. Please try again.');
+    } else {
+      // User spent reasonable time - might have completed OAuth
+      // Keep waiting for deep link, but extend timeout
+      _timeoutTimer?.cancel();
+      _timeoutTimer = Timer(const Duration(seconds: 10), () {
+        if (_isOAuthInProgress && _state == AuthState.authenticating) {
+          _handleOAuthInterruption('OAuth process incomplete. Please try again.');
+        }
+      });
+    }
+  }
+
+  /// Handle OAuth interruption (user cancelled, closed browser, etc.)
+  void _handleOAuthInterruption(String message) {
+    debugPrint('OAuth interrupted: $message');
+    _isOAuthInProgress = false;
+    _timeoutTimer?.cancel();
+    _timeoutTimer = null;
+    _linkSubscription?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _state = AuthState.error;
+    _errorMessage = message;
+    notifyListeners();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_isOAuthInProgress && _state == AuthState.authenticating) {
+      if (state == AppLifecycleState.resumed) {
+        // User returned to app - check if OAuth was completed
+        _checkOAuthCompletion();
+      }
+    }
+  }
+
+  /// Handle user cancellation during OAuth flow
+  void handleUserCancellation() {
+    _handleOAuthInterruption('OAuth was cancelled by user.');
+  }
+
   @override
   void dispose() {
     _linkSubscription?.cancel();
     _timeoutTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 }

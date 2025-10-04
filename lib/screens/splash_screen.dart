@@ -4,6 +4,7 @@ import '../main.dart';
 import '../providers/auth_provider.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
+import 'package:songbuddy/widgets/riverpod_connection_overlay.dart';
 
 
 class SplashScreen extends StatefulWidget {
@@ -62,7 +63,9 @@ class _SplashScreenState extends State<SplashScreen>
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const OnboardingScreen(),
+            pageBuilder: (context, animation, secondaryAnimation) => const RiverpodConnectionOverlay(
+              child: OnboardingScreen(),
+            ),
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
               const begin = Offset(0.0, 1.0);
               const end = Offset.zero;

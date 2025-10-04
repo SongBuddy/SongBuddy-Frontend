@@ -6,6 +6,7 @@ import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../screens/on_boarding/onboarding_screen.dart';
 import '../services/spotify_service.dart';
+import '../widgets/riverpod_connection_overlay.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -144,7 +145,9 @@ class SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+          MaterialPageRoute(builder: (context) => const RiverpodConnectionOverlay(
+            child: OnboardingScreen(),
+          )),
           (route) => false,
         );
       }
@@ -184,7 +187,9 @@ class SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+          MaterialPageRoute(builder: (context) => const RiverpodConnectionOverlay(
+            child: OnboardingScreen(),
+          )),
           (route) => false,
         );
       }

@@ -13,6 +13,7 @@ import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/services/spotify_deep_link_service.dart';
 import 'package:songbuddy/utils/post_sharing_utils.dart';
+import 'package:songbuddy/utils/error_snackbar_utils.dart';
 
 class HomeFeedScreen extends StatefulWidget {
   const HomeFeedScreen({super.key});
@@ -112,6 +113,9 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
       }
     } catch (e) {
       print('❌ HomeFeedScreen: Failed to fetch posts: $e');
+      if (mounted) {
+        ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'load_posts');
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -155,13 +159,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
 
       // Show error message to user
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load posts: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'load_posts');
       }
     } finally {
       if (mounted) {
@@ -207,13 +205,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
       print('❌ HomeFeedScreen: Failed to load more posts: $e');
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load more posts: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'load_posts');
       }
     } finally {
       setState(() {
@@ -409,13 +401,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
     } catch (e) {
       print('❌ HomeFeedScreen: Failed to follow user: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to follow user: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'follow_user');
       }
     }
   }
@@ -709,12 +695,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
           HapticFeedback.lightImpact();
         } catch (e) {
           print('❌ HomeFeedScreen: Failed to toggle like: $e');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to update like: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'toggle_like');
         }
       },
       onShare: () {
@@ -745,13 +726,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
           }
         } catch (e) {
           print('❌ HomeFeedScreen: Error opening Spotify: $e');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error opening Spotify: $e'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
-            ),
-          );
+          ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'open_spotify');
         }
       },
       onUserTap: () {

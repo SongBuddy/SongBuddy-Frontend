@@ -10,6 +10,7 @@ import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/models/ProfileData.dart';
 import 'package:songbuddy/widgets/swipeable_post_card.dart';
 import 'package:songbuddy/utils/post_sharing_utils.dart';
+import 'package:songbuddy/utils/error_snackbar_utils.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final String username;
@@ -268,13 +269,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load profile: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'load_profile');
       }
     } finally {
       setState(() {

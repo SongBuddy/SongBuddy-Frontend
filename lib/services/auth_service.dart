@@ -19,6 +19,17 @@ enum AuthState {
   error,
 }
 
+/// Logout result class for proper error handling
+class LogoutResult {
+  final bool isSuccess;
+  final String? errorMessage;
+
+  LogoutResult._(this.isSuccess, this.errorMessage);
+
+  factory LogoutResult.success() => LogoutResult._(true, null);
+  factory LogoutResult.failure(String message) => LogoutResult._(false, message);
+}
+
 /// Authentication service to handle Spotify OAuth flow
 class AuthService extends ChangeNotifier with WidgetsBindingObserver {
   static const String _accessTokenKey = 'spotify_access_token';
@@ -517,8 +528,39 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
     return msg;
   }
 
-  /// Logout user and clear stored tokens
-  Future<void> logout() async {
+  /// Logout user and clear stored tokens with connectivity validation
+  Future<LogoutResult> logout() async {
+    try {
+      // Step 1: Check internet connectivity
+      final hasInternet = await _checkConnectivity().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => false,
+      );
+      if (!hasInternet) {
+        return LogoutResult.failure('No internet connection. Cannot logout safely.');
+      }
+
+      // Step 2: Check backend availability for proper session cleanup
+      final isBackendHealthy = await _checkBackendHealth().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => false,
+      );
+      if (!isBackendHealthy) {
+        return LogoutResult.failure('Server unavailable. Cannot logout safely.');
+      }
+
+      // Step 3: All checks passed - proceed with logout
+      await _performLogout();
+      return LogoutResult.success();
+      
+    } catch (e) {
+      debugPrint('Logout error: $e');
+      return LogoutResult.failure('Logout failed: ${e.toString()}');
+    }
+  }
+
+  /// Perform actual logout operations
+  Future<void> _performLogout() async {
     try {
       await _secureStorage.delete(key: _accessTokenKey);
       await _secureStorage.delete(key: _refreshTokenKey);
@@ -539,39 +581,49 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
-  /// Delete user account and logout
-  Future<void> deleteAccount() async {
+  /// Delete user account with connectivity validation
+  Future<LogoutResult> deleteAccount() async {
     try {
-      // Delete user from backend if we have user info
+      // Step 1: Check internet connectivity
+      final hasInternet = await _checkConnectivity().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => false,
+      );
+      if (!hasInternet) {
+        return LogoutResult.failure('No internet connection. Cannot delete account.');
+      }
+
+      // Step 2: Check backend availability
+      final isBackendHealthy = await _checkBackendHealth().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => false,
+      );
+      if (!isBackendHealthy) {
+        return LogoutResult.failure('Server unavailable. Cannot delete account.');
+      }
+
+      // Step 3: Delete user from backend
       if (_userId != null) {
         try {
           final backendService = BackendService();
-          await backendService.deleteUser(_userId!);
+          await backendService.deleteUser(_userId!).timeout(
+            const Duration(seconds: 10),
+          );
           debugPrint('✅ User account deleted from backend');
         } catch (e) {
           debugPrint('⚠️ Failed to delete user from backend: $e');
-          // Continue with account deletion even if backend deletion fails
+          return LogoutResult.failure('Failed to delete account from server: ${e.toString()}');
         }
       }
 
-      // Clear all stored data
-      await _secureStorage.delete(key: _accessTokenKey);
-      await _secureStorage.delete(key: _refreshTokenKey);
-      await _secureStorage.delete(key: _expiresAtKey);
-      await _secureStorage.delete(key: _userIdKey);
+      // Step 4: Clear all stored data locally
+      await _performLogout();
+      return LogoutResult.success();
+      
     } catch (e) {
-      debugPrint('Error during account deletion: $e');
+      debugPrint('Delete account error: $e');
+      return LogoutResult.failure('Account deletion failed: ${e.toString()}');
     }
-
-    _accessToken = null;
-    _refreshToken = null;
-    _expiresAt = null;
-    _userId = null;
-    _appUser = null;
-    _errorMessage = null;
-    _state = AuthState.unauthenticated;
-
-    notifyListeners();
   }
 
   /// Load user data directly from Spotify

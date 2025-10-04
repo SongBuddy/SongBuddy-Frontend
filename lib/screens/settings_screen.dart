@@ -141,15 +141,38 @@ class SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (confirmed == true) {
-      await _authProvider.logout();
+      // Show loading indicator
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Logging out...'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      final result = await _authProvider.logout();
+      
+      if (mounted) {
+        if (result.isSuccess) {
+          // Success - navigate to onboarding
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const RiverpodConnectionOverlay(
-            child: OnboardingScreen(),
-          )),
+            MaterialPageRoute(builder: (context) => const RiverpodConnectionOverlay(
+              child: OnboardingScreen(),
+            )),
           (route) => false,
         );
+        } else {
+          // Show error snackbar
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.errorMessage ?? 'Logout failed'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
       }
     }
   }
@@ -181,10 +204,21 @@ class SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _handleDeleteAccount() async {
-    try {
-      await _authProvider.deleteAccount();
-      // Navigate to onboarding screen
+    // Show loading indicator
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Deleting account...'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+
+    final result = await _authProvider.deleteAccount();
+    
       if (mounted) {
+      if (result.isSuccess) {
+        // Success - navigate to onboarding
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const RiverpodConnectionOverlay(
@@ -192,13 +226,13 @@ class SettingsScreenState extends State<SettingsScreen> {
           )),
           (route) => false,
         );
-      }
-    } catch (e) {
-      if (mounted) {
+      } else {
+        // Show error snackbar
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to delete account: $e'),
+            content: Text(result.errorMessage ?? 'Account deletion failed'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }

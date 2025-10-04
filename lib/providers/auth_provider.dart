@@ -58,15 +58,15 @@ class AuthProvider extends ChangeNotifier {
   }
 
   /// Logout from Spotify
-  Future<void> logout() async {
+  Future<LogoutResult> logout() async {
     if (!_initialized) await initialize();
-    await _authService.logout();
+    return await _authService.logout();
   }
 
   /// Delete user account and logout
-  Future<void> deleteAccount() async {
+  Future<LogoutResult> deleteAccount() async {
     if (!_initialized) await initialize();
-    await _authService.deleteAccount();
+    return await _authService.deleteAccount();
   }
 
   /// Load user data manually

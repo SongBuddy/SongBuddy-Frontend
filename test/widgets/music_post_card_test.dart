@@ -8,7 +8,7 @@ void main() {
       const testUsername = 'test_user';
       
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: MusicPostCard(
               username: testUsername,
@@ -66,7 +66,7 @@ void main() {
       const testUsername = 'test_user';
       
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: MusicPostCard(
               username: testUsername,
@@ -130,7 +130,7 @@ void main() {
       const testTimeAgo = '2h';
       
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: MusicPostCard(
               username: testUsername,
@@ -155,7 +155,7 @@ void main() {
       const testTimeAgo = '2h';
       
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: MusicPostCard(
               username: testUsername,
@@ -183,7 +183,7 @@ void main() {
       const testDescription = 'Test description';
       
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: MusicPostCard(
               username: testUsername,
@@ -211,7 +211,7 @@ void main() {
       const longUsername = 'very_long_username_that_should_be_truncated';
       
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: MusicPostCard(
               username: longUsername,

@@ -41,7 +41,7 @@ void main() {
 
     testWidgets('MusicPostCard handles null onUserTap gracefully', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: MusicPostCard(
               username: 'test_user',
@@ -71,7 +71,7 @@ void main() {
     testWidgets('HomeFeedScreen and SearchFeedScreen render without errors', (WidgetTester tester) async {
       // Test HomeFeedScreen
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: HomeFeedScreen(),
         ),
       );
@@ -81,7 +81,7 @@ void main() {
 
       // Test SearchFeedScreen
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SearchFeedScreen(),
         ),
       );
@@ -98,7 +98,7 @@ void main() {
       const testDescription = 'Test description';
 
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: MusicPostCard(
               username: testUsername,
@@ -157,7 +157,7 @@ void main() {
       const longUsername = 'very_long_username_that_should_be_truncated';
 
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: MusicPostCard(
               username: longUsername,
@@ -186,7 +186,7 @@ void main() {
       const testTimeAgo = '2h';
 
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: MusicPostCard(
               username: testUsername,
@@ -211,7 +211,7 @@ void main() {
       const testTimeAgo = '2h';
 
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: MusicPostCard(
               username: testUsername,

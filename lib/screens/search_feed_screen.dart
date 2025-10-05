@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:songbuddy/screens/user_profile_screen.dart';
@@ -574,16 +573,16 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
           width: 1,
         ),
       ),
-      child: Row(
+      child: const Row(
         children: [
           ShimmerCircle(diameter: 40),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ShimmerBox(width: 120, height: 14, radius: 6),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 ShimmerBox(width: 80, height: 12, radius: 5),
               ],
             ),
@@ -700,12 +699,12 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
   /// Build the discovery feed UI
   Widget _buildDiscoveryFeed() {
     if (_isLoadingDiscovery) {
-      return Expanded(
+      return const Expanded(
         child: ShimmerPostList(
           itemCount: 5,
           height: 180,
           borderRadius: 20,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),
       );
     }

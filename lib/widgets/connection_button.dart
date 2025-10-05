@@ -1,6 +1,5 @@
 // lib/widgets/connection_button.dart
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
 
 typedef ConnectionAction = Future<bool> Function();
 

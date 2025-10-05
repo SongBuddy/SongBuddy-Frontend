@@ -28,7 +28,7 @@ class ConnectionProgressIndicator extends StatelessWidget {
             value: ratio,
             minHeight: 10,
             backgroundColor: AppColors.border,
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
           ),
         ),
         const SizedBox(height: 6),

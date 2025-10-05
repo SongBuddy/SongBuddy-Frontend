@@ -6,7 +6,7 @@ void main() {
   group('HomeFeedScreen Widget Tests', () {
     testWidgets('HomeFeedScreen displays home feed view by default', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: HomeFeedScreen(),
         ),
       );
@@ -18,7 +18,7 @@ void main() {
 
     testWidgets('HomeFeedScreen displays notification icon', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: HomeFeedScreen(),
         ),
       );
@@ -29,7 +29,7 @@ void main() {
 
     testWidgets('HomeFeedScreen displays search functionality', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: HomeFeedScreen(),
         ),
       );
@@ -43,7 +43,7 @@ void main() {
 
     testWidgets('HomeFeedScreen handles widget lifecycle correctly', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: HomeFeedScreen(),
         ),
       );
@@ -60,7 +60,7 @@ void main() {
 
     testWidgets('HomeFeedScreen displays correct app title', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: HomeFeedScreen(),
         ),
       );
@@ -71,10 +71,10 @@ void main() {
 
     testWidgets('HomeFeedScreen renders without crashing', (WidgetTester tester) async {
       // This test ensures the widget can be created without throwing exceptions
-      expect(() => HomeFeedScreen(), returnsNormally);
+      expect(() => const HomeFeedScreen(), returnsNormally);
       
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: HomeFeedScreen(),
         ),
       );
@@ -85,7 +85,7 @@ void main() {
 
     testWidgets('HomeFeedScreen handles multiple rebuilds', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: HomeFeedScreen(),
         ),
       );
@@ -99,7 +99,7 @@ void main() {
 
     testWidgets('HomeFeedScreen maintains state during rebuilds', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: HomeFeedScreen(),
         ),
       );

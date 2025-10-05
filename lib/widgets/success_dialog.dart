@@ -138,14 +138,14 @@ class _SuccessDialogState extends State<SuccessDialog>
                   opacity: value,
                   child: Transform.translate(
                     offset: Offset(0, 20 * (1 - value)),
-                    child: Column(
+                    child: const Column(
                       children: [
                         Text(
                           'Success!',
                           style: AppTextStyles.heading2OnDark,
                         ),
-                        const SizedBox(height: 8),
-                        const Text(
+                        SizedBox(height: 8),
+                        Text(
                           'Connected to Spotify',
                           style: AppTextStyles.captionOnDark,
                         ),

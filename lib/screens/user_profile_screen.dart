@@ -847,8 +847,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
     final trackData = _currentlyPlaying?['item'] as Map<String, dynamic>? ?? _currentlyPlaying;
     print('🔍 UserProfileScreen: _buildCurrentlyPlaying - trackData: $trackData');
     if (trackData == null) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16),
       child: _EmptyCard(
           icon: Icons.play_circle_outline,
           title: 'Nothing playing right now',
@@ -933,9 +933,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
-        itemBuilder: (_, __) => Column(
+        itemBuilder: (_, __) => const Column(
           mainAxisAlignment: MainAxisAlignment.start,
-          children: const [
+          children: [
             _SkeletonCircle(diameter: 72),
             SizedBox(height: 8),
             _SkeletonBox(width: 80, height: 12, radius: 6),
@@ -961,10 +961,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
       child: _loadingTop
           ? _buildTopArtistsSkeletonContent(key: const ValueKey('artists-skeleton'))
           : (_topArtists.isEmpty
-              ? Padding(
-                  key: const ValueKey('artists-empty'),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: const _EmptyCard(
+              ? const Padding(
+                  key: ValueKey('artists-empty'),
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: _EmptyCard(
                     icon: Icons.person_outline,
                     title: 'No top artists yet',
                     subtitle: 'Listen more to build your top artists.',
@@ -978,9 +978,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
   Widget _buildTopTracksWidget(BuildContext context) {
     print('🔍 UserProfileScreen: _buildTopTracksWidget - _topTracks.length: ${_topTracks.length}');
     if (_topTracks.isEmpty) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: const _EmptyCard(
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16),
+        child: _EmptyCard(
         icon: Icons.music_note,
           title: 'No top tracks yet',
           subtitle: 'Listen more to build your top tracks.',
@@ -1050,9 +1050,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
     
     print('🔍 UserProfileScreen: _buildRecentlyPlayedWidget - recentTracks.length: ${recentTracks.length}');
     if (recentTracks.isEmpty) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: const _EmptyCard(
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16),
+        child: _EmptyCard(
         icon: Icons.history,
           title: 'No recent plays',
           subtitle: 'Play some songs in the last 24 hours to see them here.',
@@ -1260,15 +1260,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
   List<Widget> _buildSkeletonWidgets(BuildContext context) {
     return [
       // Top bar skeleton
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
-            const _SkeletonCircle(diameter: 40),
-            const Spacer(),
-            const _SkeletonBox(width: 120, height: 20, radius: 10),
-            const Spacer(),
-            const _SkeletonCircle(diameter: 40),
+            _SkeletonCircle(diameter: 40),
+            Spacer(),
+            _SkeletonBox(width: 120, height: 20, radius: 10),
+            Spacer(),
+            _SkeletonCircle(diameter: 40),
           ],
         ),
       ),
@@ -1287,30 +1287,30 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
         child: Column(
           children: [
             // Compact user info row - matches the real layout
-            Row(
+            const Row(
               children: [
-                const _SkeletonCircle(diameter: 48), // radius: 24
-            const SizedBox(width: 12),
+                _SkeletonCircle(diameter: 48), // radius: 24
+            SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                      const _SkeletonBox(width: 120, height: 18, radius: 9), // displayName
-                      const SizedBox(height: 2),
-                      const _SkeletonBox(width: 80, height: 12, radius: 6), // email
-                      const SizedBox(height: 4),
+                      _SkeletonBox(width: 120, height: 18, radius: 9), // displayName
+                      SizedBox(height: 2),
+                      _SkeletonBox(width: 80, height: 12, radius: 6), // email
+                      SizedBox(height: 4),
                       Row(
                         children: [
-                          const _SkeletonBox(width: 8, height: 8, radius: 4), // people icon
-                          const SizedBox(width: 4),
-                          const _SkeletonBox(width: 60, height: 11, radius: 5), // followers text
+                          _SkeletonBox(width: 8, height: 8, radius: 4), // people icon
+                          SizedBox(width: 4),
+                          _SkeletonBox(width: 60, height: 11, radius: 5), // followers text
                         ],
                       ),
                     ],
                   ),
                 ),
                 // Follow button skeleton
-                const _SkeletonBox(width: 80, height: 32, radius: 16),
+                _SkeletonBox(width: 80, height: 32, radius: 16),
               ],
             ),
             const SizedBox(height: 20),
@@ -1366,9 +1366,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
         child: ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           scrollDirection: Axis.horizontal,
-          itemBuilder: (_, __) => Column(
+          itemBuilder: (_, __) => const Column(
             mainAxisAlignment: MainAxisAlignment.start,
-            children: const [
+            children: [
               _SkeletonCircle(diameter: 60),
               SizedBox(height: 6),
               _SkeletonBox(width: 60, height: 10, radius: 5),
@@ -1384,9 +1384,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
          child: ListView.separated(
            padding: const EdgeInsets.symmetric(horizontal: 16),
            scrollDirection: Axis.horizontal,
-           itemBuilder: (_, __) => Column(
+           itemBuilder: (_, __) => const Column(
              mainAxisAlignment: MainAxisAlignment.start,
-             children: const [
+             children: [
                _SkeletonBox(width: 40, height: 40, radius: 6),
                SizedBox(height: 4),
                _SkeletonBox(width: 50, height: 8, radius: 4),
@@ -1461,7 +1461,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     // Bottom: 3 circles for action buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -1516,7 +1516,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
         context: context,
         builder: (context) => _FollowersFollowingDialog(
           title: 'Followers',
-          users: [], // Empty list
+          users: const [], // Empty list
           currentUserId: _authProvider.userId!,
           backendService: _backendService,
           onFollowToggle: (userId, isFollowing) async {
@@ -1569,7 +1569,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
         context: context,
         builder: (context) => _FollowersFollowingDialog(
           title: 'Following',
-          users: [], // Empty list
+          users: const [], // Empty list
           currentUserId: _authProvider.userId!,
           backendService: _backendService,
           onFollowToggle: (userId, isFollowing) async {
@@ -1982,12 +1982,12 @@ class _SkeletonTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _GlassCard(
+    return const _GlassCard(
       borderRadius: 12,
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: EdgeInsets.all(12.0),
         child: Row(
-          children: const [
+          children: [
             _SkeletonBox(width: 56, height: 56, radius: 8),
             SizedBox(width: 12),
             Expanded(

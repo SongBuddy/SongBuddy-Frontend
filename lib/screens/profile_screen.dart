@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
@@ -44,7 +43,7 @@ class ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic>? _lastSyncedCurrentlyPlaying;
   
   // Track selection for posts
-  Set<String> _selectedTracks = <String>{};
+  final Set<String> _selectedTracks = <String>{};
   bool _isSelectionMode = false;
 
   // User posts
@@ -60,7 +59,7 @@ class ProfileScreenState extends State<ProfileScreen> {
   bool _showFAB = true;
   double _lastScrollPosition = 0.0;
 
-  bool _loadingTop = false; // non-blocking loading for top artists/tracks (kept for future use)
+  final bool _loadingTop = false; // non-blocking loading for top artists/tracks (kept for future use)
   static const Duration _animDur = Duration(milliseconds: 250);
 
   @override
@@ -187,7 +186,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     final screenHeight = MediaQuery.of(context).size.height;
     final appBarHeight = AppBar().preferredSize.height;
     final statusBarHeight = MediaQuery.of(context).padding.top;
-    final bottomNavHeight = kBottomNavigationBarHeight;
+    const bottomNavHeight = kBottomNavigationBarHeight;
     
     final availableHeight = screenHeight - appBarHeight - statusBarHeight - bottomNavHeight;
     
@@ -638,8 +637,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                             _buildSectionTitle('My Posts'),
                             _buildUserPostsWidget(),
                             if (_insufficientScopeTop)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16),
                                 child: _EmptyCard(
                                   icon: Icons.lock_outline,
                                   title: 'Limited data due to permissions',
@@ -830,8 +829,8 @@ class ProfileScreenState extends State<ProfileScreen> {
   Widget _buildCurrentlyPlaying() {
     final item = _currentlyPlaying?['item'] as Map<String, dynamic>?;
     if (item == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
         child: _EmptyCard(
           icon: Icons.play_circle_outline,
           title: 'Nothing playing right now',
@@ -919,9 +918,9 @@ class ProfileScreenState extends State<ProfileScreen> {
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
-        itemBuilder: (_, __) => Column(
+        itemBuilder: (_, __) => const Column(
           mainAxisAlignment: MainAxisAlignment.start,
-          children: const [
+          children: [
             _SkeletonCircle(diameter: 72),
             SizedBox(height: 8),
             _SkeletonBox(width: 80, height: 12, radius: 6),
@@ -943,10 +942,10 @@ class ProfileScreenState extends State<ProfileScreen> {
       child: _loadingTop
           ? _buildTopArtistsSkeletonContent(key: const ValueKey('artists-skeleton'))
           : (_topArtists.isEmpty
-              ? Padding(
-                  key: const ValueKey('artists-empty'),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: const _EmptyCard(
+              ? const Padding(
+                  key: ValueKey('artists-empty'),
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: _EmptyCard(
                     icon: Icons.person_outline,
                     title: 'No top artists yet',
                     subtitle: 'Listen more to build your top artists.',
@@ -959,9 +958,9 @@ class ProfileScreenState extends State<ProfileScreen> {
   // New: Top Tracks as a widget (no slivers)
   Widget _buildTopTracksWidget(BuildContext context) {
     if (_topTracks.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: const _EmptyCard(
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: _EmptyCard(
           icon: Icons.music_note,
           title: 'No top tracks yet',
           subtitle: 'Listen more to build your top tracks.',
@@ -1022,9 +1021,9 @@ class ProfileScreenState extends State<ProfileScreen> {
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
-        itemBuilder: (_, __) => Column(
+        itemBuilder: (_, __) => const Column(
           mainAxisAlignment: MainAxisAlignment.start,
-          children: const [
+          children: [
             _SkeletonBox(width: 48, height: 48, radius: 8),
             SizedBox(height: 6),
             _SkeletonBox(width: 60, height: 10, radius: 6),
@@ -1048,9 +1047,9 @@ class ProfileScreenState extends State<ProfileScreen> {
     }).toList();
     
     if (recentTracks.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: const _EmptyCard(
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: _EmptyCard(
           icon: Icons.history,
           title: 'No recent plays',
           subtitle: 'Play some songs in the last 24 hours to see them here.',
@@ -1133,8 +1132,8 @@ class ProfileScreenState extends State<ProfileScreen> {
 
     if (_userPosts.isEmpty) {
       print('🔍 ProfileScreen: Showing empty state - no posts to display');
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
         child: _EmptyCard(
           icon: Icons.post_add,
           title: 'No posts yet',
@@ -1320,31 +1319,31 @@ class ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           children: [
             // Compact user info row - matches the real layout exactly like UserProfileScreen
-            Row(
+            const Row(
               children: [
-                const _SkeletonCircle(diameter: 48), // radius: 24
-                const SizedBox(width: 12),
+                _SkeletonCircle(diameter: 48), // radius: 24
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const _SkeletonBox(width: 120, height: 18, radius: 9), // displayName
-                      const SizedBox(height: 2),
-                      const _SkeletonBox(width: 80, height: 12, radius: 6), // @username
-                      const SizedBox(height: 4),
+                      _SkeletonBox(width: 120, height: 18, radius: 9), // displayName
+                      SizedBox(height: 2),
+                      _SkeletonBox(width: 80, height: 12, radius: 6), // @username
+                      SizedBox(height: 4),
                       Row(
                         children: [
-                          const _SkeletonBox(width: 8, height: 8, radius: 4), // post_add icon
-                          const SizedBox(width: 4),
-                          const _SkeletonBox(width: 50, height: 11, radius: 5), // posts text
+                          _SkeletonBox(width: 8, height: 8, radius: 4), // post_add icon
+                          SizedBox(width: 4),
+                          _SkeletonBox(width: 50, height: 11, radius: 5), // posts text
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4),
                       Row(
                         children: [
-                          const _SkeletonBox(width: 8, height: 8, radius: 4), // people icon
-                          const SizedBox(width: 4),
-                          const _SkeletonBox(width: 70, height: 11, radius: 5), // followers text
+                          _SkeletonBox(width: 8, height: 8, radius: 4), // people icon
+                          SizedBox(width: 4),
+                          _SkeletonBox(width: 70, height: 11, radius: 5), // followers text
                         ],
                       ),
                     ],
@@ -1405,9 +1404,9 @@ class ProfileScreenState extends State<ProfileScreen> {
         child: ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           scrollDirection: Axis.horizontal,
-          itemBuilder: (_, __) => Column(
+          itemBuilder: (_, __) => const Column(
             mainAxisAlignment: MainAxisAlignment.start,
-            children: const [
+            children: [
               _SkeletonCircle(diameter: 60),
               SizedBox(height: 6),
               _SkeletonBox(width: 60, height: 10, radius: 5),
@@ -1423,9 +1422,9 @@ class ProfileScreenState extends State<ProfileScreen> {
          child: ListView.separated(
            padding: const EdgeInsets.symmetric(horizontal: 16),
            scrollDirection: Axis.horizontal,
-           itemBuilder: (_, __) => Column(
+           itemBuilder: (_, __) => const Column(
              mainAxisAlignment: MainAxisAlignment.start,
-             children: const [
+             children: [
                _SkeletonBox(width: 40, height: 40, radius: 6),
                SizedBox(height: 4),
                _SkeletonBox(width: 50, height: 8, radius: 4),
@@ -1500,7 +1499,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: 20),
                     // Bottom: 3 circles for action buttons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
@@ -1591,11 +1590,11 @@ class ProfileScreenState extends State<ProfileScreen> {
       ),
       delegate: SliverChildBuilderDelegate(
         (context, index) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+          return const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 _SkeletonBox(width: double.infinity, height: 140, radius: 12),
                 SizedBox(height: 8),
                 _SkeletonBox(width: 120, height: 14, radius: 6),
@@ -1632,10 +1631,10 @@ class ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
       SliverToBoxAdapter(child: _buildSectionTitle('Currently Playing')),
-      SliverToBoxAdapter(
+      const SliverToBoxAdapter(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: const _SkeletonTile(),
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: _SkeletonTile(),
         ),
       ),
       SliverToBoxAdapter(child: _buildSectionTitle('Top Artists')),
@@ -1661,11 +1660,11 @@ class ProfileScreenState extends State<ProfileScreen> {
         ),
         delegate: SliverChildBuilderDelegate(
           (context, index) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+            return const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   _SkeletonBox(width: double.infinity, height: 140, radius: 12),
                   SizedBox(height: 8),
                   _SkeletonBox(width: 120, height: 14, radius: 6),
@@ -1681,9 +1680,9 @@ class ProfileScreenState extends State<ProfileScreen> {
       SliverToBoxAdapter(child: _buildSectionTitle('Recently Played')),
       SliverList(
         delegate: SliverChildBuilderDelegate(
-          (context, index) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: const _SkeletonTile(),
+          (context, index) => const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: _SkeletonTile(),
           ),
           childCount: 6,
         ),
@@ -1745,13 +1744,13 @@ class ProfileScreenState extends State<ProfileScreen> {
             colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
           ),
         ),
-        child: SafeArea(
+        child: const SafeArea(
           bottom: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 56, 20, 16),
+            padding: EdgeInsets.fromLTRB(20, 56, 20, 16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
-              children: const [
+              children: [
                 _SkeletonCircle(diameter: 88),
                 SizedBox(width: 16),
                 Expanded(
@@ -1989,7 +1988,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         context: context,
         builder: (context) => _FollowersFollowingDialog(
           title: 'Followers',
-          users: [], // Empty list
+          users: const [], // Empty list
           currentUserId: _authProvider.userId!,
           backendService: _backendService,
           onFollowToggle: (userId, isFollowing) async {
@@ -2044,7 +2043,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         context: context,
         builder: (context) => _FollowersFollowingDialog(
           title: 'Following',
-          users: [], // Empty list
+          users: const [], // Empty list
           currentUserId: _authProvider.userId!,
           backendService: _backendService,
           onFollowToggle: (userId, isFollowing) async {
@@ -2621,12 +2620,12 @@ class _SkeletonTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _GlassCard(
+    return const _GlassCard(
       borderRadius: 12,
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: EdgeInsets.all(12.0),
         child: Row(
-          children: const [
+          children: [
             _SkeletonBox(width: 56, height: 56, radius: 8),
             SizedBox(width: 12),
             Expanded(

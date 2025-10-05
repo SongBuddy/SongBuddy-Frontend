@@ -45,6 +45,8 @@ dependencies:
   connectivity_plus: ^6.1.5
   # State management
   flutter_riverpod: ^2.4.9
+  # Background service for continuous sync
+  flutter_background_service: ^5.0.5
   # Speech recognition
   speech_to_text: ^7.0.0
   # share_plus

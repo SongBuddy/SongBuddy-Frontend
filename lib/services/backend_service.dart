@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:songbuddy/models/AppUser.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/models/ProfileData.dart';
@@ -213,6 +214,31 @@ class BackendService {
       );
     } else {
       throw Exception("Failed to update user: ${response.data}");
+    }
+  }
+
+  /// Update currently playing data for a user
+  Future<bool> updateCurrentlyPlaying(String userId, Map<String, dynamic>? currentlyPlaying) async {
+    debugPrint('🎵 BackendService: Updating currently playing for user: $userId');
+    debugPrint('🎵 BackendService: Currently playing data: $currentlyPlaying');
+    
+    try {
+      final updates = {
+        'currentlyPlaying': currentlyPlaying,
+      };
+      
+      final result = await updateUser(userId, updates);
+      
+      if (result != null) {
+        debugPrint('✅ BackendService: Successfully updated currently playing');
+        return true;
+      } else {
+        debugPrint('❌ BackendService: Failed to update currently playing - no result');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ BackendService: Error updating currently playing: $e');
+      return false;
     }
   }
 

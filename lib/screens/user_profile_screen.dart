@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
@@ -32,7 +33,7 @@ class UserProfileScreen extends StatefulWidget {
   State<UserProfileScreen> createState() => _UserProfileScreenState();
 }
 
-class _UserProfileScreenState extends State<UserProfileScreen> {
+class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindingObserver {
   late final AuthProvider _authProvider;
   late final BackendService _backendService;
   late final ScrollController _scrollController;
@@ -60,6 +61,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   bool _loadingTop = false; // non-blocking loading for top artists/tracks (kept for future use)
   static const Duration _animDur = Duration(milliseconds: 250);
+  
+  // Real-time currently playing updates
+  Timer? _currentlyPlayingTimer;
+  bool _isUpdatingCurrentlyPlaying = false;
 
   @override
   void initState() {
@@ -67,6 +72,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     _authProvider = AuthProvider();
     _backendService = BackendService();
     _scrollController = ScrollController();
+    WidgetsBinding.instance.addObserver(this);
     _initialize();
   }
 
@@ -76,12 +82,119 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       _authProvider.removeListener(_onAuthChanged);
     }
     _scrollController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _stopCurrentlyPlayingUpdates();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // App came back to foreground - resume updates
+        if (widget.userId != null && _currentlyPlayingTimer == null) {
+          debugPrint('🎵 UserProfileScreen: App resumed - starting currently playing updates');
+          _startCurrentlyPlayingUpdates();
+        }
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        // App went to background - pause updates to save battery
+        debugPrint('🎵 UserProfileScreen: App paused - stopping currently playing updates');
+        _stopCurrentlyPlayingUpdates();
+        break;
+      case AppLifecycleState.detached:
+        // App is being terminated - stop updates
+        debugPrint('🎵 UserProfileScreen: App detached - stopping currently playing updates');
+        _stopCurrentlyPlayingUpdates();
+        break;
+      case AppLifecycleState.hidden:
+        // App is hidden - pause updates
+        debugPrint('🎵 UserProfileScreen: App hidden - stopping currently playing updates');
+        _stopCurrentlyPlayingUpdates();
+        break;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Resume updates when screen becomes visible again
+    if (widget.userId != null && _currentlyPlayingTimer == null && !_loading) {
+      debugPrint('🎵 UserProfileScreen: Screen became visible - starting currently playing updates');
+      _startCurrentlyPlayingUpdates();
+    }
   }
 
   void _onAuthChanged() {
     if (!mounted) return;
     setState(() {});
+  }
+
+  /// Start real-time currently playing updates
+  void _startCurrentlyPlayingUpdates() {
+    // Cancel existing timer if any
+    _currentlyPlayingTimer?.cancel();
+    
+    // Update immediately
+    _updateCurrentlyPlaying();
+    
+    // Then update every 30 seconds
+    _currentlyPlayingTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted && widget.userId != null) {
+        _updateCurrentlyPlaying();
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  /// Stop real-time currently playing updates
+  void _stopCurrentlyPlayingUpdates() {
+    _currentlyPlayingTimer?.cancel();
+    _currentlyPlayingTimer = null;
+  }
+
+  /// Update only the currently playing data (efficient)
+  Future<void> _updateCurrentlyPlaying() async {
+    if (_isUpdatingCurrentlyPlaying || widget.userId == null) return;
+    
+    _isUpdatingCurrentlyPlaying = true;
+    
+    try {
+      debugPrint('🎵 UserProfileScreen: Updating currently playing for user: ${widget.userId}');
+      
+      // Fetch fresh currently playing data from backend
+      final profileData = await _backendService.getUserProfile(widget.userId!, currentUserId: _authProvider.userId);
+      
+      if (mounted && profileData.currentlyPlaying != _currentlyPlaying) {
+        debugPrint('🎵 UserProfileScreen: Currently playing changed - updating UI');
+        
+        setState(() {
+          _currentlyPlaying = profileData.currentlyPlaying;
+        });
+        
+        debugPrint('🎵 UserProfileScreen: Currently playing updated successfully');
+      } else if (mounted) {
+        debugPrint('🎵 UserProfileScreen: Currently playing unchanged - no UI update needed');
+      }
+    } catch (e) {
+      debugPrint('❌ UserProfileScreen: Failed to update currently playing: $e');
+      // Don't show error to user - this is background update
+    } finally {
+      _isUpdatingCurrentlyPlaying = false;
+    }
+  }
+
+  /// Force refresh currently playing (called on pull-to-refresh)
+  Future<void> _forceRefreshCurrentlyPlaying() async {
+    debugPrint('🔄 UserProfileScreen: Force refreshing currently playing');
+    _stopCurrentlyPlayingUpdates(); // Stop automatic updates temporarily
+    await _updateCurrentlyPlaying(); // Force immediate update
+    _startCurrentlyPlayingUpdates(); // Resume automatic updates
   }
 
   Future<void> _initialize() async {
@@ -157,6 +270,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       
       // ignore: avoid_print
       print('[UserProfile] Fetch success for user: ${widget.userId}');
+      
+      // Start real-time currently playing updates after initial load
+      _startCurrentlyPlayingUpdates();
+      
     } catch (e) {
       // ignore: avoid_print
       print('[UserProfile] Fetch error: $e');
@@ -400,6 +517,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   onRefresh: () async {
                     HapticFeedback.lightImpact();
                     await _fetchAll();
+                    await _forceRefreshCurrentlyPlaying(); // Force refresh currently playing
                     HapticFeedback.selectionClick();
                   },
                   child: ListView(
@@ -685,6 +803,46 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Widget _buildCurrentlyPlaying() {
     print('🔍 UserProfileScreen: _buildCurrentlyPlaying - _currentlyPlaying: $_currentlyPlaying');
+    
+    // Show loading indicator if updating
+    if (_isUpdatingCurrentlyPlaying) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: _GlassCard(
+          borderRadius: 12,
+          child: ListTile(
+            leading: const SizedBox(
+              width: 56,
+              height: 56,
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.onDarkSecondary),
+                  ),
+                ),
+              ),
+            ),
+            title: Text(
+              'Updating...',
+              style: AppTextStyles.bodyOnDark.copyWith(
+                fontWeight: FontWeight.w600,
+                color: AppColors.onDarkSecondary,
+              ),
+            ),
+            subtitle: Text(
+              'Getting latest song info',
+              style: AppTextStyles.captionOnDark.copyWith(
+                color: AppColors.onDarkSecondary,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    
     // Handle both data structures: direct track data or nested in 'item'
     final trackData = _currentlyPlaying?['item'] as Map<String, dynamic>? ?? _currentlyPlaying;
     print('🔍 UserProfileScreen: _buildCurrentlyPlaying - trackData: $trackData');

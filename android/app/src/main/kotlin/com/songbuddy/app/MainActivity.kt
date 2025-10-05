@@ -15,6 +15,9 @@ class MainActivity: FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
+        // Create notification channel for background sync
+        NotificationChannelHelper.createNotificationChannel(this)
+        
         // Set up event channel for OAuth deep links
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, EVENT_CHANNEL).setStreamHandler(
             object : EventChannel.StreamHandler {

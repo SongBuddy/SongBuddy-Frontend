@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
@@ -8,6 +9,7 @@ import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/services/spotify_service.dart';
 import 'package:songbuddy/services/spotify_deep_link_service.dart';
 import 'package:songbuddy/services/backend_service.dart';
+import 'package:songbuddy/services/simple_lifecycle_manager.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/models/ProfileData.dart';
 import 'package:songbuddy/widgets/create_post_sheet.dart';
@@ -37,6 +39,9 @@ class ProfileScreenState extends State<ProfileScreen> {
   List<Map<String, dynamic>> _topTracks = const [];
   List<Map<String, dynamic>> _recentlyPlayed = const [];
   bool _insufficientScopeTop = false;
+  
+  // Backend sync for currently playing (now handled by background service)
+  Map<String, dynamic>? _lastSyncedCurrentlyPlaying;
   
   // Track selection for posts
   Set<String> _selectedTracks = <String>{};
@@ -108,6 +113,39 @@ class ProfileScreenState extends State<ProfileScreen> {
   void _onAuthChanged() {
     if (!mounted) return;
     setState(() {});
+  }
+
+
+  /// Sync currently playing data to backend when it changes
+  Future<void> _syncCurrentlyPlayingToBackend() async {
+    if (_authProvider.userId == null) return;
+    
+    // Check if currently playing has changed
+    if (_currentlyPlaying == _lastSyncedCurrentlyPlaying) {
+      debugPrint('🎵 ProfileScreen: Currently playing unchanged - skipping sync');
+      return;
+    }
+    
+    debugPrint('🎵 ProfileScreen: Currently playing changed - syncing to backend');
+    debugPrint('🎵 ProfileScreen: Old: $_lastSyncedCurrentlyPlaying');
+    debugPrint('🎵 ProfileScreen: New: $_currentlyPlaying');
+    
+    try {
+      final success = await _backendService.updateCurrentlyPlaying(
+        _authProvider.userId!,
+        _currentlyPlaying,
+      );
+      
+      if (success) {
+        debugPrint('✅ ProfileScreen: Successfully synced currently playing to backend');
+        _lastSyncedCurrentlyPlaying = _currentlyPlaying;
+      } else {
+        debugPrint('❌ ProfileScreen: Failed to sync currently playing to backend');
+      }
+    } catch (e) {
+      debugPrint('❌ ProfileScreen: Error syncing currently playing to backend: $e');
+      // Don't show error to user - this is background sync
+    }
   }
 
   /// Handle scroll events for smart FAB behavior
@@ -239,6 +277,8 @@ class ProfileScreenState extends State<ProfileScreen> {
         () async {
           try {
             _currentlyPlaying = await _spotifyService.getCurrentlyPlaying(token);
+            // Sync to backend after fetching from Spotify
+            _syncCurrentlyPlayingToBackend();
           } catch (e) {
             // ignore
           }
@@ -280,6 +320,10 @@ class ProfileScreenState extends State<ProfileScreen> {
       
       // Fetch user posts separately (heavier data, can load after essential info)
       _fetchUserPosts();
+      
+      // Background sync is now handled by AppLifecycleManager
+      // Force immediate sync to catch up
+      await SimpleLifecycleManager.instance.forceSync();
       
       // ignore: avoid_print
       print('[Profile] Fetch success: user=${_user?['id']} topArtists=${_topArtists.length} topTracks=${_topTracks.length} recently=${_recentlyPlayed.length}');
@@ -570,6 +614,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                   onRefresh: () async {
                     HapticFeedback.lightImpact();
                     await _fetchAll();
+                    await SimpleLifecycleManager.instance.forceSync(); // Force sync on refresh
                     HapticFeedback.selectionClick();
                   },
                   child: ListView(

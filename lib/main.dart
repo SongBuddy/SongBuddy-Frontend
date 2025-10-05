@@ -8,6 +8,7 @@ import 'package:songbuddy/services/http_client_service.dart';
 import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/widgets/riverpod_connection_overlay.dart';
+import 'package:songbuddy/services/simple_lifecycle_manager.dart';
 import 'screens/home_feed_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
@@ -24,6 +25,18 @@ void main() async {
   
   // Initialize auth provider
   await AuthProvider().initialize();
+  
+  // Initialize simple lifecycle manager
+  await SimpleLifecycleManager.instance.initialize();
+  
+  // Start sync service if user is authenticated
+  final authProvider = AuthProvider();
+  if (authProvider.isAuthenticated) {
+    await SimpleLifecycleManager.instance.start();
+    debugPrint('✅ Main: Professional sync started for authenticated user');
+  } else {
+    debugPrint('ℹ️ Main: User not authenticated, sync not started');
+  }
   
   // Warm up backend (helps hosted backends avoid cold-start delays)
   try {
@@ -76,17 +89,44 @@ class _MainScreenState extends State<MainScreen> {
   final GlobalKey<SearchFeedScreenState> _searchFeedKey = GlobalKey<SearchFeedScreenState>();
   final GlobalKey<ProfileScreenState> _profileKey = GlobalKey<ProfileScreenState>();
   final GlobalKey<SettingsScreenState> _settingsKey = GlobalKey<SettingsScreenState>();
+  
+  late final AuthProvider _authProvider;
   late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
+    
+    // Initialize auth provider
+    _authProvider = AuthProvider();
+    _authProvider.addListener(_onAuthChanged);
+    
+    // Start professional sync when main screen loads (user is authenticated)
+    SimpleLifecycleManager.instance.start();
+    
     _screens = [
       HomeFeedScreen(key: _homeFeedKey),
       SearchFeedScreen(key: _searchFeedKey),
       ProfileScreen(key: _profileKey),
       SettingsScreen(key: _settingsKey),
     ];
+  }
+
+  @override
+  void dispose() {
+    _authProvider.removeListener(_onAuthChanged);
+    SimpleLifecycleManager.instance.stop();
+    super.dispose();
+  }
+
+  void _onAuthChanged() {
+    if (!_authProvider.isAuthenticated) {
+      // Stop professional sync when user logs out
+      SimpleLifecycleManager.instance.stop();
+    } else {
+      // Start professional sync when user logs in
+      SimpleLifecycleManager.instance.start();
+    }
   }
 
   void _onItemTapped(int index) {

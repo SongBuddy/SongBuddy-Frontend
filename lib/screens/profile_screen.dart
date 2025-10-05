@@ -1902,8 +1902,10 @@ class ProfileScreenState extends State<ProfileScreen> {
           currentUserId: _authProvider.userId!,
           backendService: _backendService,
           onFollowToggle: (userId, isFollowing) async {
-            // Handle follow/unfollow logic here
+            // Handle follow/unfollow logic - refresh profile data
             print('Follow toggle: $userId -> $isFollowing');
+            // Refresh essential profile data to update counters
+            await _fetchUserProfile();
           },
         ),
       );
@@ -1921,6 +1923,8 @@ class ProfileScreenState extends State<ProfileScreen> {
           backendService: _backendService,
           onFollowToggle: (userId, isFollowing) async {
             print('Follow toggle: $userId -> $isFollowing');
+            // Refresh essential profile data to update counters
+            await _fetchUserProfile();
           },
         ),
       );
@@ -1953,8 +1957,10 @@ class ProfileScreenState extends State<ProfileScreen> {
           currentUserId: _authProvider.userId!,
           backendService: _backendService,
           onFollowToggle: (userId, isFollowing) async {
-            // Handle follow/unfollow logic here
+            // Handle follow/unfollow logic - refresh profile data
             print('Follow toggle: $userId -> $isFollowing');
+            // Refresh essential profile data to update counters
+            await _fetchUserProfile();
           },
         ),
       );
@@ -1972,6 +1978,8 @@ class ProfileScreenState extends State<ProfileScreen> {
           backendService: _backendService,
           onFollowToggle: (userId, isFollowing) async {
             print('Follow toggle: $userId -> $isFollowing');
+            // Refresh essential profile data to update counters
+            await _fetchUserProfile();
           },
         ),
       );
@@ -2009,6 +2017,31 @@ class _FollowersFollowingDialog extends StatefulWidget {
 }
 
 class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
+  late List<Map<String, dynamic>> _users;
+  int _followersCount = 0;
+  int _followingCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _users = List.from(widget.users); // Create a copy for local state management
+    
+    // Initialize user states properly
+    for (var user in _users) {
+      if (widget.title == 'Following') {
+        // In Following list, all users are initially being followed
+        user['isFollowing'] = true;
+      } else {
+        // In Followers list, initialize based on data
+        user['isFollowing'] = user['isFollowing'] ?? false;
+      }
+    }
+    
+    // Initialize counts from profile data
+    _followersCount = widget.users.length;
+    _followingCount = widget.users.length;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -2046,7 +2079,7 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
                   ),
                   const Spacer(),
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => _onDialogClose(),
                     icon: const Icon(
                       Icons.close,
                       color: AppColors.onDarkPrimary,
@@ -2057,7 +2090,7 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
             ),
             // Users list
             Expanded(
-              child: widget.users.isEmpty
+              child: _users.isEmpty
                   ? Center(
                       child: Text(
                         'No ${widget.title.toLowerCase()} found',
@@ -2068,9 +2101,9 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.all(8),
-                      itemCount: widget.users.length,
+                      itemCount: _users.length,
                       itemBuilder: (context, index) {
-                        final user = widget.users[index];
+                        final user = _users[index];
                         return _buildUserTile(user);
                       },
                     ),
@@ -2142,22 +2175,33 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
   }
 
   Widget _buildFollowButton(String userId, Map<String, dynamic> user) {
-    // Get follow status information
+    // Get current follow status from local state
+    final isFollowing = user['isFollowing'] as bool? ?? true; // Default to true for Following list
     final isFollowedBy = user['isFollowedBy'] as bool? ?? false;
-    final followRequestStatus = user['followRequestStatus'] as String? ?? 'none'; // 'none', 'pending', 'accepted'
+    final followRequestStatus = user['followRequestStatus'] as String? ?? 'none';
     
-    // Determine button text and action based on context
+    // Determine button text and action based on context and current state
     String buttonText;
     Color buttonColor;
     VoidCallback? onPressed;
     
     if (widget.title == 'Following') {
-      // In Following list: Always show "Unfollow" since we're following them
-      buttonText = 'Unfollow';
-      buttonColor = Colors.red;
-      onPressed = () async {
-        await _handleUnfollow(userId);
-      };
+      // In Following list: Smart Instagram-style workflow
+      if (isFollowing) {
+        // Currently following - show "Unfollow"
+        buttonText = 'Unfollow';
+        buttonColor = Colors.red;
+        onPressed = () async {
+          await _handleUnfollow(userId);
+        };
+      } else {
+        // Unfollowed but still in list - show "Follow"
+        buttonText = 'Follow';
+        buttonColor = AppColors.primary;
+        onPressed = () async {
+          await _handleFollow(userId);
+        };
+      }
     } else {
       // In Followers list: Instagram-style logic
       if (isFollowedBy) {
@@ -2172,6 +2216,13 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
         buttonText = 'Pending';
         buttonColor = Colors.orange;
         onPressed = null; // Disabled button
+      } else if (isFollowing) {
+        // We follow them back, show "Following"
+        buttonText = 'Following';
+        buttonColor = Colors.grey;
+        onPressed = () async {
+          await _handleUnfollow(userId);
+        };
       } else {
         // They don't follow us back, show "Follow"
         buttonText = 'Follow';
@@ -2199,11 +2250,17 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
       await widget.backendService.followUser(widget.currentUserId, userId);
       print('✅ Followed user: $userId');
       
-      // Update the user's status to pending
+      // Update the user's status immediately
       setState(() {
-        final userIndex = widget.users.indexWhere((u) => u['id'] == userId);
+        final userIndex = _users.indexWhere((u) => u['id'] == userId);
         if (userIndex != -1) {
-          widget.users[userIndex]['followRequestStatus'] = 'pending';
+          _users[userIndex]['isFollowing'] = true;
+          _users[userIndex]['followRequestStatus'] = 'pending';
+        }
+        
+        // Update counter
+        if (widget.title == 'Followers') {
+          _followingCount++;
         }
       });
       
@@ -2226,12 +2283,17 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
       await widget.backendService.unfollowUser(widget.currentUserId, userId);
       print('✅ Unfollowed user: $userId');
       
-      // Update the user's status
+      // Update the user's status immediately (Instagram-style: button changes, user stays in list)
       setState(() {
-        final userIndex = widget.users.indexWhere((u) => u['id'] == userId);
+        final userIndex = _users.indexWhere((u) => u['id'] == userId);
         if (userIndex != -1) {
-          widget.users[userIndex]['isFollowing'] = false;
-          widget.users[userIndex]['followRequestStatus'] = 'none';
+          _users[userIndex]['isFollowing'] = false;
+          _users[userIndex]['followRequestStatus'] = 'none';
+        }
+        
+        // Update counter
+        if (widget.title == 'Following') {
+          _followingCount--;
         }
       });
       
@@ -2251,17 +2313,14 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
 
   Future<void> _handleRemove(String userId) async {
     try {
-      // Remove the user from our followers (this is different from unfollowing)
-      // This would be a new API endpoint like removeFollower
+      // Remove the user from our followers (immediate removal like Instagram)
       await widget.backendService.unfollowUser(widget.currentUserId, userId);
       print('✅ Removed user: $userId');
       
-      // Update the user's status
+      // Remove user from list immediately (Instagram-style: immediate removal)
       setState(() {
-        final userIndex = widget.users.indexWhere((u) => u['id'] == userId);
-        if (userIndex != -1) {
-          widget.users[userIndex]['isFollowedBy'] = false;
-        }
+        _users.removeWhere((u) => u['id'] == userId);
+        _followersCount--;
       });
       
       widget.onFollowToggle(userId, false);
@@ -2276,6 +2335,31 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
         ),
       );
     }
+  }
+
+  /// Handle dialog close - remove unfollowed users from Following list
+  void _onDialogClose() {
+    if (widget.title == 'Following') {
+      // Remove users who were unfollowed and not re-followed
+      final unfollowedUsers = <String>[];
+      for (final user in _users) {
+        final isFollowing = user['isFollowing'] as bool? ?? false;
+        final followRequestStatus = user['followRequestStatus'] as String? ?? 'none';
+        
+        // If user was unfollowed and not re-followed, mark for removal
+        if (!isFollowing && followRequestStatus == 'none') {
+          unfollowedUsers.add(user['id'] as String);
+        }
+      }
+      
+      // Update the main profile screen with final changes
+      if (unfollowedUsers.isNotEmpty) {
+        widget.onFollowToggle(unfollowedUsers.join(','), false);
+      }
+    }
+    
+    // Close the dialog
+    Navigator.pop(context);
   }
 }
 

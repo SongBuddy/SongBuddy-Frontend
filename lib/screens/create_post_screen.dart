@@ -8,6 +8,7 @@ import '../models/Post.dart';
 import '../services/backend_service.dart';
 import '../providers/auth_provider.dart';
 import '../services/spotify_service.dart';
+import '../utils/error_snackbar_utils.dart';
 
 class CreatePostScreen extends StatefulWidget {
   final Map<String, dynamic> selectedTrack;
@@ -150,12 +151,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       await _backendService.createPost(post);
       
       if (mounted) {
-        _showSnackBar('Post created successfully!', Colors.green);
+        ErrorSnackbarUtils.showSuccessSnackbar(context, 'Post created successfully!');
         Navigator.pop(context, true); // Return true to indicate success
       }
     } catch (e) {
       if (mounted) {
-        _showSnackBar('Failed to create post: $e', Colors.red);
+        ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'create_post');
       }
     } finally {
       if (mounted) {

@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
@@ -7,6 +9,7 @@ import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/services/spotify_service.dart';
 import 'package:songbuddy/services/spotify_deep_link_service.dart';
 import 'package:songbuddy/services/backend_service.dart';
+import 'package:songbuddy/services/simple_lifecycle_manager.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/models/ProfileData.dart';
 import 'package:songbuddy/widgets/create_post_sheet.dart';
@@ -36,6 +39,9 @@ class ProfileScreenState extends State<ProfileScreen> {
   List<Map<String, dynamic>> _topTracks = const [];
   List<Map<String, dynamic>> _recentlyPlayed = const [];
   bool _insufficientScopeTop = false;
+  
+  // Backend sync for currently playing (now handled by background service)
+  Map<String, dynamic>? _lastSyncedCurrentlyPlaying;
   
   // Track selection for posts
   Set<String> _selectedTracks = <String>{};
@@ -107,6 +113,39 @@ class ProfileScreenState extends State<ProfileScreen> {
   void _onAuthChanged() {
     if (!mounted) return;
     setState(() {});
+  }
+
+
+  /// Sync currently playing data to backend when it changes
+  Future<void> _syncCurrentlyPlayingToBackend() async {
+    if (_authProvider.userId == null) return;
+    
+    // Check if currently playing has changed
+    if (_currentlyPlaying == _lastSyncedCurrentlyPlaying) {
+      debugPrint('🎵 ProfileScreen: Currently playing unchanged - skipping sync');
+      return;
+    }
+    
+    debugPrint('🎵 ProfileScreen: Currently playing changed - syncing to backend');
+    debugPrint('🎵 ProfileScreen: Old: $_lastSyncedCurrentlyPlaying');
+    debugPrint('🎵 ProfileScreen: New: $_currentlyPlaying');
+    
+    try {
+      final success = await _backendService.updateCurrentlyPlaying(
+        _authProvider.userId!,
+        _currentlyPlaying,
+      );
+      
+      if (success) {
+        debugPrint('✅ ProfileScreen: Successfully synced currently playing to backend');
+        _lastSyncedCurrentlyPlaying = _currentlyPlaying;
+      } else {
+        debugPrint('❌ ProfileScreen: Failed to sync currently playing to backend');
+      }
+    } catch (e) {
+      debugPrint('❌ ProfileScreen: Error syncing currently playing to backend: $e');
+      // Don't show error to user - this is background sync
+    }
   }
 
   /// Handle scroll events for smart FAB behavior
@@ -205,13 +244,41 @@ class ProfileScreenState extends State<ProfileScreen> {
     // ignore: avoid_print
     print('[Profile] Fetch start');
     try {
-      // User profile (required)
-      final user = await _spotifyService.getCurrentUser(token);
-      // Optional parallel calls with individual handling
+      // Essential data fetching in parallel for instant UI updates
       final futures = <Future<void>>[
+        // Spotify user profile (required)
+        () async {
+          try {
+            final user = await _spotifyService.getCurrentUser(token);
+            setState(() {
+              _user = user;
+            });
+          } catch (e) {
+            print('[Profile] Failed to fetch Spotify user: $e');
+          }
+        }(),
+        
+        // Essential backend profile data (posts count, followers, following, username)
+        () async {
+          try {
+            if (_authProvider.userId != null) {
+              final profileData = await _backendService.getUserProfile(_authProvider.userId!, currentUserId: _authProvider.userId);
+              setState(() {
+                _profileData = profileData;
+              });
+              print('[Profile] Essential profile data loaded: ${profileData.user.username}, ${profileData.user.postsCount} posts, ${profileData.user.followersCount} followers');
+            }
+          } catch (e) {
+            print('[Profile] Failed to fetch essential profile data: $e');
+          }
+        }(),
+        
+        // Optional Spotify data with individual handling
         () async {
           try {
             _currentlyPlaying = await _spotifyService.getCurrentlyPlaying(token);
+            // Sync to backend after fetching from Spotify
+            _syncCurrentlyPlayingToBackend();
           } catch (e) {
             // ignore
           }
@@ -250,16 +317,16 @@ class ProfileScreenState extends State<ProfileScreen> {
         }(),
       ];
       await Future.wait(futures);
-
-      setState(() {
-        _user = user;
-      });
       
-      // Fetch user profile after getting user data
-      _fetchUserProfile();
+      // Fetch user posts separately (heavier data, can load after essential info)
+      _fetchUserPosts();
+      
+      // Background sync is now handled by AppLifecycleManager
+      // Force immediate sync to catch up
+      await SimpleLifecycleManager.instance.forceSync();
       
       // ignore: avoid_print
-      print('[Profile] Fetch success: user=${user['id']} topArtists=${_topArtists.length} topTracks=${_topTracks.length} recently=${_recentlyPlayed.length}');
+      print('[Profile] Fetch success: user=${_user?['id']} topArtists=${_topArtists.length} topTracks=${_topTracks.length} recently=${_recentlyPlayed.length}');
     } catch (e) {
       // ignore: avoid_print
       print('[Profile] Fetch error: $e');
@@ -318,13 +385,69 @@ class ProfileScreenState extends State<ProfileScreen> {
       if (success == true) {
         // Post created successfully, exit selection mode and refresh posts
         _toggleSelectionMode();
-        _fetchUserProfile();
+        _fetchUserPosts();
         HapticFeedback.lightImpact();
       }
     });
   }
 
-  /// Fetch user profile with posts (NEW EFFICIENT API)
+  /// Fetch user posts only (essential profile data is now fetched in parallel)
+  Future<void> _fetchUserPosts() async {
+    if (_authProvider.userId == null) {
+      print('❌ ProfileScreen: User ID is null, cannot fetch posts');
+      return;
+    }
+    
+    print('🔍 ProfileScreen: Fetching user posts for: ${_authProvider.userId}');
+    
+    setState(() {
+      _loadingPosts = true;
+    });
+
+    try {
+      final profileData = await _backendService.getUserProfile(_authProvider.userId!, currentUserId: _authProvider.userId);
+      print('🔍 ProfileScreen: Received posts data: ${profileData.posts.length} posts');
+      
+      // Update only posts data (profile data already loaded in parallel)
+      setState(() {
+        _userPosts = profileData.posts;
+      });
+      
+      // Update FAB strategy based on new content
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _updateFABStrategy();
+      });
+      
+      print('✅ ProfileScreen: Successfully updated _userPosts with ${_userPosts.length} posts');
+    } catch (e) {
+      print('❌ ProfileScreen: Failed to fetch user posts: $e');
+      
+      // Show user-friendly error message
+      if (e.toString().contains('Connection timed out') || e.toString().contains('SocketException')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot connect to server. Please check your network connection.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load posts: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _loadingPosts = false;
+      });
+    }
+  }
+
+  /// Fetch user profile with posts (DEPRECATED - now split into parallel fetching)
   Future<void> _fetchUserProfile() async {
     if (_authProvider.userId == null) {
       print('❌ ProfileScreen: User ID is null, cannot fetch profile');
@@ -491,6 +614,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                   onRefresh: () async {
                     HapticFeedback.lightImpact();
                     await _fetchAll();
+                    await SimpleLifecycleManager.instance.forceSync(); // Force sync on refresh
                     HapticFeedback.selectionClick();
                   },
                   child: ListView(
@@ -571,7 +695,7 @@ class ProfileScreenState extends State<ProfileScreen> {
             recentPlayed: _recentlyPlayed,
           ).then((success) {
             if (success == true) {
-              _fetchUserProfile();
+              _fetchUserPosts();
             }
           });
           } : null,
@@ -1154,7 +1278,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         
         // Refresh the profile screen to get updated post information
         print('🔄 ProfileScreen: Refreshing profile screen after post update');
-        await _fetchUserProfile();
+        await _fetchUserPosts();
         
         HapticFeedback.lightImpact();
         
@@ -1184,7 +1308,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       // Profile Header Skeleton - matches _buildProfileHeader() exactly
       Container(
         margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16), // Reduced from 20 to 16
         decoration: BoxDecoration(
           color: AppColors.onDarkPrimary.withOpacity(0.05),
           borderRadius: BorderRadius.circular(12),
@@ -1195,7 +1319,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         ),
         child: Column(
           children: [
-            // Compact user info row - matches the real layout
+            // Compact user info row - matches the real layout exactly like UserProfileScreen
             Row(
               children: [
                 const _SkeletonCircle(diameter: 48), // radius: 24
@@ -1206,13 +1330,21 @@ class ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       const _SkeletonBox(width: 120, height: 18, radius: 9), // displayName
                       const SizedBox(height: 2),
-                      const _SkeletonBox(width: 80, height: 12, radius: 6), // email
+                      const _SkeletonBox(width: 80, height: 12, radius: 6), // @username
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const _SkeletonBox(width: 8, height: 8, radius: 4), // post_add icon
+                          const SizedBox(width: 4),
+                          const _SkeletonBox(width: 50, height: 11, radius: 5), // posts text
+                        ],
+                      ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
                           const _SkeletonBox(width: 8, height: 8, radius: 4), // people icon
                           const SizedBox(width: 4),
-                          const _SkeletonBox(width: 60, height: 11, radius: 5), // followers text
+                          const _SkeletonBox(width: 70, height: 11, radius: 5), // followers text
                         ],
                       ),
                     ],
@@ -1220,7 +1352,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16), // Reduced from 20 to 16
             // Compact Instagram-style followers/following buttons
             Row(
               children: [
@@ -1648,12 +1780,11 @@ class ProfileScreenState extends State<ProfileScreen> {
     final images = (_user?['images'] as List<dynamic>?) ?? const [];
     final avatarUrl = images.isNotEmpty ? (images.first['url'] as String?) : null;
     final displayName = _user?['display_name'] as String? ?? 'Spotify User';
-    final email = _user?['email'] as String?;
     final followers = _user?['followers']?['total'] as int?;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16), // Reduced from 20 to 16
       decoration: BoxDecoration(
         color: AppColors.onDarkPrimary.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
@@ -1664,7 +1795,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
-          // Compact user info row
+          // Compact user info row - exactly like UserProfileScreen
           Row(
             children: [
               CircleAvatar(
@@ -1686,23 +1817,42 @@ class ProfileScreenState extends State<ProfileScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (email != null) ...[
+                    // Show username if available from profile data
+                    if (_profileData?.user.username.isNotEmpty == true) ...[
                       const SizedBox(height: 2),
                       Text(
-                        email,
-                        style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
+                        '@${_profileData!.user.username}',
+                        style: AppTextStyles.captionOnDark.copyWith(
+                          fontSize: 12,
+                          color: AppColors.onDarkSecondary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    if (followers != null) ...[
+                    // Show posts count if available
+                    if (_profileData != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.post_add, size: 12, color: AppColors.onDarkSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${_profileData!.user.postsCount} posts',
+                            style: AppTextStyles.captionOnDark.copyWith(fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ],
+                    // Show followers count from widget data or profile data
+                    if (followers != null || _profileData != null) ...[
                       const SizedBox(height: 4),
                       Row(
                         children: [
                           const Icon(Icons.people, size: 12, color: AppColors.onDarkSecondary),
                           const SizedBox(width: 4),
                           Text(
-                            '$followers followers',
+                            '${followers ?? _profileData?.user.followersCount ?? 0} followers',
                             style: AppTextStyles.captionOnDark.copyWith(fontSize: 11),
                           ),
                         ],
@@ -1713,7 +1863,7 @@ class ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16), // Reduced from 20 to 16
           // Compact Instagram-style followers/following buttons
           Row(
             children: [
@@ -1781,12 +1931,37 @@ class ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// Enrich followers list with follow status by checking each user individually
+  Future<List<Map<String, dynamic>>> _enrichFollowersWithFollowStatus(List<Map<String, dynamic>> followers) async {
+    final enrichedFollowers = <Map<String, dynamic>>[];
+    
+    for (final follower in followers) {
+      try {
+        // Check follow status for each follower
+        final followStatus = await _backendService.getFollowStatus(_authProvider.userId!, follower['id']);
+        follower['isFollowing'] = followStatus['isFollowing'] ?? false;
+        follower['followRequestStatus'] = followStatus['status'] ?? 'none';
+        debugPrint('🔍 Debug - Follower ${follower['displayName']}: isFollowing = ${follower['isFollowing']}');
+      } catch (e) {
+        debugPrint('⚠️ Debug - Could not get follow status for ${follower['displayName']}: $e');
+        follower['isFollowing'] = false;
+        follower['followRequestStatus'] = 'none';
+      }
+      enrichedFollowers.add(follower);
+    }
+    
+    return enrichedFollowers;
+  }
+
   /// Show followers dialog
   void _showFollowersDialog() async {
     if (_profileData == null) return;
     
     try {
-      final followers = await _backendService.getUserFollowers(_profileData!.user.id);
+      final followers = await _backendService.getUserFollowers(_profileData!.user.id, currentUserId: _authProvider.userId);
+      
+      // Smart solution: If backend doesn't provide follow status, check it manually
+      final followersWithStatus = await _enrichFollowersWithFollowStatus(followers);
       
       if (!mounted) return;
       
@@ -1794,12 +1969,14 @@ class ProfileScreenState extends State<ProfileScreen> {
         context: context,
         builder: (context) => _FollowersFollowingDialog(
           title: 'Followers',
-          users: followers,
+          users: followersWithStatus,
           currentUserId: _authProvider.userId!,
           backendService: _backendService,
           onFollowToggle: (userId, isFollowing) async {
-            // Handle follow/unfollow logic here
+            // Handle follow/unfollow logic - refresh profile data
             print('Follow toggle: $userId -> $isFollowing');
+            // Refresh essential profile data to update counters
+            await _fetchUserProfile();
           },
         ),
       );
@@ -1817,6 +1994,8 @@ class ProfileScreenState extends State<ProfileScreen> {
           backendService: _backendService,
           onFollowToggle: (userId, isFollowing) async {
             print('Follow toggle: $userId -> $isFollowing');
+            // Refresh essential profile data to update counters
+            await _fetchUserProfile();
           },
         ),
       );
@@ -1837,7 +2016,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     if (_profileData == null) return;
     
     try {
-      final following = await _backendService.getUserFollowing(_profileData!.user.id);
+      final following = await _backendService.getUserFollowing(_profileData!.user.id, currentUserId: _authProvider.userId);
       
       if (!mounted) return;
       
@@ -1849,8 +2028,10 @@ class ProfileScreenState extends State<ProfileScreen> {
           currentUserId: _authProvider.userId!,
           backendService: _backendService,
           onFollowToggle: (userId, isFollowing) async {
-            // Handle follow/unfollow logic here
+            // Handle follow/unfollow logic - refresh profile data
             print('Follow toggle: $userId -> $isFollowing');
+            // Refresh essential profile data to update counters
+            await _fetchUserProfile();
           },
         ),
       );
@@ -1868,6 +2049,8 @@ class ProfileScreenState extends State<ProfileScreen> {
           backendService: _backendService,
           onFollowToggle: (userId, isFollowing) async {
             print('Follow toggle: $userId -> $isFollowing');
+            // Refresh essential profile data to update counters
+            await _fetchUserProfile();
           },
         ),
       );
@@ -1905,15 +2088,49 @@ class _FollowersFollowingDialog extends StatefulWidget {
 }
 
 class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
+  late List<Map<String, dynamic>> _users;
+  int _followersCount = 0;
+  int _followingCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _users = List.from(widget.users); // Create a copy for local state management
+    
+    // Initialize user states properly
+    for (var user in _users) {
+      if (widget.title == 'Following') {
+        // In Following list, all users are initially being followed
+        user['isFollowing'] = true;
+      } else {
+        // In Followers list, check multiple possible field names for follow status
+        // Backend might use different field names like: isFollowing, following, followed, etc.
+        user['isFollowing'] = user['isFollowing'] ?? 
+                              user['following'] ?? 
+                              user['followed'] ?? 
+                              user['isFollowedByCurrentUser'] ?? 
+                              false;
+        
+        debugPrint('🔍 Debug - User ${user['displayName']}: isFollowing = ${user['isFollowing']}, all user data: $user');
+      }
+    }
+    
+    // Initialize counts from profile data
+    _followersCount = widget.users.length;
+    _followingCount = widget.users.length;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      insetPadding: EdgeInsets.zero,
       backgroundColor: Colors.transparent,
       child: Container(
-        height: MediaQuery.of(context).size.height * 0.6,
+        width: MediaQuery.of(context).size.width,
+        height: MediaQuery.of(context).size.height,
         decoration: BoxDecoration(
           color: AppColors.darkBackgroundEnd,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(0),
           border: Border.all(
             color: AppColors.onDarkPrimary.withOpacity(0.1),
             width: 1,
@@ -1942,7 +2159,7 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
                   ),
                   const Spacer(),
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => _onDialogClose(),
                     icon: const Icon(
                       Icons.close,
                       color: AppColors.onDarkPrimary,
@@ -1953,7 +2170,7 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
             ),
             // Users list
             Expanded(
-              child: widget.users.isEmpty
+              child: _users.isEmpty
                   ? Center(
                       child: Text(
                         'No ${widget.title.toLowerCase()} found',
@@ -1964,9 +2181,9 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
                     )
                   : ListView.builder(
                       padding: const EdgeInsets.all(8),
-                      itemCount: widget.users.length,
+                      itemCount: _users.length,
                       itemBuilder: (context, index) {
-                        final user = widget.users[index];
+                        final user = _users[index];
                         return _buildUserTile(user);
                       },
                     ),
@@ -2011,8 +2228,9 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
               children: [
                 Text(
                   displayName,
-                  style: AppTextStyles.bodyOnDark.copyWith(
+                  style: AppTextStyles.captionOnDark.copyWith(
                     fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -2021,7 +2239,9 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
                   const SizedBox(height: 2),
                   Text(
                     '@$username',
-                    style: AppTextStyles.captionOnDark,
+                    style: AppTextStyles.captionOnDark.copyWith(
+                      fontSize: 12,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -2031,45 +2251,111 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
           ),
           // Follow/Unfollow button (only show if not current user)
           if (userId != widget.currentUserId)
-            _buildFollowButton(userId, user),
+            _buildActionButtons(userId, user),
         ],
       ),
     );
   }
 
+  Widget _buildActionButtons(String userId, Map<String, dynamic> user) {
+    if (widget.title == 'Followers') {
+      // In Followers list: Show Remove button + conditional Follow button
+      final isFollowing = user['isFollowing'] as bool? ?? false;
+      
+      // Debug: Use debugPrint for Flutter debugging
+      debugPrint('🔍 Debug - User: ${user['displayName']}, isFollowing: $isFollowing, user data: $user');
+      
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Remove button (always available for followers)
+          TextButton(
+            onPressed: () async {
+              await _handleRemove(userId);
+            },
+            child: Text(
+              'Remove',
+              style: AppTextStyles.captionOnDark.copyWith(
+                color: Colors.red,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          // Follow button (only show if not following)
+          if (!isFollowing) ...[
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () async {
+                await _handleFollow(userId);
+              },
+              child: Text(
+                'Follow',
+                style: AppTextStyles.captionOnDark.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ],
+      );
+    } else {
+      // In Following list: Show only follow/unfollow button
+      return _buildFollowButton(userId, user);
+    }
+  }
+
   Widget _buildFollowButton(String userId, Map<String, dynamic> user) {
-    // Get follow status information
+    // Get current follow status from local state
+    final isFollowing = user['isFollowing'] as bool? ?? true; // Default to true for Following list
     final isFollowedBy = user['isFollowedBy'] as bool? ?? false;
-    final followRequestStatus = user['followRequestStatus'] as String? ?? 'none'; // 'none', 'pending', 'accepted'
+    final followRequestStatus = user['followRequestStatus'] as String? ?? 'none';
     
-    // Determine button text and action based on context
+    // Determine button text and action based on context and current state
     String buttonText;
     Color buttonColor;
     VoidCallback? onPressed;
     
     if (widget.title == 'Following') {
-      // In Following list: Always show "Unfollow" since we're following them
-      buttonText = 'Unfollow';
-      buttonColor = Colors.red;
-      onPressed = () async {
-        await _handleUnfollow(userId);
-      };
-    } else {
-      // In Followers list: Instagram-style logic
-      if (isFollowedBy) {
-        // They follow us back, so show "Remove"
-        buttonText = 'Remove';
+      // In Following list: Smart Instagram-style workflow
+      if (isFollowing) {
+        // Currently following - show "Unfollow"
+        buttonText = 'Unfollow';
         buttonColor = Colors.red;
         onPressed = () async {
-          await _handleRemove(userId);
+          await _handleUnfollow(userId);
+        };
+      } else {
+        // Unfollowed but still in list - show "Follow"
+        buttonText = 'Follow';
+        buttonColor = AppColors.primary;
+        onPressed = () async {
+          await _handleFollow(userId);
+        };
+      }
+    } else {
+      // In Followers list: Only show Follow/Following button (Remove is separate)
+      if (isFollowing) {
+        // We follow them back, show "Following"
+        buttonText = 'Following';
+        buttonColor = Colors.grey;
+        onPressed = () async {
+          await _handleUnfollow(userId);
         };
       } else if (followRequestStatus == 'pending') {
         // We sent a follow request, show "Pending"
         buttonText = 'Pending';
         buttonColor = Colors.orange;
         onPressed = null; // Disabled button
+      } else if (followRequestStatus == 'accepted') {
+        // We follow them back, show "Following"
+        buttonText = 'Following';
+        buttonColor = Colors.grey;
+        onPressed = () async {
+          await _handleUnfollow(userId);
+        };
       } else {
-        // They don't follow us back, show "Follow"
+        // They don't follow us back, show "Follow" (to follow back)
         buttonText = 'Follow';
         buttonColor = AppColors.primary;
         onPressed = () async {
@@ -2092,19 +2378,32 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
 
   Future<void> _handleFollow(String userId) async {
     try {
+      debugPrint('🔍 Debug - Starting follow for user: $userId');
       await widget.backendService.followUser(widget.currentUserId, userId);
-      print('✅ Followed user: $userId');
+      debugPrint('✅ Followed user: $userId');
       
-      // Update the user's status to pending
+      // Update the user's status immediately and permanently
       setState(() {
-        final userIndex = widget.users.indexWhere((u) => u['id'] == userId);
+        final userIndex = _users.indexWhere((u) => u['id'] == userId);
+        debugPrint('🔍 Debug - User index: $userIndex, Users list length: ${_users.length}');
         if (userIndex != -1) {
-          widget.users[userIndex]['followRequestStatus'] = 'pending';
+          debugPrint('🔍 Debug - Before update: isFollowing = ${_users[userIndex]['isFollowing']}');
+          _users[userIndex]['isFollowing'] = true;
+          _users[userIndex]['followRequestStatus'] = 'accepted'; // Mark as accepted, not pending
+          debugPrint('🔍 Debug - After update: isFollowing = ${_users[userIndex]['isFollowing']}');
+        }
+        
+        // Update counter
+        if (widget.title == 'Followers') {
+          _followingCount++;
         }
       });
       
+      // Update main profile screen (adds user to following list)
+      // This ensures the state is saved on the backend
       widget.onFollowToggle(userId, true);
       HapticFeedback.lightImpact();
+      debugPrint('🔍 Debug - Follow completed for user: $userId');
     } catch (e) {
       print('❌ Failed to follow: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2122,12 +2421,17 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
       await widget.backendService.unfollowUser(widget.currentUserId, userId);
       print('✅ Unfollowed user: $userId');
       
-      // Update the user's status
+      // Update the user's status immediately (Instagram-style: button changes, user stays in list)
       setState(() {
-        final userIndex = widget.users.indexWhere((u) => u['id'] == userId);
+        final userIndex = _users.indexWhere((u) => u['id'] == userId);
         if (userIndex != -1) {
-          widget.users[userIndex]['isFollowing'] = false;
-          widget.users[userIndex]['followRequestStatus'] = 'none';
+          _users[userIndex]['isFollowing'] = false;
+          _users[userIndex]['followRequestStatus'] = 'none';
+        }
+        
+        // Update counter
+        if (widget.title == 'Following') {
+          _followingCount--;
         }
       });
       
@@ -2147,19 +2451,32 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
 
   Future<void> _handleRemove(String userId) async {
     try {
-      // Remove the user from our followers (this is different from unfollowing)
-      // This would be a new API endpoint like removeFollower
-      await widget.backendService.unfollowUser(widget.currentUserId, userId);
-      print('✅ Removed user: $userId');
+      // Check if we were following this user (to unfollow them too)
+      final userIndex = _users.indexWhere((u) => u['id'] == userId);
+      final wasFollowing = userIndex != -1 && (_users[userIndex]['isFollowing'] as bool? ?? false);
       
-      // Update the user's status
+      // Step 1: Remove them from our followers (they stop following us)
+      // This requires a different API endpoint - removeFollower
+      // For now, we'll use unfollowUser but we need to implement removeFollower API
+      await widget.backendService.unfollowUser(userId, widget.currentUserId); // Reverse the parameters
+      print('✅ Removed user from followers: $userId');
+      
+      // Step 2: If we were following them, unfollow them too (we stop following them)
+      if (wasFollowing) {
+        await widget.backendService.unfollowUser(widget.currentUserId, userId);
+        print('✅ Also unfollowed user: $userId');
+      }
+      
+      // Remove user from list immediately (Instagram-style: immediate removal)
       setState(() {
-        final userIndex = widget.users.indexWhere((u) => u['id'] == userId);
-        if (userIndex != -1) {
-          widget.users[userIndex]['isFollowedBy'] = false;
+        _users.removeWhere((u) => u['id'] == userId);
+        _followersCount--;
+        if (wasFollowing) {
+          _followingCount--;
         }
       });
       
+      // Update main profile screen with both changes
       widget.onFollowToggle(userId, false);
       HapticFeedback.lightImpact();
     } catch (e) {
@@ -2172,6 +2489,31 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
         ),
       );
     }
+  }
+
+  /// Handle dialog close - remove unfollowed users from Following list
+  void _onDialogClose() {
+    if (widget.title == 'Following') {
+      // Remove users who were unfollowed and not re-followed
+      final unfollowedUsers = <String>[];
+      for (final user in _users) {
+        final isFollowing = user['isFollowing'] as bool? ?? false;
+        final followRequestStatus = user['followRequestStatus'] as String? ?? 'none';
+        
+        // If user was unfollowed and not re-followed, mark for removal
+        if (!isFollowing && followRequestStatus == 'none') {
+          unfollowedUsers.add(user['id'] as String);
+        }
+      }
+      
+      // Update the main profile screen with final changes
+      if (unfollowedUsers.isNotEmpty) {
+        widget.onFollowToggle(unfollowedUsers.join(','), false);
+      }
+    }
+    
+    // Close the dialog
+    Navigator.pop(context);
   }
 }
 

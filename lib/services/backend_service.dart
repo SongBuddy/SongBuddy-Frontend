@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:songbuddy/models/AppUser.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/models/ProfileData.dart';
@@ -216,6 +217,31 @@ class BackendService {
     }
   }
 
+  /// Update currently playing data for a user
+  Future<bool> updateCurrentlyPlaying(String userId, Map<String, dynamic>? currentlyPlaying) async {
+    debugPrint('🎵 BackendService: Updating currently playing for user: $userId');
+    debugPrint('🎵 BackendService: Currently playing data: $currentlyPlaying');
+    
+    try {
+      final updates = {
+        'currentlyPlaying': currentlyPlaying,
+      };
+      
+      final result = await updateUser(userId, updates);
+      
+      if (result != null) {
+        debugPrint('✅ BackendService: Successfully updated currently playing');
+        return true;
+      } else {
+        debugPrint('❌ BackendService: Failed to update currently playing - no result');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ BackendService: Error updating currently playing: $e');
+      return false;
+    }
+  }
+
   /// Delete user from backend
   Future<bool> deleteUser(String userId) async {
     try {
@@ -398,9 +424,13 @@ class BackendService {
         "$baseUrl/api/posts/feed/$userId?limit=$limit&offset=$offset${currentUserId != null ? '&currentUserId=$currentUserId' : ''}";
     print('🔗 BackendService: Getting feed posts from: $url');
 
-    final response = await SimpleHttpClient.get(
+    final response = await _httpClient.get(
       url,
-      headers: {"Content-Type": "application/json"},
+      options: Options(
+        headers: {"Content-Type": "application/json"},
+        // Allow longer response time for hosted backends with cold starts
+        receiveTimeout: const Duration(seconds: 75),
+      ),
     );
 
     print('📡 BackendService: Feed response - Status: ${response.statusCode}');
@@ -731,8 +761,11 @@ class BackendService {
 
   /// Get user's followers
   Future<List<Map<String, dynamic>>> getUserFollowers(String userId,
-      {int page = 1, int limit = 20}) async {
-    final url = "$baseUrl/api/users/$userId/followers?page=$page&limit=$limit";
+      {int page = 1, int limit = 20, String? currentUserId}) async {
+    String url = "$baseUrl/api/users/$userId/followers?page=$page&limit=$limit";
+    if (currentUserId != null) {
+      url += "&currentUserId=$currentUserId";
+    }
     print('🔗 BackendService: Getting followers for user: $userId');
 
     try {
@@ -772,8 +805,11 @@ class BackendService {
 
   /// Get user's following
   Future<List<Map<String, dynamic>>> getUserFollowing(String userId,
-      {int page = 1, int limit = 20}) async {
-    final url = "$baseUrl/api/users/$userId/following?page=$page&limit=$limit";
+      {int page = 1, int limit = 20, String? currentUserId}) async {
+    String url = "$baseUrl/api/users/$userId/following?page=$page&limit=$limit";
+    if (currentUserId != null) {
+      url += "&currentUserId=$currentUserId";
+    }
     print('🔗 BackendService: Getting following for user: $userId');
 
     try {

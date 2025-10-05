@@ -198,7 +198,7 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
   Future<void> _listen() async {
     if (!_isListening) {
       try {
-        final available = await _speech.initialize();
+      final available = await _speech.initialize();
         if (!available) {
           print('❌ SearchFeedScreen: Speech recognition not available');
           ScaffoldMessenger.of(context).showSnackBar(
@@ -211,21 +211,21 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
           return;
         }
 
-        _searchFocusNode.requestFocus();
-        setState(() => _isListening = true);
+      _searchFocusNode.requestFocus();
+      setState(() => _isListening = true);
 
-        _speech.listen(
-          onResult: (result) {
-            final recognized = result.recognizedWords;
+      _speech.listen(
+        onResult: (result) {
+          final recognized = result.recognizedWords;
             print('🎤 SearchFeedScreen: Voice recognition result: "$recognized"');
             
-            setState(() {
-              query = recognized;
-              _controller.text = recognized;
-              _controller.selection = TextSelection.fromPosition(
-                TextPosition(offset: _controller.text.length),
-              );
-              _isSearching = true;
+          setState(() {
+            query = recognized;
+            _controller.text = recognized;
+            _controller.selection = TextSelection.fromPosition(
+              TextPosition(offset: _controller.text.length),
+            );
+            _isSearching = true;
               _searchError = null;
             });
             
@@ -241,10 +241,10 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
               _speech.stop();
               setState(() => _isListening = false);
             }
-          },
-          listenMode: stt.ListenMode.search,
-          partialResults: true,
-        );
+        },
+        listenMode: stt.ListenMode.search,
+        partialResults: true,
+      );
       } catch (e) {
         print('❌ SearchFeedScreen: Voice recognition error: $e');
         setState(() => _isListening = false);
@@ -389,8 +389,8 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
                 user['id'] as String,
                 displayName,
                 profilePicture.isNotEmpty 
-                    ? profilePicture 
-                    : "https://i.pravatar.cc/150?img=1",
+                        ? profilePicture 
+                        : "https://i.pravatar.cc/150?img=1",
               );
             },
           );
@@ -506,7 +506,7 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
               );
             }
           }
-        } catch (e) {
+          } catch (e) {
           print('❌ SearchFeedScreen: Error opening Spotify: $e');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -834,7 +834,7 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
 
   Widget _buildSearchFeedView() {
     return Column(
-      children: [
+            children: [
             // Search bar + cancel button
             Row(
               children: [

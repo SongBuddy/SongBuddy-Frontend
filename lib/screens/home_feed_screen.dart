@@ -13,6 +13,7 @@ import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/services/spotify_deep_link_service.dart';
 import 'package:songbuddy/utils/post_sharing_utils.dart';
+import 'package:songbuddy/utils/error_snackbar_utils.dart';
 
 class HomeFeedScreen extends StatefulWidget {
   const HomeFeedScreen({super.key});
@@ -31,6 +32,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
   bool _loadingMore = false;
   bool _hasMorePosts = true;
   bool _initialized = false;
+  bool _hasError = false;
   int _currentPage = 1;
   static const int _postsPerPage = 10;
 
@@ -105,13 +107,19 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
 
     try {
       await _fetchFollowingPosts();
+      _hasError = false; // Reset error state on success
 
-      // If no posts found, load suggested users
-      if (_posts.isEmpty) {
+      // Only load suggested users if we successfully fetched posts but found none
+      // This means user has no following, not that there was an error
+      if (_posts.isEmpty && !_hasError) {
         await _loadSuggestedUsers();
       }
     } catch (e) {
       print('❌ HomeFeedScreen: Failed to fetch posts: $e');
+      _hasError = true; // Set error state
+      if (mounted) {
+        ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'load_posts');
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -153,23 +161,11 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
       print('❌ HomeFeedScreen: Error type: ${e.runtimeType}');
       print('❌ HomeFeedScreen: Error details: $e');
 
-      // Show error message to user
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load posts: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-      }
+      // Don't show error here - let the caller handle it
+      // Just rethrow the error so the caller knows it failed
+      rethrow;
     }
+    // Removed finally block - let the caller handle loading state
   }
 
   Future<void> _loadMorePosts() async {
@@ -207,13 +203,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
       print('❌ HomeFeedScreen: Failed to load more posts: $e');
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load more posts: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'load_posts');
       }
     } finally {
       setState(() {
@@ -409,13 +399,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
     } catch (e) {
       print('❌ HomeFeedScreen: Failed to follow user: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to follow user: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'follow_user');
       }
     }
   }
@@ -462,7 +446,13 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
     }
 
     if (_posts.isEmpty) {
-      return _buildEmptyStateWithSuggestions();
+      // Only show suggestions if there's no error (user has no following)
+      // If there's an error, the error snackbar will be shown instead
+      if (!_hasError) {
+        return _buildEmptyStateWithSuggestions();
+      }
+      // If there's an error, show a simple empty state
+      return _buildErrorEmptyState();
     }
 
     return RefreshIndicator(
@@ -470,10 +460,17 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
         HapticFeedback.lightImpact();
         setState(() {
           _loading = true;
+          _hasError = false; // Reset error state on refresh
         });
 
         try {
           await _fetchFollowingPosts();
+          _hasError = false; // Reset error state on success
+        } catch (e) {
+          _hasError = true; // Set error state on failure
+          if (mounted) {
+            ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'load_posts');
+          }
         } finally {
           if (mounted) {
             setState(() {
@@ -497,6 +494,38 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
           final post = _posts[index];
           return _buildPostCard(post);
         },
+      ),
+    );
+  }
+
+  Widget _buildErrorEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 64,
+              color: AppColors.onDarkSecondary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Unable to load posts',
+              style: AppTextStyles.heading2OnDark.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Pull down to refresh',
+              style: AppTextStyles.bodyOnDark.copyWith(
+                color: AppColors.onDarkSecondary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -709,12 +738,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
           HapticFeedback.lightImpact();
         } catch (e) {
           print('❌ HomeFeedScreen: Failed to toggle like: $e');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to update like: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'toggle_like');
         }
       },
       onShare: () {
@@ -745,13 +769,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
           }
         } catch (e) {
           print('❌ HomeFeedScreen: Error opening Spotify: $e');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error opening Spotify: $e'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 3),
-            ),
-          );
+          ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'open_spotify');
         }
       },
       onUserTap: () {

@@ -2078,12 +2078,14 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
+      insetPadding: EdgeInsets.zero,
       backgroundColor: Colors.transparent,
       child: Container(
-        height: MediaQuery.of(context).size.height * 0.75,
+        width: MediaQuery.of(context).size.width,
+        height: MediaQuery.of(context).size.height,
         decoration: BoxDecoration(
           color: AppColors.darkBackgroundEnd,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(0),
           border: Border.all(
             color: AppColors.onDarkPrimary.withOpacity(0.1),
             width: 1,

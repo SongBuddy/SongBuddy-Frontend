@@ -205,10 +205,36 @@ class ProfileScreenState extends State<ProfileScreen> {
     // ignore: avoid_print
     print('[Profile] Fetch start');
     try {
-      // User profile (required)
-      final user = await _spotifyService.getCurrentUser(token);
-      // Optional parallel calls with individual handling
+      // Essential data fetching in parallel for instant UI updates
       final futures = <Future<void>>[
+        // Spotify user profile (required)
+        () async {
+          try {
+            final user = await _spotifyService.getCurrentUser(token);
+            setState(() {
+              _user = user;
+            });
+          } catch (e) {
+            print('[Profile] Failed to fetch Spotify user: $e');
+          }
+        }(),
+        
+        // Essential backend profile data (posts count, followers, following, username)
+        () async {
+          try {
+            if (_authProvider.userId != null) {
+              final profileData = await _backendService.getUserProfile(_authProvider.userId!, currentUserId: _authProvider.userId);
+              setState(() {
+                _profileData = profileData;
+              });
+              print('[Profile] Essential profile data loaded: ${profileData.user.username}, ${profileData.user.postsCount} posts, ${profileData.user.followersCount} followers');
+            }
+          } catch (e) {
+            print('[Profile] Failed to fetch essential profile data: $e');
+          }
+        }(),
+        
+        // Optional Spotify data with individual handling
         () async {
           try {
             _currentlyPlaying = await _spotifyService.getCurrentlyPlaying(token);
@@ -250,16 +276,12 @@ class ProfileScreenState extends State<ProfileScreen> {
         }(),
       ];
       await Future.wait(futures);
-
-      setState(() {
-        _user = user;
-      });
       
-      // Fetch user profile after getting user data
-      _fetchUserProfile();
+      // Fetch user posts separately (heavier data, can load after essential info)
+      _fetchUserPosts();
       
       // ignore: avoid_print
-      print('[Profile] Fetch success: user=${user['id']} topArtists=${_topArtists.length} topTracks=${_topTracks.length} recently=${_recentlyPlayed.length}');
+      print('[Profile] Fetch success: user=${_user?['id']} topArtists=${_topArtists.length} topTracks=${_topTracks.length} recently=${_recentlyPlayed.length}');
     } catch (e) {
       // ignore: avoid_print
       print('[Profile] Fetch error: $e');
@@ -318,13 +340,69 @@ class ProfileScreenState extends State<ProfileScreen> {
       if (success == true) {
         // Post created successfully, exit selection mode and refresh posts
         _toggleSelectionMode();
-        _fetchUserProfile();
+        _fetchUserPosts();
         HapticFeedback.lightImpact();
       }
     });
   }
 
-  /// Fetch user profile with posts (NEW EFFICIENT API)
+  /// Fetch user posts only (essential profile data is now fetched in parallel)
+  Future<void> _fetchUserPosts() async {
+    if (_authProvider.userId == null) {
+      print('❌ ProfileScreen: User ID is null, cannot fetch posts');
+      return;
+    }
+    
+    print('🔍 ProfileScreen: Fetching user posts for: ${_authProvider.userId}');
+    
+    setState(() {
+      _loadingPosts = true;
+    });
+
+    try {
+      final profileData = await _backendService.getUserProfile(_authProvider.userId!, currentUserId: _authProvider.userId);
+      print('🔍 ProfileScreen: Received posts data: ${profileData.posts.length} posts');
+      
+      // Update only posts data (profile data already loaded in parallel)
+      setState(() {
+        _userPosts = profileData.posts;
+      });
+      
+      // Update FAB strategy based on new content
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _updateFABStrategy();
+      });
+      
+      print('✅ ProfileScreen: Successfully updated _userPosts with ${_userPosts.length} posts');
+    } catch (e) {
+      print('❌ ProfileScreen: Failed to fetch user posts: $e');
+      
+      // Show user-friendly error message
+      if (e.toString().contains('Connection timed out') || e.toString().contains('SocketException')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot connect to server. Please check your network connection.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load posts: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _loadingPosts = false;
+      });
+    }
+  }
+
+  /// Fetch user profile with posts (DEPRECATED - now split into parallel fetching)
   Future<void> _fetchUserProfile() async {
     if (_authProvider.userId == null) {
       print('❌ ProfileScreen: User ID is null, cannot fetch profile');
@@ -571,7 +649,7 @@ class ProfileScreenState extends State<ProfileScreen> {
             recentPlayed: _recentlyPlayed,
           ).then((success) {
             if (success == true) {
-              _fetchUserProfile();
+              _fetchUserPosts();
             }
           });
           } : null,
@@ -1154,7 +1232,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         
         // Refresh the profile screen to get updated post information
         print('🔄 ProfileScreen: Refreshing profile screen after post update');
-        await _fetchUserProfile();
+        await _fetchUserPosts();
         
         HapticFeedback.lightImpact();
         
@@ -1184,7 +1262,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       // Profile Header Skeleton - matches _buildProfileHeader() exactly
       Container(
         margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16), // Reduced from 20 to 16
         decoration: BoxDecoration(
           color: AppColors.onDarkPrimary.withOpacity(0.05),
           borderRadius: BorderRadius.circular(12),
@@ -1195,7 +1273,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         ),
         child: Column(
           children: [
-            // Compact user info row - matches the real layout
+            // Compact user info row - matches the real layout exactly like UserProfileScreen
             Row(
               children: [
                 const _SkeletonCircle(diameter: 48), // radius: 24
@@ -1206,13 +1284,21 @@ class ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       const _SkeletonBox(width: 120, height: 18, radius: 9), // displayName
                       const SizedBox(height: 2),
-                      const _SkeletonBox(width: 80, height: 12, radius: 6), // email
+                      const _SkeletonBox(width: 80, height: 12, radius: 6), // @username
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const _SkeletonBox(width: 8, height: 8, radius: 4), // post_add icon
+                          const SizedBox(width: 4),
+                          const _SkeletonBox(width: 50, height: 11, radius: 5), // posts text
+                        ],
+                      ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
                           const _SkeletonBox(width: 8, height: 8, radius: 4), // people icon
                           const SizedBox(width: 4),
-                          const _SkeletonBox(width: 60, height: 11, radius: 5), // followers text
+                          const _SkeletonBox(width: 70, height: 11, radius: 5), // followers text
                         ],
                       ),
                     ],
@@ -1220,7 +1306,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16), // Reduced from 20 to 16
             // Compact Instagram-style followers/following buttons
             Row(
               children: [
@@ -1648,12 +1734,11 @@ class ProfileScreenState extends State<ProfileScreen> {
     final images = (_user?['images'] as List<dynamic>?) ?? const [];
     final avatarUrl = images.isNotEmpty ? (images.first['url'] as String?) : null;
     final displayName = _user?['display_name'] as String? ?? 'Spotify User';
-    final email = _user?['email'] as String?;
     final followers = _user?['followers']?['total'] as int?;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16), // Reduced from 20 to 16
       decoration: BoxDecoration(
         color: AppColors.onDarkPrimary.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
@@ -1664,7 +1749,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
-          // Compact user info row
+          // Compact user info row - exactly like UserProfileScreen
           Row(
             children: [
               CircleAvatar(
@@ -1686,23 +1771,42 @@ class ProfileScreenState extends State<ProfileScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (email != null) ...[
+                    // Show username if available from profile data
+                    if (_profileData?.user.username.isNotEmpty == true) ...[
                       const SizedBox(height: 2),
                       Text(
-                        email,
-                        style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
+                        '@${_profileData!.user.username}',
+                        style: AppTextStyles.captionOnDark.copyWith(
+                          fontSize: 12,
+                          color: AppColors.onDarkSecondary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
-                    if (followers != null) ...[
+                    // Show posts count if available
+                    if (_profileData != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.post_add, size: 12, color: AppColors.onDarkSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${_profileData!.user.postsCount} posts',
+                            style: AppTextStyles.captionOnDark.copyWith(fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ],
+                    // Show followers count from widget data or profile data
+                    if (followers != null || _profileData != null) ...[
                       const SizedBox(height: 4),
                       Row(
                         children: [
                           const Icon(Icons.people, size: 12, color: AppColors.onDarkSecondary),
                           const SizedBox(width: 4),
                           Text(
-                            '$followers followers',
+                            '${followers ?? _profileData?.user.followersCount ?? 0} followers',
                             style: AppTextStyles.captionOnDark.copyWith(fontSize: 11),
                           ),
                         ],
@@ -1713,7 +1817,7 @@ class ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16), // Reduced from 20 to 16
           // Compact Instagram-style followers/following buttons
           Row(
             children: [

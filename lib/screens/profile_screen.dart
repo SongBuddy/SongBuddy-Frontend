@@ -2168,10 +2168,56 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
           ),
           // Follow/Unfollow button (only show if not current user)
           if (userId != widget.currentUserId)
-            _buildFollowButton(userId, user),
+            _buildActionButtons(userId, user),
         ],
       ),
     );
+  }
+
+  Widget _buildActionButtons(String userId, Map<String, dynamic> user) {
+    if (widget.title == 'Followers') {
+      // In Followers list: Show Remove button + conditional Follow button
+      final isFollowing = user['isFollowing'] as bool? ?? false;
+      final followRequestStatus = user['followRequestStatus'] as String? ?? 'none';
+      
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Remove button (always available for followers)
+          TextButton(
+            onPressed: () async {
+              await _handleRemove(userId);
+            },
+            child: Text(
+              'Remove',
+              style: AppTextStyles.captionOnDark.copyWith(
+                color: Colors.red,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          // Follow button (only show if not following and not pending and not accepted)
+          if (!isFollowing && followRequestStatus != 'pending' && followRequestStatus != 'accepted') ...[
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () async {
+                await _handleFollow(userId);
+              },
+              child: Text(
+                'Follow',
+                style: AppTextStyles.captionOnDark.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ],
+      );
+    } else {
+      // In Following list: Show only follow/unfollow button
+      return _buildFollowButton(userId, user);
+    }
   }
 
   Widget _buildFollowButton(String userId, Map<String, dynamic> user) {
@@ -2203,20 +2249,20 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
         };
       }
     } else {
-      // In Followers list: Instagram-style logic
-      if (isFollowedBy) {
-        // They follow us back, so show "Remove"
-        buttonText = 'Remove';
-        buttonColor = Colors.red;
+      // In Followers list: Only show Follow/Following button (Remove is separate)
+      if (isFollowing) {
+        // We follow them back, show "Following"
+        buttonText = 'Following';
+        buttonColor = Colors.grey;
         onPressed = () async {
-          await _handleRemove(userId);
+          await _handleUnfollow(userId);
         };
       } else if (followRequestStatus == 'pending') {
         // We sent a follow request, show "Pending"
         buttonText = 'Pending';
         buttonColor = Colors.orange;
         onPressed = null; // Disabled button
-      } else if (isFollowing) {
+      } else if (followRequestStatus == 'accepted') {
         // We follow them back, show "Following"
         buttonText = 'Following';
         buttonColor = Colors.grey;
@@ -2224,7 +2270,7 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
           await _handleUnfollow(userId);
         };
       } else {
-        // They don't follow us back, show "Follow"
+        // They don't follow us back, show "Follow" (to follow back)
         buttonText = 'Follow';
         buttonColor = AppColors.primary;
         onPressed = () async {
@@ -2250,12 +2296,12 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
       await widget.backendService.followUser(widget.currentUserId, userId);
       print('✅ Followed user: $userId');
       
-      // Update the user's status immediately
+      // Update the user's status immediately and permanently
       setState(() {
         final userIndex = _users.indexWhere((u) => u['id'] == userId);
         if (userIndex != -1) {
           _users[userIndex]['isFollowing'] = true;
-          _users[userIndex]['followRequestStatus'] = 'pending';
+          _users[userIndex]['followRequestStatus'] = 'accepted'; // Mark as accepted, not pending
         }
         
         // Update counter
@@ -2264,6 +2310,8 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
         }
       });
       
+      // Update main profile screen (adds user to following list)
+      // This ensures the state is saved on the backend
       widget.onFollowToggle(userId, true);
       HapticFeedback.lightImpact();
     } catch (e) {
@@ -2313,16 +2361,32 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
 
   Future<void> _handleRemove(String userId) async {
     try {
-      // Remove the user from our followers (immediate removal like Instagram)
-      await widget.backendService.unfollowUser(widget.currentUserId, userId);
-      print('✅ Removed user: $userId');
+      // Check if we were following this user (to unfollow them too)
+      final userIndex = _users.indexWhere((u) => u['id'] == userId);
+      final wasFollowing = userIndex != -1 && (_users[userIndex]['isFollowing'] as bool? ?? false);
+      
+      // Step 1: Remove them from our followers (they stop following us)
+      // This requires a different API endpoint - removeFollower
+      // For now, we'll use unfollowUser but we need to implement removeFollower API
+      await widget.backendService.unfollowUser(userId, widget.currentUserId); // Reverse the parameters
+      print('✅ Removed user from followers: $userId');
+      
+      // Step 2: If we were following them, unfollow them too (we stop following them)
+      if (wasFollowing) {
+        await widget.backendService.unfollowUser(widget.currentUserId, userId);
+        print('✅ Also unfollowed user: $userId');
+      }
       
       // Remove user from list immediately (Instagram-style: immediate removal)
       setState(() {
         _users.removeWhere((u) => u['id'] == userId);
         _followersCount--;
+        if (wasFollowing) {
+          _followingCount--;
+        }
       });
       
+      // Update main profile screen with both changes
       widget.onFollowToggle(userId, false);
       HapticFeedback.lightImpact();
     } catch (e) {

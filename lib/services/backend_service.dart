@@ -735,8 +735,11 @@ class BackendService {
 
   /// Get user's followers
   Future<List<Map<String, dynamic>>> getUserFollowers(String userId,
-      {int page = 1, int limit = 20}) async {
-    final url = "$baseUrl/api/users/$userId/followers?page=$page&limit=$limit";
+      {int page = 1, int limit = 20, String? currentUserId}) async {
+    String url = "$baseUrl/api/users/$userId/followers?page=$page&limit=$limit";
+    if (currentUserId != null) {
+      url += "&currentUserId=$currentUserId";
+    }
     print('🔗 BackendService: Getting followers for user: $userId');
 
     try {
@@ -776,8 +779,11 @@ class BackendService {
 
   /// Get user's following
   Future<List<Map<String, dynamic>>> getUserFollowing(String userId,
-      {int page = 1, int limit = 20}) async {
-    final url = "$baseUrl/api/users/$userId/following?page=$page&limit=$limit";
+      {int page = 1, int limit = 20, String? currentUserId}) async {
+    String url = "$baseUrl/api/users/$userId/following?page=$page&limit=$limit";
+    if (currentUserId != null) {
+      url += "&currentUserId=$currentUserId";
+    }
     print('🔗 BackendService: Getting following for user: $userId');
 
     try {

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
@@ -1885,12 +1886,37 @@ class ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  /// Enrich followers list with follow status by checking each user individually
+  Future<List<Map<String, dynamic>>> _enrichFollowersWithFollowStatus(List<Map<String, dynamic>> followers) async {
+    final enrichedFollowers = <Map<String, dynamic>>[];
+    
+    for (final follower in followers) {
+      try {
+        // Check follow status for each follower
+        final followStatus = await _backendService.getFollowStatus(_authProvider.userId!, follower['id']);
+        follower['isFollowing'] = followStatus['isFollowing'] ?? false;
+        follower['followRequestStatus'] = followStatus['status'] ?? 'none';
+        debugPrint('🔍 Debug - Follower ${follower['displayName']}: isFollowing = ${follower['isFollowing']}');
+      } catch (e) {
+        debugPrint('⚠️ Debug - Could not get follow status for ${follower['displayName']}: $e');
+        follower['isFollowing'] = false;
+        follower['followRequestStatus'] = 'none';
+      }
+      enrichedFollowers.add(follower);
+    }
+    
+    return enrichedFollowers;
+  }
+
   /// Show followers dialog
   void _showFollowersDialog() async {
     if (_profileData == null) return;
     
     try {
-      final followers = await _backendService.getUserFollowers(_profileData!.user.id);
+      final followers = await _backendService.getUserFollowers(_profileData!.user.id, currentUserId: _authProvider.userId);
+      
+      // Smart solution: If backend doesn't provide follow status, check it manually
+      final followersWithStatus = await _enrichFollowersWithFollowStatus(followers);
       
       if (!mounted) return;
       
@@ -1898,7 +1924,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         context: context,
         builder: (context) => _FollowersFollowingDialog(
           title: 'Followers',
-          users: followers,
+          users: followersWithStatus,
           currentUserId: _authProvider.userId!,
           backendService: _backendService,
           onFollowToggle: (userId, isFollowing) async {
@@ -1945,7 +1971,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     if (_profileData == null) return;
     
     try {
-      final following = await _backendService.getUserFollowing(_profileData!.user.id);
+      final following = await _backendService.getUserFollowing(_profileData!.user.id, currentUserId: _authProvider.userId);
       
       if (!mounted) return;
       
@@ -2032,8 +2058,15 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
         // In Following list, all users are initially being followed
         user['isFollowing'] = true;
       } else {
-        // In Followers list, initialize based on data
-        user['isFollowing'] = user['isFollowing'] ?? false;
+        // In Followers list, check multiple possible field names for follow status
+        // Backend might use different field names like: isFollowing, following, followed, etc.
+        user['isFollowing'] = user['isFollowing'] ?? 
+                              user['following'] ?? 
+                              user['followed'] ?? 
+                              user['isFollowedByCurrentUser'] ?? 
+                              false;
+        
+        debugPrint('🔍 Debug - User ${user['displayName']}: isFollowing = ${user['isFollowing']}, all user data: $user');
       }
     }
     
@@ -2047,7 +2080,7 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        height: MediaQuery.of(context).size.height * 0.6,
+        height: MediaQuery.of(context).size.height * 0.75,
         decoration: BoxDecoration(
           color: AppColors.darkBackgroundEnd,
           borderRadius: BorderRadius.circular(16),
@@ -2148,8 +2181,9 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
               children: [
                 Text(
                   displayName,
-                  style: AppTextStyles.bodyOnDark.copyWith(
+                  style: AppTextStyles.captionOnDark.copyWith(
                     fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -2158,7 +2192,9 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
                   const SizedBox(height: 2),
                   Text(
                     '@$username',
-                    style: AppTextStyles.captionOnDark,
+                    style: AppTextStyles.captionOnDark.copyWith(
+                      fontSize: 12,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -2178,7 +2214,9 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
     if (widget.title == 'Followers') {
       // In Followers list: Show Remove button + conditional Follow button
       final isFollowing = user['isFollowing'] as bool? ?? false;
-      final followRequestStatus = user['followRequestStatus'] as String? ?? 'none';
+      
+      // Debug: Use debugPrint for Flutter debugging
+      debugPrint('🔍 Debug - User: ${user['displayName']}, isFollowing: $isFollowing, user data: $user');
       
       return Row(
         mainAxisSize: MainAxisSize.min,
@@ -2196,8 +2234,8 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
               ),
             ),
           ),
-          // Follow button (only show if not following and not pending and not accepted)
-          if (!isFollowing && followRequestStatus != 'pending' && followRequestStatus != 'accepted') ...[
+          // Follow button (only show if not following)
+          if (!isFollowing) ...[
             const SizedBox(width: 8),
             TextButton(
               onPressed: () async {
@@ -2293,15 +2331,19 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
 
   Future<void> _handleFollow(String userId) async {
     try {
+      debugPrint('🔍 Debug - Starting follow for user: $userId');
       await widget.backendService.followUser(widget.currentUserId, userId);
-      print('✅ Followed user: $userId');
+      debugPrint('✅ Followed user: $userId');
       
       // Update the user's status immediately and permanently
       setState(() {
         final userIndex = _users.indexWhere((u) => u['id'] == userId);
+        debugPrint('🔍 Debug - User index: $userIndex, Users list length: ${_users.length}');
         if (userIndex != -1) {
+          debugPrint('🔍 Debug - Before update: isFollowing = ${_users[userIndex]['isFollowing']}');
           _users[userIndex]['isFollowing'] = true;
           _users[userIndex]['followRequestStatus'] = 'accepted'; // Mark as accepted, not pending
+          debugPrint('🔍 Debug - After update: isFollowing = ${_users[userIndex]['isFollowing']}');
         }
         
         // Update counter
@@ -2314,6 +2356,7 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
       // This ensures the state is saved on the backend
       widget.onFollowToggle(userId, true);
       HapticFeedback.lightImpact();
+      debugPrint('🔍 Debug - Follow completed for user: $userId');
     } catch (e) {
       print('❌ Failed to follow: $e');
       ScaffoldMessenger.of(context).showSnackBar(

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
-import 'package:songbuddy/screens/notification_screen.dart';
 import 'package:songbuddy/screens/user_profile_screen.dart';
 import 'package:songbuddy/widgets/music_post_card.dart';
 import 'package:songbuddy/widgets/shimmer_post_card.dart';
@@ -258,6 +257,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 "SongBuddy",
@@ -265,19 +265,6 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
                   fontWeight: FontWeight.w800,
                   fontSize: 20,
                   letterSpacing: 0.6,
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const NotificationScreen()));
-                },
-                icon: const Icon(
-                  Icons.notifications_outlined,
-                  color: AppColors.onDarkSecondary,
                 ),
               ),
             ],

@@ -969,25 +969,25 @@ class ProfileScreenState extends State<ProfileScreen> {
   Widget _buildTopArtistsSkeletonContent({Key? key}) {
     return SizedBox(
       key: key,
-      height: 120,
+      height: 110,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.only(left: 8, right: 16),
         scrollDirection: Axis.horizontal,
         itemCount: 6,
         itemBuilder: (context, index) => Container(
           width: 80,
-          margin: const EdgeInsets.only(right: 12),
+          margin: const EdgeInsets.only(right: 6),
           child: Shimmer.fromColors(
             baseColor: AppColors.onDarkPrimary.withOpacity(0.1),
             highlightColor: AppColors.onDarkPrimary.withOpacity(0.2),
             child: Column(
               children: [
                 Container(
-                  width: 60,
-                  height: 60,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
+                    borderRadius: BorderRadius.circular(24),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -1221,7 +1221,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     if (_loadingPosts) {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 16),
-        height: 120,
+        height: 90,
         decoration: BoxDecoration(
           color: AppColors.onDarkPrimary.withOpacity(0.05),
           borderRadius: BorderRadius.circular(12),
@@ -1500,7 +1500,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 4),
                         Container(
-                          width: 80,
+                          width: 60,
                           height: 12,
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -1543,7 +1543,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       _buildSectionTitle('Currently Playing'),
       Container(
         margin: const EdgeInsets.symmetric(horizontal: 16),
-        height: 80,
+        height: 75,
         decoration: BoxDecoration(
           color: AppColors.onDarkPrimary.withOpacity(0.05),
           borderRadius: BorderRadius.circular(12),
@@ -1577,7 +1577,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      width: 80,
+                      width: 60,
                       height: 12,
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -1591,27 +1591,39 @@ class ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
-      _buildSectionTitle('Top Artists'),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Top Artists',
+                style: AppTextStyles.heading2OnDark.copyWith(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+      ),
       SizedBox(
-        height: 100,
+        height: 90,
         child: ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.only(left: 8, right: 16),
           scrollDirection: Axis.horizontal,
           itemCount: 6,
           itemBuilder: (context, index) => Container(
-            width: 80,
-            margin: const EdgeInsets.only(right: 12),
+            width: 74,
+            margin: const EdgeInsets.only(right: 0),
             child: Shimmer.fromColors(
               baseColor: AppColors.onDarkPrimary.withOpacity(0.1),
               highlightColor: AppColors.onDarkPrimary.withOpacity(0.2),
               child: Column(
                 children: [
                   Container(
-                    width: 60,
-                    height: 60,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
+                      borderRadius: BorderRadius.circular(24),
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -1629,9 +1641,21 @@ class ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
-      _buildSectionTitle('Top Tracks'),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Top Tracks',
+                style: AppTextStyles.heading2OnDark.copyWith(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+      ),
       SizedBox(
-        height: 70,
+        height: 80,
         child: ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           scrollDirection: Axis.horizontal,
@@ -1645,11 +1669,11 @@ class ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 children: [
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: 50,
+                    height: 50,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -1704,7 +1728,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      width: 80,
+                      width: 60,
                       height: 12,
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -1721,7 +1745,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       _buildSectionTitle('My Posts'),
       Container(
         margin: const EdgeInsets.symmetric(horizontal: 16),
-        height: 120,
+        height: 90,
         decoration: BoxDecoration(
           color: AppColors.onDarkPrimary.withOpacity(0.05),
           borderRadius: BorderRadius.circular(12),
@@ -1875,7 +1899,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 6),
                   Container(
-                    width: 80,
+                    width: 60,
                     height: 12,
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -1972,7 +1996,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 4),
                       Container(
-                        width: 80,
+                        width: 60,
                         height: 12,
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -1990,25 +2014,25 @@ class ProfileScreenState extends State<ProfileScreen> {
       SliverToBoxAdapter(child: _buildSectionTitle('Top Artists')),
       SliverToBoxAdapter(
         child: SizedBox(
-          height: 120,
+          height: 90,
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.only(left: 8, right: 16),
             scrollDirection: Axis.horizontal,
             itemCount: 6,
             itemBuilder: (context, index) => Container(
-              width: 80,
-              margin: const EdgeInsets.only(right: 12),
+              width: 60,
+              margin: const EdgeInsets.only(right: 2),
               child: Shimmer.fromColors(
                 baseColor: AppColors.onDarkPrimary.withOpacity(0.1),
                 highlightColor: AppColors.onDarkPrimary.withOpacity(0.2),
                 child: Column(
                   children: [
                     Container(
-                      width: 60,
-                      height: 60,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(24),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -2068,7 +2092,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 6),
                     Container(
-                      width: 80,
+                      width: 60,
                       height: 12,
                       decoration: BoxDecoration(
                         color: Colors.white,
@@ -2122,7 +2146,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 4),
                         Container(
-                          width: 80,
+                          width: 60,
                           height: 12,
                           decoration: BoxDecoration(
                             color: Colors.white,

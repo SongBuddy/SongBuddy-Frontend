@@ -6,7 +6,7 @@ void main() {
   group('SearchFeedScreen Widget Tests', () {
     testWidgets('SearchFeedScreen displays search feed view by default', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SearchFeedScreen(),
         ),
       );
@@ -18,7 +18,7 @@ void main() {
 
     testWidgets('SearchFeedScreen displays search input field', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SearchFeedScreen(),
         ),
       );
@@ -29,7 +29,7 @@ void main() {
 
     testWidgets('SearchFeedScreen displays microphone icon', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SearchFeedScreen(),
         ),
       );
@@ -40,7 +40,7 @@ void main() {
 
     testWidgets('SearchFeedScreen handles widget lifecycle correctly', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SearchFeedScreen(),
         ),
       );
@@ -57,10 +57,10 @@ void main() {
 
     testWidgets('SearchFeedScreen renders without crashing', (WidgetTester tester) async {
       // This test ensures the widget can be created without throwing exceptions
-      expect(() => SearchFeedScreen(), returnsNormally);
+      expect(() => const SearchFeedScreen(), returnsNormally);
       
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SearchFeedScreen(),
         ),
       );
@@ -71,7 +71,7 @@ void main() {
 
     testWidgets('SearchFeedScreen handles multiple rebuilds', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SearchFeedScreen(),
         ),
       );
@@ -85,7 +85,7 @@ void main() {
 
     testWidgets('SearchFeedScreen maintains state during rebuilds', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SearchFeedScreen(),
         ),
       );
@@ -102,7 +102,7 @@ void main() {
 
     testWidgets('SearchFeedScreen displays search functionality', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SearchFeedScreen(),
         ),
       );
@@ -116,7 +116,7 @@ void main() {
 
     testWidgets('SearchFeedScreen handles text input', (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: SearchFeedScreen(),
         ),
       );

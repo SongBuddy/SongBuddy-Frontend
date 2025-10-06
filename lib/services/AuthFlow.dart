@@ -41,7 +41,7 @@ class AuthFlow {
         spotifyService.getRecentlyPlayed(accessToken, limit: 10).catchError((e) => {'items': []}),
       ]);
 
-      final currentlyPlaying = futures[0] as Map<String, dynamic>?;
+      final currentlyPlaying = futures[0];
       final topArtistsResponse = futures[1] as Map<String, dynamic>;
       final topTracksResponse = futures[2] as Map<String, dynamic>;
       final recentlyPlayedResponse = futures[3] as Map<String, dynamic>;

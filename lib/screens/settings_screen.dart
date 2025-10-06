@@ -412,7 +412,7 @@ class SettingsScreenState extends State<SettingsScreen> {
           'Not Connected',
           style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
         ),
-        subtitle: Text(
+        subtitle: const Text(
           'Connect your Spotify account',
           style: AppTextStyles.captionOnDark,
         ),
@@ -454,7 +454,7 @@ class SettingsScreenState extends State<SettingsScreen> {
           subtitle,
           style: AppTextStyles.captionOnDark,
         ),
-        trailing: Icon(Icons.arrow_forward_ios, color: AppColors.onDarkSecondary, size: 16),
+        trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.onDarkSecondary, size: 16),
         onTap: onTap,
       ),
     );
@@ -486,7 +486,7 @@ class SettingsScreenState extends State<SettingsScreen> {
           'Version',
           style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
         ),
-        subtitle: Text(
+        subtitle: const Text(
           '1.0.0',
           style: AppTextStyles.captionOnDark,
         ),

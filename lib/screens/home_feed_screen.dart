@@ -274,7 +274,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => NotificationScreen()));
+                          builder: (context) => const NotificationScreen()));
                 },
                 icon: const Icon(
                   Icons.notifications_outlined,
@@ -406,11 +406,11 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
 
   Widget _buildFeedContent() {
     if (!_initialized) {
-      return ShimmerPostList(
+      return const ShimmerPostList(
         itemCount: 4,
         height: 180,
         borderRadius: 18,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       );
     }
 
@@ -437,11 +437,11 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
     }
 
     if (_loading) {
-      return ShimmerPostList(
+      return const ShimmerPostList(
         itemCount: 4,
         height: 180,
         borderRadius: 18,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       );
     }
 

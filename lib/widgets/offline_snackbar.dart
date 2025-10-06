@@ -38,11 +38,11 @@ class OfflineSnackbar extends StatelessWidget {
     ScaffoldMessenger.of(context).clearSnackBars();
     
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const OfflineSnackbar(isOffline: true),
+      const SnackBar(
+        content: OfflineSnackbar(isOffline: true),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        duration: const Duration(days: 1), // Show until connection is restored
+        duration: Duration(days: 1), // Show until connection is restored
         behavior: SnackBarBehavior.fixed,
         padding: EdgeInsets.zero,
       ),
@@ -55,11 +55,11 @@ class OfflineSnackbar extends StatelessWidget {
     ScaffoldMessenger.of(context).clearSnackBars();
     
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const OfflineSnackbar(isOffline: false),
+      const SnackBar(
+        content: OfflineSnackbar(isOffline: false),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        duration: const Duration(seconds: 3), // Show for 3 seconds
+        duration: Duration(seconds: 3), // Show for 3 seconds
         behavior: SnackBarBehavior.fixed,
         padding: EdgeInsets.zero,
       ),

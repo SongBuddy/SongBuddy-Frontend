@@ -148,56 +148,56 @@ class ShimmerPostCard extends StatelessWidget {
             ),
             
             // Content
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Top row: avatar + username (no time shimmer)
                   Row(
                     children: [
-                      const ShimmerCircle(diameter: 28),
-                      const SizedBox(width: 12),
+                      ShimmerCircle(diameter: 28),
+                      SizedBox(width: 12),
                       ShimmerBox(width: 60, height: 13, radius: 6),
                       // No time shimmer - just empty space
-                      const SizedBox(width: 30),
+                      SizedBox(width: 30),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   
                   // Middle: cover + song info
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ShimmerBox(width: 60, height: 60, radius: 12),
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             ShimmerBox(width: 150, height: 16, radius: 8),
-                            const SizedBox(height: 6),
+                            SizedBox(height: 6),
                             ShimmerBox(width: 100, height: 13, radius: 6),
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             ShimmerBox(width: 180, height: 12, radius: 6),
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4),
                             ShimmerBox(width: 120, height: 12, radius: 6),
                           ],
                         ),
                       ),
                     ],
                   ),
-                  const Spacer(),
+                  Spacer(),
                   
                   // Bottom: 3 circles for action buttons
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      const ShimmerCircle(diameter: 18),
-                      const SizedBox(width: 12),
-                      const ShimmerCircle(diameter: 18),
-                      const SizedBox(width: 12),
-                      const ShimmerCircle(diameter: 18),
+                      ShimmerCircle(diameter: 18),
+                      SizedBox(width: 12),
+                      ShimmerCircle(diameter: 18),
+                      SizedBox(width: 12),
+                      ShimmerCircle(diameter: 18),
                     ],
                   ),
                 ],

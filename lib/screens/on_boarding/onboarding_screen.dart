@@ -272,7 +272,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                               width: _currentPage == index ? 32 : 8,
                               decoration: BoxDecoration(
                                 gradient: _currentPage == index
-                                    ? LinearGradient(
+                                    ? const LinearGradient(
                                         colors: [
                                           AppColors.accentMint,
                                           AppColors.accentGreen,
@@ -349,7 +349,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                               ),
                                             ),
                                             const SizedBox(width: 8),
-                                            Icon(
+                                            const Icon(
                                               Icons.arrow_forward_rounded,
                                               color: AppColors.onDarkPrimary,
                                               size: 20,

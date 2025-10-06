@@ -101,10 +101,10 @@ class _OnboardingPageState extends State<OnboardingPage>
                         blurRadius: 30,
                         spreadRadius: 5,
                       ),
-                      BoxShadow(
+                      const BoxShadow(
                         color: AppColors.shadowBlack60,
                         blurRadius: 20,
-                        offset: const Offset(0, 10),
+                        offset: Offset(0, 10),
                       ),
                     ],
                   ),

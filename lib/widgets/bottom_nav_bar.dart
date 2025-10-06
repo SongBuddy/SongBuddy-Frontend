@@ -16,8 +16,8 @@ class BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
@@ -26,7 +26,7 @@ class BottomNavBar extends StatelessWidget {
           BoxShadow(
             color: AppColors.shadowBlack60,
             blurRadius: 20,
-            offset: const Offset(0, -5),
+            offset: Offset(0, -5),
           ),
         ],
       ),

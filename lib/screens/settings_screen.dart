@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shimmer/shimmer.dart';
 import '../providers/auth_provider.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
@@ -18,7 +19,7 @@ class SettingsScreenState extends State<SettingsScreen> {
   late final AuthProvider _authProvider;
   late final SpotifyService _spotifyService;
   late final ScrollController _scrollController;
-  
+
   bool _loading = false;
   Map<String, dynamic>? _user;
 
@@ -62,7 +63,7 @@ class SettingsScreenState extends State<SettingsScreen> {
   void _onAuthStateChanged() {
     if (!mounted) return;
     setState(() {});
-    
+
     // If user just logged in, fetch user data
     if (_authProvider.isAuthenticated && _user == null) {
       _fetchUserData();
@@ -70,13 +71,14 @@ class SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _fetchUserData() async {
-    if (!_authProvider.isAuthenticated || _authProvider.accessToken == null) return;
+    if (!_authProvider.isAuthenticated || _authProvider.accessToken == null)
+      return;
     setState(() {
       _loading = true;
     });
     final token = _authProvider.accessToken;
     if (token == null) return;
-    
+
     try {
       // Get user data directly from Spotify API (same as profile screen)
       final user = await _spotifyService.getCurrentUser(token);
@@ -96,7 +98,7 @@ class SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _refreshData() async {
     if (!_authProvider.isAuthenticated) return;
-    
+
     try {
       await _fetchUserData();
     } catch (e) {
@@ -151,17 +153,18 @@ class SettingsScreenState extends State<SettingsScreen> {
       }
 
       final result = await _authProvider.logout();
-      
+
       if (mounted) {
         if (result.isSuccess) {
           // Success - navigate to onboarding
-        Navigator.pushAndRemoveUntil(
-          context,
-            MaterialPageRoute(builder: (context) => const RiverpodConnectionOverlay(
-              child: OnboardingScreen(),
-            )),
-          (route) => false,
-        );
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const RiverpodConnectionOverlay(
+                      child: OnboardingScreen(),
+                    )),
+            (route) => false,
+          );
         } else {
           // Show error snackbar
           ScaffoldMessenger.of(context).showSnackBar(
@@ -214,15 +217,16 @@ class SettingsScreenState extends State<SettingsScreen> {
     }
 
     final result = await _authProvider.deleteAccount();
-    
-      if (mounted) {
+
+    if (mounted) {
       if (result.isSuccess) {
         // Success - navigate to onboarding
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const RiverpodConnectionOverlay(
-            child: OnboardingScreen(),
-          )),
+          MaterialPageRoute(
+              builder: (context) => const RiverpodConnectionOverlay(
+                    child: OnboardingScreen(),
+                  )),
           (route) => false,
         );
       } else {
@@ -247,7 +251,10 @@ class SettingsScreenState extends State<SettingsScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
+            colors: [
+              AppColors.darkBackgroundStart,
+              AppColors.darkBackgroundEnd
+            ],
           ),
         ),
         child: SafeArea(
@@ -264,34 +271,36 @@ class SettingsScreenState extends State<SettingsScreen> {
                     controller: _scrollController,
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(16),
-                    children: [
-                      _buildSectionTitle('Account'),
-                      if (_authProvider.isAuthenticated) ...[
-                        _buildAccountCard(),
-                        const SizedBox(height: 16),
-                        _buildActionButton(
-                          icon: Icons.logout,
-                          title: 'Logout',
-                          subtitle: 'Sign out from Spotify',
-                          onTap: _handleLogout,
-                          color: Colors.orange,
-                        ),
-                        const SizedBox(height: 12),
-                        _buildActionButton(
-                          icon: Icons.delete_forever,
-                          title: 'Delete Account',
-                          subtitle: 'Permanently delete your account',
-                          onTap: _showDeleteAccountDialog,
-                          color: Colors.red,
-                        ),
-                      ] else ...[
-                        _buildNotConnectedCard(),
-                      ],
-                      const SizedBox(height: 32),
-                      _buildSectionTitle('App Info'),
-                      const SizedBox(height: 16),
-                      _buildInfoCard(),
-                    ],
+                    children: _loading
+                        ? _buildSkeletonWidgets()
+                        : [
+                            _buildSectionTitle('Account'),
+                            if (_authProvider.isAuthenticated) ...[
+                              _buildAccountCard(),
+                              const SizedBox(height: 16),
+                              _buildActionButton(
+                                icon: Icons.logout,
+                                title: 'Logout',
+                                subtitle: 'Sign out from Spotify',
+                                onTap: _handleLogout,
+                                color: Colors.orange,
+                              ),
+                              const SizedBox(height: 12),
+                              _buildActionButton(
+                                icon: Icons.delete_forever,
+                                title: 'Delete Account',
+                                subtitle: 'Permanently delete your account',
+                                onTap: _showDeleteAccountDialog,
+                                color: Colors.red,
+                              ),
+                            ] else ...[
+                              _buildNotConnectedCard(),
+                            ],
+                            const SizedBox(height: 32),
+                            _buildSectionTitle('App Info'),
+                            const SizedBox(height: 16),
+                            _buildInfoCard(),
+                          ],
                   ),
                 ),
               ),
@@ -313,6 +322,92 @@ class SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// Build skeleton widgets for loading state
+  List<Widget> _buildSkeletonWidgets() {
+    return [
+      // Account section skeleton
+      _buildSectionTitle('Account'),
+      _buildSkeletonAccountCard(),
+      const SizedBox(height: 16),
+      _buildActionButton(
+        icon: Icons.logout,
+        title: 'Logout',
+        subtitle: 'Sign out from Spotify',
+        onTap: _handleLogout,
+        color: Colors.orange,
+      ),
+      const SizedBox(height: 12),
+      _buildActionButton(
+        icon: Icons.delete_forever,
+        title: 'Delete Account',
+        subtitle: 'Permanently delete your account',
+        onTap: _showDeleteAccountDialog,
+        color: Colors.red,
+      ),
+      const SizedBox(height: 32),
+      _buildSectionTitle('App Info'),
+      const SizedBox(height: 16),
+      _buildInfoCard(),
+    ];
+  }
+
+  Widget _buildSkeletonAccountCard() {
+    return Container(
+      height: 80,
+      decoration: BoxDecoration(
+        color: AppColors.onDarkPrimary.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.onDarkPrimary.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Shimmer.fromColors(
+        baseColor: AppColors.onDarkPrimary.withOpacity(0.1),
+        highlightColor: AppColors.onDarkPrimary.withOpacity(0.2),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      width: 60,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildSectionTitle(String title) {
     return Padding(
@@ -337,48 +432,61 @@ class SettingsScreenState extends State<SettingsScreen> {
           width: 1,
         ),
       ),
-      child: ListTile(
-        leading: _loading
-            ? const _SkeletonCircle(diameter: 40)
-            : CircleAvatar(
-                radius: 20,
-                backgroundImage: _getProfileImage(),
-                backgroundColor: AppColors.primary.withOpacity(0.1),
-                child: _getProfileImage() == null
-                    ? const Icon(
-                        Icons.person,
-                        color: AppColors.primary,
-                        size: 20,
-                      )
-                    : null,
-              ),
-        title: _loading
-            ? const _SkeletonBox(width: 120, height: 16, radius: 4)
-            : Text(
-                _getDisplayName(),
-                style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
-              ),
-        subtitle: _loading
-            ? const _SkeletonBox(width: 180, height: 12, radius: 4)
-            : Text(
-                _getUserEmail(),
-                style: AppTextStyles.captionOnDark,
-              ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
           children: [
-            if (_user == null && !_loading)
-              IconButton(
-                onPressed: () async {
-                  try {
-                    await _fetchUserData();
-                  } catch (e) {
-                    // Ignore errors
-                  }
-                },
-                icon: const Icon(Icons.refresh, color: AppColors.primary, size: 20),
+            CircleAvatar(
+              radius: 20,
+              backgroundImage: _getProfileImage(),
+              backgroundColor: AppColors.primary.withOpacity(0.1),
+              child: _getProfileImage() == null
+                  ? const Icon(
+                      Icons.person,
+                      color: AppColors.primary,
+                      size: 20,
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _getDisplayName(),
+                    style: AppTextStyles.bodyOnDark
+                        .copyWith(fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _getUserEmail(),
+                    style: AppTextStyles.captionOnDark,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-            const Icon(Icons.check_circle, color: AppColors.primary),
+            ),
+            const SizedBox(width: 8),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_user == null && !_loading)
+                  IconButton(
+                    onPressed: () async {
+                      try {
+                        await _fetchUserData();
+                      } catch (e) {
+                        // Ignore errors
+                      }
+                    },
+                    icon: const Icon(Icons.refresh,
+                        color: AppColors.primary, size: 20),
+                  ),
+                const Icon(Icons.check_circle, color: AppColors.primary),
+              ],
+            ),
           ],
         ),
       ),
@@ -453,7 +561,8 @@ class SettingsScreenState extends State<SettingsScreen> {
           subtitle,
           style: AppTextStyles.captionOnDark,
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.onDarkSecondary, size: 16),
+        trailing: const Icon(Icons.arrow_forward_ios,
+            color: AppColors.onDarkSecondary, size: 16),
         onTap: onTap,
       ),
     );
@@ -493,97 +602,3 @@ class SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
-
-// Shimmer effect components (copied from profile screen)
-class _SkeletonBox extends StatelessWidget {
-  final double width;
-  final double height;
-  final double radius;
-  const _SkeletonBox({required this.width, required this.height, this.radius = 8});
-
-  @override
-  Widget build(BuildContext context) {
-    return _Shimmer(
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: AppColors.onDarkPrimary.withOpacity(0.12),
-          borderRadius: BorderRadius.circular(radius),
-        ),
-      ),
-    );
-  }
-}
-
-class _SkeletonCircle extends StatelessWidget {
-  final double diameter;
-  const _SkeletonCircle({required this.diameter});
-
-  @override
-  Widget build(BuildContext context) {
-    return _Shimmer(
-      child: Container(
-        width: diameter,
-        height: diameter,
-        decoration: BoxDecoration(
-          color: AppColors.onDarkPrimary.withOpacity(0.12),
-          shape: BoxShape.circle,
-        ),
-      ),
-    );
-  }
-}
-
-class _Shimmer extends StatefulWidget {
-  final Widget child;
-  const _Shimmer({required this.child});
-
-  @override
-  State<_Shimmer> createState() => _ShimmerState();
-}
-
-class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 3500))
-      ..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return ShaderMask(
-          shaderCallback: (Rect bounds) {
-            final gradient = LinearGradient(
-              begin: Alignment(-1.0 - 3 * _controller.value, 0.0),
-              end: Alignment(1.0 + 3 * _controller.value, 0.0),
-              colors: [
-                AppColors.onDarkPrimary.withOpacity(0.12),
-                AppColors.onDarkPrimary.withOpacity(0.05),
-                AppColors.onDarkPrimary.withOpacity(0.12),
-              ],
-              stops: const [0.25, 0.5, 0.75],
-            );
-            return gradient.createShader(bounds);
-          },
-          blendMode: BlendMode.srcATop,
-          child: widget.child,
-        );
-      },
-    );
-  }
-}
-
-

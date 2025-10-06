@@ -13,6 +13,7 @@ class SwipeablePostCard extends StatefulWidget {
   final VoidCallback? onCardTap;
   final VoidCallback? onShare;
   final VoidCallback? onOpenInSpotify;
+  final VoidCallback? onUserTap;
   final bool showUserInfo;
 
   const SwipeablePostCard({
@@ -25,6 +26,7 @@ class SwipeablePostCard extends StatefulWidget {
     this.onCardTap,
     this.onShare,
     this.onOpenInSpotify,
+    this.onUserTap,
     this.showUserInfo = true,
   });
 
@@ -304,6 +306,7 @@ class _SwipeablePostCardState extends State<SwipeablePostCard>
                   onCardTap: widget.onCardTap,
                   onShare: widget.onShare,
                   onOpenInSpotify: widget.onOpenInSpotify,
+                  onUserTap: widget.onUserTap,
                   showFollowButton: false,
                   showUserInfo: widget.showUserInfo,
                 ),

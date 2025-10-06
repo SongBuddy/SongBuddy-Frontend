@@ -132,9 +132,12 @@ class _MusicPostCardState extends State<MusicPostCard> {
                             padding: EdgeInsets.symmetric(
                               vertical: widget.avatarVerticalPadding,
                             ),
-                            child: CircleAvatar(
-                              radius: 14,
-                              backgroundImage: NetworkImage(widget.avatarUrl),
+                            child: GestureDetector(
+                              onTap: widget.onUserTap,
+                              child: CircleAvatar(
+                                radius: 14,
+                                backgroundImage: NetworkImage(widget.avatarUrl),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),

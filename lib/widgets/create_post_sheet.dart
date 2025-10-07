@@ -57,7 +57,7 @@ class _CreatePostSheetState extends State<_CreatePostSheet> with SingleTickerPro
   Widget build(BuildContext context) {
     const radius = Radius.circular(20);
     return ClipRRect(
-      borderRadius: BorderRadius.only(topLeft: radius, topRight: radius),
+      borderRadius: const BorderRadius.only(topLeft: radius, topRight: radius),
       child: Container(
         color: AppColors.darkBackgroundEnd,
         child: SafeArea(

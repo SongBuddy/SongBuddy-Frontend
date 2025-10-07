@@ -71,7 +71,6 @@ class _OnboardingPageState extends State<OnboardingPage>
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 
     // Scale factors for responsiveness
@@ -157,30 +156,31 @@ class _OnboardingPageState extends State<OnboardingPage>
               ),
             ),
 
-            // Description
-            SlideTransition(
-              position: _slideAnimation,
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    color: Colors.white.withOpacity(0.05),
-                    border: Border.all(color: Colors.white.withOpacity(0.1)),
-                  ),
-                  child: Text(
-                    widget.description,
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.bodyOnDark.copyWith(
-                      fontSize: bodyFontSize,
-                      height: 1.4,
-                      color: AppColors.onDarkSecondary,
+            // Description (only show if not empty)
+            if (widget.description.isNotEmpty)
+              SlideTransition(
+                position: _slideAnimation,
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.white.withOpacity(0.05),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: Text(
+                      widget.description,
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.bodyOnDark.copyWith(
+                        fontSize: bodyFontSize,
+                        height: 1.4,
+                        color: AppColors.onDarkSecondary,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
 
             // Decorative Dots
             // FadeTransition(

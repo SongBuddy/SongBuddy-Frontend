@@ -10,6 +10,10 @@
 .svn/
 migrate_working_dir/
 
+# API Credentials (keep secure)
+client_secret_*.json
+.env
+
 # IntelliJ related
 *.iml
 *.ipr

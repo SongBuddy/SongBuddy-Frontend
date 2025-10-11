@@ -80,7 +80,7 @@ class _SuccessDialogState extends State<SuccessDialog>
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: AppColors.accentMint.withOpacity(0.25),
+                color: AppColors.primary.withOpacity(0.25),
                 width: 1,
               ),
             ),
@@ -103,14 +103,14 @@ class _SuccessDialogState extends State<SuccessDialog>
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            AppColors.accentMint.withOpacity(0.14),
-                            AppColors.accentGreen.withOpacity(0.10),
+                            AppColors.primary.withOpacity(0.14),
+                            AppColors.primaryAccent.withOpacity(0.10),
                           ],
                         ),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.accentMint.withOpacity(0.28),
+                            color: AppColors.primary.withOpacity(0.28),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -119,7 +119,7 @@ class _SuccessDialogState extends State<SuccessDialog>
                       child: const Icon(
                         Icons.check_circle,
                         size: 50,
-                        color: AppColors.accentMint,
+                        color: AppColors.primary,
                       ),
                     ),
                   ),
@@ -170,7 +170,7 @@ class _SuccessDialogState extends State<SuccessDialog>
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentMint),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                     ),
                   ),
                 );

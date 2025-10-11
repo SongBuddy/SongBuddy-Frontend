@@ -2,11 +2,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'onboarding_page.dart';
 import '../../main.dart';
-import '../../widgets/spotify_login_button.dart';
 import '../../widgets/success_dialog.dart';
 import '../../widgets/spotify_style_popup.dart';
-import '../../providers/auth_provider.dart';
-import '../../services/auth_service.dart' show AuthState;
+import '../../providers/google_auth_provider.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_text_styles.dart';
 
@@ -21,7 +19,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
   final PageController _controller = PageController();
   int _currentPage = 0;
-  late final AuthProvider _authProvider;
+  late final GoogleAuthProvider _authProvider;
   bool _isErrorDialogVisible = false; // Guard to prevent conflicting dialogs
 
   late AnimationController _backgroundAnimationController;
@@ -30,7 +28,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   @override
   void initState() {
     super.initState();
-    _authProvider = AuthProvider();
+    _authProvider = GoogleAuthProvider();
     _authProvider.addListener(_onAuthStateChanged);
     _authProvider.initialize();
 
@@ -67,7 +65,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   void _onAuthStateChanged() {
     // While authenticating, make sure no stale error dialog is visible
-    if (_authProvider.state == AuthState.authenticating) {
+    if (_authProvider.state == GoogleAuthState.loading) {
       _dismissErrorDialog();
       return;
     }
@@ -76,7 +74,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       _dismissErrorDialog();
       // Show success animation before navigating
       _showSuccessAnimation();
-    } else if (_authProvider.state == AuthState.error) {
+    } else if (_authProvider.state == GoogleAuthState.error) {
       if (_isErrorDialogVisible) return; // Avoid stacking dialogs
       _isErrorDialogVisible = true;
       SpotifyStylePopup.show(
@@ -86,7 +84,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         onRetry: () {
           Navigator.of(context, rootNavigator: true).pop(); // Close dialog
           _isErrorDialogVisible = false;
-          _handleSpotifyLogin(); // Retry connection
+          _handleGoogleLogin(); // Retry connection
         },
         onCancel: () {
           Navigator.of(context, rootNavigator: true).pop(); // Close dialog
@@ -150,9 +148,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       icon: Icons.star_rounded,
     ),
     OnboardingPage(
-      title: "Connect with Spotify",
-      description: "Link your Spotify account for a personalized experience and seamless music integration.",
-      icon: Icons.link_rounded,
+      title: "Connect with Google",
+      description: "Sign in with your Google account for a personalized experience and seamless music integration.",
+      icon: Icons.login_rounded,
     ),
   ];
 
@@ -179,9 +177,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  void _handleSpotifyLogin() async {
-    // Use the existing AuthProvider with enhanced error handling
-    await _authProvider.login();
+  void _handleGoogleLogin() async {
+    // Sign in with Google
+    await _authProvider.signInWithGoogle();
   }
 
   @override
@@ -274,8 +272,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 gradient: _currentPage == index
                                     ? const LinearGradient(
                                         colors: [
-                                          AppColors.accentMint,
-                                          AppColors.accentGreen,
+                                          AppColors.primary,
+                                          AppColors.primaryAccent,
                                         ],
                                       )
                                     : null,
@@ -286,7 +284,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 boxShadow: _currentPage == index
                                     ? [
                                         BoxShadow(
-                                          color: AppColors.accentMint.withOpacity(0.4),
+                                          color: AppColors.primary.withOpacity(0.4),
                                           blurRadius: 12,
                                           spreadRadius: 2,
                                         ),
@@ -300,31 +298,83 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         const SizedBox(height: 32),
 
                         // Modern navigation button
-                        SizedBox(
-                          width: double.infinity,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: BackdropFilter(
-                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      AppColors.accentMint.withOpacity(0.2),
-                                      AppColors.accentGreen.withOpacity(0.2),
-                                    ],
-                                  ),
+                        _currentPage == _pages.length - 1
+                            ? SizedBox(
+                                width: double.infinity,
+                                child: ClipRRect(
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.2),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            AppColors.primary.withOpacity(0.2),
+                                            AppColors.primaryAccent.withOpacity(0.2),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: Colors.white.withOpacity(0.2),
+                                        ),
+                                      ),
+                                      child: ElevatedButton(
+                                        onPressed: _handleGoogleLogin,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.transparent,
+                                          shadowColor: Colors.transparent,
+                                          elevation: 0,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 32,
+                                            vertical: 16,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(
+                                              Icons.login,
+                                              color: AppColors.onDarkPrimary,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              "Continue with Google",
+                                              style: AppTextStyles.bodyOnDark.copyWith(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
-                                child: _currentPage == _pages.length - 1
-                                    ? SpotifyLoginButton(
-                                        onPressed: _handleSpotifyLogin,
-                                        isLoading: _authProvider.state == AuthState.authenticating,
-                                      )
-                                    : ElevatedButton(
+                              )
+                            : SizedBox(
+                                width: double.infinity,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            AppColors.primary.withOpacity(0.2),
+                                            AppColors.primaryAccent.withOpacity(0.2),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: Colors.white.withOpacity(0.2),
+                                        ),
+                                      ),
+                                      child: ElevatedButton(
                                         onPressed: _nextPage,
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.transparent,
@@ -357,10 +407,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                           ],
                                         ),
                                       ),
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                        ),
                       ],
                     ),
                   ),

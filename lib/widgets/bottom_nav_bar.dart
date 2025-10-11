@@ -24,9 +24,9 @@ class BottomNavBar extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowBlack60,
+            color: AppColors.shadowDark,
             blurRadius: 20,
-            offset: Offset(0, -5),
+            offset: const Offset(0, -5),
           ),
         ],
       ),
@@ -105,12 +105,12 @@ class BottomNavBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.accentMint.withOpacity(0.15)
+              ? AppColors.primary.withOpacity(0.15)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: isSelected
               ? Border.all(
-                  color: AppColors.accentMint.withOpacity(0.3),
+                  color: AppColors.primary.withOpacity(0.3),
                   width: 1,
                 )
               : null,
@@ -123,9 +123,8 @@ class BottomNavBar extends StatelessWidget {
               child: Icon(
                 isSelected ? activeIcon : icon,
                 key: ValueKey('${isSelected}_$index'),
-                color: isSelected
-                    ? AppColors.accentMint
-                    : AppColors.onDarkSecondary,
+                color:
+                    isSelected ? AppColors.primary : AppColors.onDarkSecondary,
                 size: 24,
               ),
             ),
@@ -133,9 +132,8 @@ class BottomNavBar extends StatelessWidget {
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: AppTextStyles.captionOnDark.copyWith(
-                color: isSelected
-                    ? AppColors.accentMint
-                    : AppColors.onDarkSecondary,
+                color:
+                    isSelected ? AppColors.primary : AppColors.onDarkSecondary,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                 fontSize: 12,
               ),

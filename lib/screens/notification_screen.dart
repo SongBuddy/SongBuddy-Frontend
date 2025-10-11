@@ -18,7 +18,8 @@ class NotificationScreen extends StatelessWidget {
       "avatarUrl": "https://i.pravatar.cc/100?img=2",
       "time": "5m",
       "postTitle": "Night Changes",
-      "coverUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDTJ4AuwUIeQ-wc-z78atPgem_s9RgBtGP_A&s"
+      "coverUrl":
+          "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDTJ4AuwUIeQ-wc-z78atPgem_s9RgBtGP_A&s"
     },
     {
       "type": "new_post",
@@ -26,7 +27,8 @@ class NotificationScreen extends StatelessWidget {
       "avatarUrl": "https://i.pravatar.cc/100?img=3",
       "time": "15m",
       "postTitle": "Blinding Lights",
-      "coverUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDTJ4AuwUIeQ-wc-z78atPgem_s9RgBtGP_A&s"
+      "coverUrl":
+          "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDTJ4AuwUIeQ-wc-z78atPgem_s9RgBtGP_A&s"
     },
   ];
 
@@ -50,9 +52,9 @@ class NotificationScreen extends StatelessWidget {
       case "like":
         return AppColors.secondary;
       case "new_post":
-        return AppColors.accentGreen;
+        return AppColors.success;
       default:
-        return AppColors.border;
+        return AppColors.onDarkSecondary;
     }
   }
 
@@ -158,7 +160,8 @@ class NotificationScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _getIconColor(notification["type"]).withOpacity(0.15),
+                      color:
+                          _getIconColor(notification["type"]).withOpacity(0.15),
                     ),
                     child: Icon(_getIcon(notification["type"]),
                         size: 20, color: _getIconColor(notification["type"])),

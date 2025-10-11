@@ -117,15 +117,15 @@ class _SplashScreenState extends State<SplashScreen>
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.accentMint.withOpacity(0.25),
+                      color: AppColors.primary.withOpacity(0.25),
                       blurRadius: 30,
                       spreadRadius: 2,
                     ),
                   ],
                   gradient: LinearGradient(
                     colors: [
-                      AppColors.accentMint.withOpacity(0.18),
-                      AppColors.accentGreen.withOpacity(0.18),
+                      AppColors.primary.withOpacity(0.18),
+                      AppColors.primaryAccent.withOpacity(0.18),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -154,7 +154,7 @@ class _SplashScreenState extends State<SplashScreen>
                     minHeight: 6,
                     backgroundColor: Colors.white.withOpacity(0.08),
                     valueColor: const AlwaysStoppedAnimation<Color>(
-                      AppColors.accentMint,
+                      AppColors.primary,
                     ),
                   ),
                 ),

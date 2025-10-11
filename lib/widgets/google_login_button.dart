@@ -3,23 +3,23 @@ import 'dart:ui';
 import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
 
-class SpotifyLoginButton extends StatefulWidget {
+class GoogleLoginButton extends StatefulWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
   final String text;
 
-  const SpotifyLoginButton({
+  const GoogleLoginButton({
     super.key,
     this.onPressed,
     this.isLoading = false,
-    this.text = "Continue with Spotify",
+    this.text = "Continue with Google",
   });
 
   @override
-  State<SpotifyLoginButton> createState() => _SpotifyLoginButtonState();
+  State<GoogleLoginButton> createState() => _GoogleLoginButtonState();
 }
 
-class _SpotifyLoginButtonState extends State<SpotifyLoginButton>
+class _GoogleLoginButtonState extends State<GoogleLoginButton>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
@@ -32,7 +32,7 @@ class _SpotifyLoginButtonState extends State<SpotifyLoginButton>
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
-    
+
     _scaleAnimation = Tween<double>(
       begin: 1.0,
       end: 0.95,
@@ -40,7 +40,7 @@ class _SpotifyLoginButtonState extends State<SpotifyLoginButton>
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
-    
+
     _opacityAnimation = Tween<double>(
       begin: 1.0,
       end: 0.8,
@@ -142,7 +142,8 @@ class _SpotifyLoginButtonState extends State<SpotifyLoginButton>
                                   'Connecting...',
                                   style: AppTextStyles.bodyOnDark.copyWith(
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.onDarkPrimary.withOpacity(0.8),
+                                    color: AppColors.onDarkPrimary
+                                        .withOpacity(0.8),
                                   ),
                                 ),
                               ],
@@ -150,7 +151,7 @@ class _SpotifyLoginButtonState extends State<SpotifyLoginButton>
                           : Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                // Spotify logo icon with glassmorphism
+                                // Google logo icon with glassmorphism
                                 Container(
                                   width: 24,
                                   height: 24,
@@ -166,14 +167,15 @@ class _SpotifyLoginButtonState extends State<SpotifyLoginButton>
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: AppColors.primary.withOpacity(0.3),
+                                        color:
+                                            AppColors.primary.withOpacity(0.3),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),
                                     ],
                                   ),
                                   child: const Icon(
-                                    Icons.music_note,
+                                    Icons.login,
                                     color: AppColors.onDarkPrimary,
                                     size: 16,
                                   ),

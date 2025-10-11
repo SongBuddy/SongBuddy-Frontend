@@ -48,4 +48,10 @@ class AppTextStyles {
     fontSize: 14,
     color: AppColors.onDarkSecondary,
   );
+
+  static const TextStyle heading3OnDark = TextStyle(
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+    color: AppColors.onDarkPrimary,
+  );
 }

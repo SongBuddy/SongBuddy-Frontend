@@ -1,4 +1,4 @@
-package com.songbuddy.app
+package io.github.youngdevs2025.songbuddy
 
 import android.content.Intent
 import android.net.Uri

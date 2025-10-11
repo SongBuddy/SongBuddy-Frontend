@@ -230,10 +230,7 @@ class _CreatePostSheetState extends State<_CreatePostSheet> with SingleTickerPro
     Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => CreatePostScreen(
-          selectedTrack: track,
-          selectedTrackId: trackId,
-        ),
+        builder: (context) => const CreatePostScreen(),
       ),
     ).then((success) {
       if (success == true) {

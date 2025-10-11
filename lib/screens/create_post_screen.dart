@@ -15,7 +15,8 @@ class CreatePostScreen extends StatefulWidget {
   State<CreatePostScreen> createState() => _CreatePostScreenState();
 }
 
-class _CreatePostScreenState extends State<CreatePostScreen> with TickerProviderStateMixin {
+class _CreatePostScreenState extends State<CreatePostScreen>
+    with TickerProviderStateMixin {
   late final TextEditingController _descriptionController;
   late final TextEditingController _searchController;
   late final GoogleAuthProvider _authProvider;
@@ -23,11 +24,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
   late final MusicBrainzService _musicBrainzService;
   late final AnimationController _searchAnimationController;
   late final AnimationController _fabAnimationController;
-  
+
   bool _isPosting = false;
   bool _isSearching = false;
   final int _maxDescriptionLength = 280;
-  
+
   // Music search
   List<Map<String, dynamic>> _searchResults = [];
   Map<String, dynamic>? _selectedTrack;
@@ -48,7 +49,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
-    
+
     _fabAnimationController.forward();
   }
 
@@ -86,8 +87,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
         userProfilePicture: _authProvider.user?['photoURL'] ?? '',
         songName: _selectedTrack?['title'] ?? 'General Post',
         artistName: _selectedTrack?['artist-credit']?[0]?['name'] ?? 'User',
-        songImage: _selectedTrack?['releases']?[0] != null 
-            ? _musicBrainzService.getCoverArtUrl(_selectedTrack!['releases'][0]['id'])
+        songImage: _selectedTrack?['releases']?[0] != null
+            ? _musicBrainzService
+                .getCoverArtUrl(_selectedTrack!['releases'][0]['id'])
             : '',
         description: _descriptionController.text.trim(),
         likeCount: 0,
@@ -97,7 +99,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
       );
 
       final createdPost = await _backendService.createPost(post);
-      
+
       if (createdPost.id.isNotEmpty) {
         ErrorSnackbarUtils.showSuccessSnackbar(
           context,
@@ -135,7 +137,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
     });
 
     try {
-      final results = await _musicBrainzService.searchRecordings(query, limit: 10);
+      final results =
+          await _musicBrainzService.searchRecordings(query, limit: 10);
       setState(() {
         _searchResults = results;
       });
@@ -258,11 +261,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                 child: GestureDetector(
                   onTap: _isPosting ? null : _createPost,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: _isPosting
-                            ? [AppColors.onDarkTertiary, AppColors.onDarkTertiary]
+                            ? [
+                                AppColors.onDarkTertiary,
+                                AppColors.onDarkTertiary
+                              ]
                             : [AppColors.primary, AppColors.primaryAccent],
                       ),
                       borderRadius: BorderRadius.circular(20),
@@ -284,8 +291,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                             ),
                           )
                         : Text(
-              'Post',
-              style: AppTextStyles.bodyOnDark.copyWith(
+                            'Post',
+                            style: AppTextStyles.bodyOnDark.copyWith(
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -299,7 +306,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
       ),
     );
   }
-
 
   Widget _buildMusicSearch() {
     return Container(
@@ -319,8 +325,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
           ),
         ],
       ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -331,7 +337,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
               ),
               const SizedBox(width: 8),
               Text(
-                'Search Music (Optional)',
+                'Share Your Favorites',
                 style: AppTextStyles.bodyOnDark.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -341,7 +347,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
           const SizedBox(height: 16),
           TextField(
             controller: _searchController,
-            style: AppTextStyles.bodyOnDark,
+            style: AppTextStyles.bodyOnDark.copyWith(
+              color: AppColors.onDarkPrimary,
+            ),
             decoration: InputDecoration(
               hintText: 'Search for a song, artist, or album...',
               hintStyle: AppTextStyles.bodyOnDark.copyWith(
@@ -361,7 +369,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                 borderRadius: BorderRadius.circular(15),
                 borderSide: BorderSide.none,
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             ),
             onChanged: (value) {
               if (value.length > 2) {
@@ -374,7 +383,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
               }
             },
           ),
-          
+
           // Search results
           AnimatedBuilder(
             animation: _searchAnimationController,
@@ -410,9 +419,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                                     ? ClipRRect(
                                         borderRadius: BorderRadius.circular(8),
                                         child: Image.network(
-                                          _musicBrainzService.getCoverArtUrl(track['releases'][0]['id']),
+                                          _musicBrainzService.getCoverArtUrl(
+                                              track['releases'][0]['id']),
                                           fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) {
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
                                             return const Icon(
                                               Icons.music_note,
                                               color: AppColors.primary,
@@ -434,7 +445,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                                 ),
                               ),
                               subtitle: Text(
-                                track['artist-credit']?[0]?['name'] ?? 'Unknown Artist',
+                                track['artist-credit']?[0]?['name'] ??
+                                    'Unknown Artist',
                                 style: AppTextStyles.captionOnDark,
                               ),
                               onTap: () => _selectTrack(track),
@@ -446,7 +458,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
               );
             },
           ),
-          
+
           // Selected track
           if (_selectedTrack != null) ...[
             const SizedBox(height: 16),
@@ -478,7 +490,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                         ? ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: Image.network(
-                              _musicBrainzService.getCoverArtUrl(_selectedTrack!['releases'][0]['id']),
+                              _musicBrainzService.getCoverArtUrl(
+                                  _selectedTrack!['releases'][0]['id']),
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
                                 return const Icon(
@@ -508,7 +521,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _selectedTrack!['artist-credit']?[0]?['name'] ?? 'Unknown Artist',
+                          _selectedTrack!['artist-credit']?[0]?['name'] ??
+                              'Unknown Artist',
                           style: AppTextStyles.captionOnDark,
                         ),
                       ],
@@ -576,26 +590,31 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
             ],
           ),
           const SizedBox(height: 16),
-          TextField(
-                  controller: _descriptionController,
-                  maxLines: null,
-                  maxLength: _maxDescriptionLength,
-                  style: AppTextStyles.bodyOnDark,
-                  decoration: InputDecoration(
-              hintText: _selectedTrack != null 
-                  ? 'Share your thoughts about this track...'
+           TextField(
+             controller: _descriptionController,
+             maxLines: null,
+             maxLength: _maxDescriptionLength,
+             style: AppTextStyles.bodyOnDark.copyWith(
+               color: AppColors.onDarkPrimary,
+             ),
+             decoration: InputDecoration(
+              hintText: _selectedTrack != null
+                  ? 'Share your thoughts ...'
                   : 'What\'s on your mind? Share your thoughts...',
-                    hintStyle: AppTextStyles.bodyOnDark.copyWith(
-                      color: AppColors.onDarkSecondary,
-                    ),
-                    border: InputBorder.none,
-                    counterStyle: AppTextStyles.captionOnDark.copyWith(
-                      color: _descriptionController.text.length > _maxDescriptionLength * 0.9
-                          ? AppColors.error
-                          : AppColors.onDarkSecondary,
-                    ),
-                  ),
-                ),
+              hintStyle: AppTextStyles.bodyOnDark.copyWith(
+                color: AppColors.onDarkSecondary,
+              ),
+              filled: true,
+              fillColor: Colors.transparent,
+              border: InputBorder.none,
+              counterStyle: AppTextStyles.captionOnDark.copyWith(
+                color: _descriptionController.text.length >
+                        _maxDescriptionLength * 0.9
+                    ? AppColors.error
+                    : AppColors.onDarkSecondary,
+              ),
+            ),
+          ),
         ],
       ),
     );

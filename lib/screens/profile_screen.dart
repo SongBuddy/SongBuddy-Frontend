@@ -9,6 +9,7 @@ import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/models/ProfileData.dart';
 import 'package:songbuddy/widgets/swipeable_post_card.dart';
+import 'package:songbuddy/screens/create_post_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -523,12 +524,18 @@ class ProfileScreenState extends State<ProfileScreen> {
     return FloatingActionButton(
       onPressed: () {
         // Navigate to create post screen
-        // TODO: Implement create post functionality
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Create post functionality coming soon!'),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const CreatePostScreen(),
           ),
-        );
+        ).then((success) {
+          if (success == true) {
+            // Post created successfully, refresh posts
+            _fetchUserPosts();
+            HapticFeedback.lightImpact();
+          }
+        });
       },
       backgroundColor: AppColors.primary,
       child: const Icon(Icons.add, color: Colors.white),

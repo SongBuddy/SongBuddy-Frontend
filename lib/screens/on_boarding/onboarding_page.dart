@@ -96,12 +96,12 @@ class _OnboardingPageState extends State<OnboardingPage>
                     borderRadius: BorderRadius.circular(iconSize),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.accentMint.withOpacity(0.2),
+                        color: AppColors.primary.withOpacity(0.2),
                         blurRadius: 30,
                         spreadRadius: 5,
                       ),
                       const BoxShadow(
-                        color: AppColors.shadowBlack60,
+                        color: AppColors.shadowDark,
                         blurRadius: 20,
                         offset: Offset(0, 10),
                       ),
@@ -130,7 +130,7 @@ class _OnboardingPageState extends State<OnboardingPage>
                         child: Icon(
                           widget.icon,
                           size: iconSize,
-                          color: AppColors.accentMint,
+                          color: AppColors.primary,
                         ),
                       ),
                     ),

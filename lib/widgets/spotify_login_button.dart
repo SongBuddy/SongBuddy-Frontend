@@ -93,7 +93,7 @@ class _SpotifyLoginButtonState extends State<SpotifyLoginButton>
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.accentMint.withOpacity(0.2),
+                      color: AppColors.primary.withOpacity(0.2),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -109,13 +109,13 @@ class _SpotifyLoginButtonState extends State<SpotifyLoginButton>
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            AppColors.accentMint.withOpacity(0.15),
-                            AppColors.accentGreen.withOpacity(0.1),
+                            AppColors.primary.withOpacity(0.15),
+                            AppColors.primaryAccent.withOpacity(0.1),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: AppColors.accentMint.withOpacity(0.3),
+                          color: AppColors.primary.withOpacity(0.3),
                           width: 1,
                         ),
                       ),
@@ -133,7 +133,7 @@ class _SpotifyLoginButtonState extends State<SpotifyLoginButton>
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      AppColors.accentMint,
+                                      AppColors.primary,
                                     ),
                                   ),
                                 ),
@@ -159,14 +159,14 @@ class _SpotifyLoginButtonState extends State<SpotifyLoginButton>
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                       colors: [
-                                        AppColors.accentMint,
-                                        AppColors.accentGreen,
+                                        AppColors.primary,
+                                        AppColors.primaryAccent,
                                       ],
                                     ),
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: AppColors.accentMint.withOpacity(0.3),
+                                        color: AppColors.primary.withOpacity(0.3),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),

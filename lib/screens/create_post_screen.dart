@@ -15,12 +15,14 @@ class CreatePostScreen extends StatefulWidget {
   State<CreatePostScreen> createState() => _CreatePostScreenState();
 }
 
-class _CreatePostScreenState extends State<CreatePostScreen> {
+class _CreatePostScreenState extends State<CreatePostScreen> with TickerProviderStateMixin {
   late final TextEditingController _descriptionController;
   late final TextEditingController _searchController;
   late final GoogleAuthProvider _authProvider;
   late final BackendService _backendService;
   late final MusicBrainzService _musicBrainzService;
+  late final AnimationController _searchAnimationController;
+  late final AnimationController _fabAnimationController;
   
   bool _isPosting = false;
   bool _isSearching = false;
@@ -38,6 +40,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     _authProvider = GoogleAuthProvider();
     _backendService = BackendService();
     _musicBrainzService = MusicBrainzService();
+    _searchAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _fabAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    
+    _fabAnimationController.forward();
   }
 
   @override
@@ -45,6 +57,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     _descriptionController.dispose();
     _searchController.dispose();
     _musicBrainzService.dispose();
+    _searchAnimationController.dispose();
+    _fabAnimationController.dispose();
     super.dispose();
   }
 
@@ -52,18 +66,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     if (_descriptionController.text.trim().isEmpty) {
       ErrorSnackbarUtils.showErrorSnackbar(
         context,
-        'Please enter a description for your post',
+        'Please write something to share!',
       );
       return;
     }
 
-    if (_authProvider.userId == null) {
-      ErrorSnackbarUtils.showErrorSnackbar(
-        context,
-        'You must be signed in to create a post',
-      );
-      return;
-    }
+    if (!mounted) return;
 
     setState(() {
       _isPosting = true;
@@ -95,15 +103,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         );
         Navigator.pop(context, true);
       } else {
-        ErrorSnackbarUtils.showErrorSnackbar(
-          context,
-          'Failed to create post. Please try again.',
-        );
+        throw Exception('Failed to create post');
       }
     } catch (e) {
       ErrorSnackbarUtils.showErrorSnackbar(
         context,
-        'Error creating post: $e',
+        'Failed to create post: $e',
       );
     } finally {
       if (mounted) {
@@ -119,6 +124,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       setState(() {
         _searchResults = [];
       });
+      _searchAnimationController.reverse();
       return;
     }
 
@@ -131,6 +137,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       setState(() {
         _searchResults = results;
       });
+      _searchAnimationController.forward();
     } catch (e) {
       ErrorSnackbarUtils.showErrorSnackbar(
         context,
@@ -149,6 +156,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       _searchController.clear();
       _searchResults = [];
     });
+    _searchAnimationController.reverse();
   }
 
   void _clearSelectedTrack() {
@@ -161,154 +169,336 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.darkBackgroundStart,
-      appBar: AppBar(
-        backgroundColor: AppColors.darkBackgroundStart,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: AppColors.onDarkPrimary),
-          onPressed: () => Navigator.pop(context),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.darkBackgroundStart,
+              AppColors.darkBackgroundMid,
+              AppColors.darkBackgroundEnd,
+            ],
+          ),
         ),
-        title: Text(
-          'Create Post',
-          style: AppTextStyles.heading2OnDark,
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildUserInfo(),
+                      const SizedBox(height: 24),
+                      _buildMusicSearch(),
+                      const SizedBox(height: 24),
+                      _buildDescriptionInput(),
+                    ],
+                  ),
+                ),
+              ),
+              _buildBottomBar(),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: _isPosting ? null : _createPost,
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: AppColors.glassBackground,
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.glassBorder,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.glassBackground,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.glassBorder,
+                  width: 1,
+                ),
+              ),
+              child: const Icon(
+                Icons.close,
+                color: AppColors.onDarkPrimary,
+                size: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
             child: Text(
+              'Create Post',
+              style: AppTextStyles.heading2OnDark.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          AnimatedBuilder(
+            animation: _fabAnimationController,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _fabAnimationController.value,
+                child: GestureDetector(
+                  onTap: _isPosting ? null : _createPost,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: _isPosting
+                            ? [AppColors.onDarkTertiary, AppColors.onDarkTertiary]
+                            : [AppColors.primary, AppColors.primaryAccent],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: _isPosting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
               'Post',
               style: AppTextStyles.bodyOnDark.copyWith(
-                color: _isPosting 
-                    ? AppColors.onDarkSecondary 
-                    : AppColors.primary,
-                fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserInfo() {
+    final user = _authProvider.user;
+    if (user == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.glassBackgroundStrong,
+            AppColors.glassBackground,
+          ],
+        ),
+        border: Border.all(
+          color: AppColors.glassBorder,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowDark,
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary,
+                  AppColors.primaryAccent,
+                ],
               ),
+            ),
+            child: ClipOval(
+              child: user['photoURL'] != null
+                  ? Image.network(
+                      user['photoURL'],
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.person,
+                          color: Colors.white,
+                          size: 25,
+                        );
+                      },
+                    )
+                  : const Icon(
+                      Icons.person,
+                      color: Colors.white,
+                      size: 25,
+                    ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user['displayName'] ?? 'User',
+                  style: AppTextStyles.bodyOnDark.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Share your thoughts...',
+                  style: AppTextStyles.captionOnDark.copyWith(
+                    color: AppColors.onDarkSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+    );
+  }
+
+  Widget _buildMusicSearch() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: AppColors.glassBackground,
+        border: Border.all(
+          color: AppColors.glassBorder,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowDark,
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              // User info section
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: AppColors.onDarkPrimary.withOpacity(0.12),
-                    backgroundImage: _authProvider.user?['photoURL'] != null 
-                        ? NetworkImage(_authProvider.user!['photoURL'])
-                        : null,
-                    child: _authProvider.user?['photoURL'] == null
-                        ? const Icon(Icons.person, color: AppColors.onDarkPrimary, size: 20)
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _authProvider.user?['displayName'] ?? 'User',
-                          style: AppTextStyles.bodyOnDark.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          _authProvider.user?['email'] ?? '',
-                          style: AppTextStyles.captionOnDark.copyWith(
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              Icon(
+                Icons.music_note,
+                color: AppColors.primary,
+                size: 20,
               ),
-              
-              const SizedBox(height: 24),
-              
-              // Music search section
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.onDarkPrimary.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: AppColors.onDarkPrimary.withOpacity(0.1),
-                    width: 1,
-                  ),
+              const SizedBox(width: 8),
+              Text(
+                'Search Music (Optional)',
+                style: AppTextStyles.bodyOnDark.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Search Music (Optional)',
-                      style: AppTextStyles.bodyOnDark.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _searchController,
-                      style: AppTextStyles.bodyOnDark,
-                      decoration: InputDecoration(
-                        hintText: 'Search for a song, artist, or album...',
-                        hintStyle: AppTextStyles.bodyOnDark.copyWith(
-                          color: AppColors.onDarkSecondary,
-                        ),
-                        prefixIcon: const Icon(Icons.search, color: AppColors.onDarkSecondary),
-                        suffixIcon: _isSearching
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : null,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: AppColors.onDarkPrimary.withOpacity(0.2),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _searchController,
+            style: AppTextStyles.bodyOnDark,
+            decoration: InputDecoration(
+              hintText: 'Search for a song, artist, or album...',
+              hintStyle: AppTextStyles.bodyOnDark.copyWith(
+                color: AppColors.onDarkSecondary,
+              ),
+              prefixIcon: const Icon(Icons.search, color: AppColors.primary),
+              suffixIcon: _isSearching
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : null,
+              filled: true,
+              fillColor: AppColors.darkSurface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(15),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            onChanged: (value) {
+              if (value.length > 2) {
+                _searchMusic(value);
+              } else {
+                setState(() {
+                  _searchResults = [];
+                });
+                _searchAnimationController.reverse();
+              }
+            },
+          ),
+          
+          // Search results
+          AnimatedBuilder(
+            animation: _searchAnimationController,
+            builder: (context, child) {
+              return SizeTransition(
+                sizeFactor: _searchAnimationController,
+                child: _searchResults.isNotEmpty
+                    ? Container(
+                        margin: const EdgeInsets.only(top: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.darkSurface,
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(
+                            color: AppColors.glassBorder,
+                            width: 1,
                           ),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: AppColors.onDarkPrimary.withOpacity(0.2),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        if (value.length > 2) {
-                          _searchMusic(value);
-                        } else {
-                          setState(() {
-                            _searchResults = [];
-                          });
-                        }
-                      },
-                    ),
-                    
-                    // Search results
-                    if (_searchResults.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: 200,
                         child: ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
                           itemCount: _searchResults.length,
                           itemBuilder: (context, index) {
                             final track = _searchResults[index];
                             return ListTile(
-                              leading: const Icon(Icons.music_note, color: AppColors.primary),
+                              leading: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.music_note,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                              ),
                               title: Text(
                                 track['title'] ?? 'Unknown Title',
                                 style: AppTextStyles.bodyOnDark.copyWith(
@@ -323,67 +513,135 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                             );
                           },
                         ),
-                      ),
-                    ],
-                    
-                    // Selected track
-                    if (_selectedTrack != null) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: AppColors.primary.withOpacity(0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.check_circle, color: AppColors.primary, size: 20),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _selectedTrack!['title'] ?? 'Unknown Title',
-                                    style: AppTextStyles.bodyOnDark.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Text(
-                                    _selectedTrack!['artist-credit']?[0]?['name'] ?? 'Unknown Artist',
-                                    style: AppTextStyles.captionOnDark,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close, color: AppColors.onDarkSecondary),
-                              onPressed: _clearSelectedTrack,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      )
+                    : const SizedBox.shrink(),
+              );
+            },
+          ),
+          
+          // Selected track
+          if (_selectedTrack != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary.withOpacity(0.1),
+                    AppColors.primaryAccent.withOpacity(0.1),
                   ],
                 ),
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.3),
+                  width: 1,
+                ),
               ),
-              
-              const SizedBox(height: 24),
-              
-              // Description input
-              Expanded(
-                child: TextField(
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _selectedTrack!['title'] ?? 'Unknown Title',
+                          style: AppTextStyles.bodyOnDark.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _selectedTrack!['artist-credit']?[0]?['name'] ?? 'Unknown Artist',
+                          style: AppTextStyles.captionOnDark,
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _clearSelectedTrack,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.onDarkTertiary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.close,
+                        color: AppColors.onDarkSecondary,
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDescriptionInput() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: AppColors.glassBackground,
+        border: Border.all(
+          color: AppColors.glassBorder,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowDark,
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.edit,
+                color: AppColors.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'What\'s on your mind?',
+                style: AppTextStyles.bodyOnDark.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          TextField(
                   controller: _descriptionController,
                   maxLines: null,
                   maxLength: _maxDescriptionLength,
                   style: AppTextStyles.bodyOnDark,
                   decoration: InputDecoration(
-                    hintText: _selectedTrack != null 
-                        ? 'Share your thoughts about this track...'
-                        : 'What\'s on your mind? Share your thoughts...',
+              hintText: _selectedTrack != null 
+                  ? 'Share your thoughts about this track...'
+                  : 'What\'s on your mind? Share your thoughts...',
                     hintStyle: AppTextStyles.bodyOnDark.copyWith(
                       color: AppColors.onDarkSecondary,
                     ),
@@ -395,52 +653,40 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     ),
                   ),
                 ),
-              ),
-              
-              // Character count and post button
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${_descriptionController.text.length}/$_maxDescriptionLength',
-                      style: AppTextStyles.captionOnDark.copyWith(
-                        color: _descriptionController.text.length > _maxDescriptionLength * 0.9
-                            ? AppColors.error
-                            : AppColors.onDarkSecondary,
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: _isPosting ? null : _createPost,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      child: _isPosting
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : const Text('Post'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.glassBackground,
+        border: Border(
+          top: BorderSide(
+            color: AppColors.glassBorder,
+            width: 1,
           ),
         ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.info_outline,
+            color: AppColors.onDarkSecondary,
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Your post will be visible to all users',
+              style: AppTextStyles.captionOnDark.copyWith(
+                color: AppColors.onDarkSecondary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

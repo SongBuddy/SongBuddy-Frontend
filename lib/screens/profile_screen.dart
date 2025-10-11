@@ -1,555 +1,566 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'package:flutter/services.dart';
-import 'package:songbuddy/constants/app_colors.dart';
-import 'package:songbuddy/constants/app_text_styles.dart';
-import 'package:songbuddy/providers/google_auth_provider.dart';
-import 'package:songbuddy/services/backend_service.dart';
-import 'package:songbuddy/models/Post.dart';
-import 'package:songbuddy/models/ProfileData.dart';
-import 'package:songbuddy/widgets/swipeable_post_card.dart';
-import 'package:songbuddy/screens/create_post_screen.dart';
+import '../constants/app_colors.dart';
+import '../constants/app_text_styles.dart';
+import '../providers/google_auth_provider.dart';
+import '../services/backend_service.dart';
+import '../models/Post.dart';
+import '../models/ProfileData.dart';
+import '../screens/create_post_screen.dart';
+import '../widgets/swipeable_post_card.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => ProfileScreenState();
+  State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateMixin {
+  late final ScrollController _scrollController;
   late final GoogleAuthProvider _authProvider;
   late final BackendService _backendService;
-  late final ScrollController _scrollController;
-
-  bool _initialized = false;
-  bool _loading = false;
-
-  Map<String, dynamic>? _user;
+  late final AnimationController _fabAnimationController;
+  late final AnimationController _headerAnimationController;
+  
+  bool _isLoading = true;
   ProfileData? _profileData;
-
-  // User posts
-  List<Post> _userPosts = [];
-  bool _loadingPosts = false;
-
-  // FAB state
-  bool _showFAB = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _authProvider = GoogleAuthProvider();
-    _authProvider.addListener(_onAuthChanged);
-    _backendService = BackendService();
     _scrollController = ScrollController();
+    _authProvider = GoogleAuthProvider();
+    _backendService = BackendService();
+    _fabAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _headerAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
     
-    // Add scroll listener for smart FAB behavior
-    _scrollController.addListener(_onScroll);
-    
-    _initialize();
-  }
-
-  Future<void> _initialize() async {
-    setState(() {
-      _loading = true;
-    });
-    try {
-      await _authProvider.initialize();
-      _initialized = true;
-      if (_authProvider.isAuthenticated) {
-        await _fetchAll();
-      }
-    } catch (e) {
-      // Handle error silently
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-        });
-      }
-    }
+    _fetchAll();
+    _headerAnimationController.forward();
   }
 
   @override
   void dispose() {
-    if (_initialized) {
-      _authProvider.removeListener(_onAuthChanged);
-    }
-    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _fabAnimationController.dispose();
+    _headerAnimationController.dispose();
     super.dispose();
   }
 
-  void _onAuthChanged() {
-    if (!mounted) return;
-    setState(() {});
-  }
-
-  /// Handle scroll events for smart FAB behavior
-  void _onScroll() {
-    if (!_scrollController.hasClients) return;
-    
-    final currentScrollPosition = _scrollController.position.pixels;
-    
-    // Show FAB when at top, hide when scrolling down
-    final shouldShowFAB = currentScrollPosition < 100;
-    
-    if (shouldShowFAB != _showFAB) {
-      setState(() {
-        _showFAB = shouldShowFAB;
-      });
-    }
-  }
-
   Future<void> _fetchAll() async {
-    if (!_authProvider.isAuthenticated) return;
-    setState(() {
-      _loading = true;
-    });
+    if (!mounted) return;
     
-    print('[Profile] Fetch start');
+      setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     try {
-      // Get user data from Google Auth
+      // Fetch user data from Google Auth
       final user = _authProvider.user;
-      if (user != null) {
-        setState(() {
-          _user = user;
-        });
-        print('[Profile] Google user data loaded: ${user['displayName']}, ${user['email']}');
+      if (user == null) {
+        throw Exception('User not authenticated');
       }
+
+      // Fetch profile data from backend
+      final profileData = await _backendService.getUserProfile(_authProvider.userId!);
       
-      // Essential backend profile data (posts count, followers, following, username)
-      try {
-        if (_authProvider.userId != null) {
-          final profileData = await _backendService.getUserProfile(_authProvider.userId!, currentUserId: _authProvider.userId);
-          setState(() {
-            _profileData = profileData;
-          });
-          print('[Profile] Essential profile data loaded: ${profileData.user.username}, ${profileData.user.postsCount} posts, ${profileData.user.followersCount} followers');
-        }
-      } catch (e) {
-        print('[Profile] Failed to fetch essential profile data: $e');
-      }
-      
-      // Fetch user posts separately (heavier data, can load after essential info)
-      _fetchUserPosts();
-      
-      print('[Profile] Fetch success: user=${_user?['id']}');
-    } catch (e) {
-      print('[Profile] Fetch error: $e');
-    } finally {
+      if (mounted) {
+              setState(() {
+                _profileData = profileData;
+          _isLoading = false;
+              });
+            }
+          } catch (e) {
       if (mounted) {
         setState(() {
-          _loading = false;
+          _errorMessage = e.toString();
+          _isLoading = false;
         });
       }
     }
   }
 
-  /// Fetch user posts only
-  Future<void> _fetchUserPosts() async {
-    if (_authProvider.userId == null) {
-      print('❌ ProfileScreen: User ID is null, cannot fetch posts');
-      return;
-    }
+  Future<void> _refresh() async {
+    if (!mounted) return;
+    await _fetchAll();
+  }
 
-    setState(() {
-      _loadingPosts = true;
-    });
-
-    try {
-      final posts = await _backendService.getUserPosts(_authProvider.userId!);
-      setState(() {
-        _userPosts = posts;
-      });
-      print('✅ ProfileScreen: Loaded ${posts.length} user posts');
-    } catch (e) {
-      print('❌ ProfileScreen: Failed to fetch user posts: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _loadingPosts = false;
-        });
-      }
-    }
+  void scrollToTop() {
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOut,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_initialized || _loading) {
-      return _buildSkeleton();
-    }
-
-    if (!_authProvider.isAuthenticated) {
-      return _buildNotAuthenticated();
-    }
-
-    return Scaffold(
+      return Scaffold(
       backgroundColor: AppColors.darkBackgroundStart,
-      body: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          // Profile Header
-          SliverToBoxAdapter(
-            child: _buildProfileHeader(),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.darkBackgroundStart,
+              AppColors.darkBackgroundMid,
+              AppColors.darkBackgroundEnd,
+            ],
           ),
-          
-          // User Posts
-          SliverToBoxAdapter(
-            child: _buildPostsSection(),
-          ),
-        ],
+        ),
+        child: SafeArea(
+          child: _isLoading
+              ? _buildLoadingState()
+              : _errorMessage != null
+                  ? _buildErrorState()
+                  : _buildContent(),
+        ),
       ),
-      floatingActionButton: _showFAB ? _buildFAB() : null,
+      floatingActionButton: _buildFAB(),
     );
   }
 
-  Widget _buildSkeleton() {
-    return Scaffold(
-      backgroundColor: AppColors.darkBackgroundStart,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: _buildProfileHeaderSkeleton(),
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+          gradient: LinearGradient(
+                colors: [
+                  AppColors.primary,
+                  AppColors.primaryAccent,
+                ],
+              ),
+            ),
+            child: const Icon(
+              Icons.person,
+              color: Colors.white,
+              size: 40,
+                                ),
+                              ),
+                            const SizedBox(height: 24),
+          Text(
+            'Loading your profile...',
+            style: AppTextStyles.heading3OnDark.copyWith(
+              color: AppColors.onDarkSecondary,
+                ),
+              ),
+            ],
           ),
-          SliverToBoxAdapter(
-            child: _buildPostsSkeleton(),
-          ),
-        ],
-      ),
     );
   }
 
-  Widget _buildNotAuthenticated() {
-    return Scaffold(
-      backgroundColor: AppColors.darkBackgroundStart,
-      body: Center(
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.person_off,
-              size: 64,
-              color: AppColors.onDarkSecondary,
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.error.withOpacity(0.1),
+                border: Border.all(
+                  color: AppColors.error.withOpacity(0.3),
+                  width: 2,
+                ),
+              ),
+              child: const Icon(
+                Icons.error_outline,
+                color: AppColors.error,
+                size: 40,
+              ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Not Signed In',
-              style: AppTextStyles.heading2OnDark,
+            const SizedBox(height: 24),
+                        Text(
+              'Something went wrong',
+              style: AppTextStyles.heading3OnDark,
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Please sign in to view your profile',
-              style: AppTextStyles.bodyOnDark,
+                          const SizedBox(height: 8),
+                              Text(
+              _errorMessage ?? 'Unknown error',
+              style: AppTextStyles.bodyOnDark.copyWith(
+                color: AppColors.onDarkSecondary,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ],
-        ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _fetchAll,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Try Again'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                              ),
+                            ),
+                          ],
+                        ),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      color: AppColors.primary,
+      backgroundColor: AppColors.darkSurface,
+      child: CustomScrollView(
+        controller: _scrollController,
+        slivers: [
+          _buildProfileHeader(),
+          _buildStatsSection(),
+          _buildPostsSection(),
+        ],
       ),
     );
   }
 
   Widget _buildProfileHeader() {
-    final avatarUrl = _user?['photoURL'] as String?;
-    final displayName = _user?['displayName'] as String? ?? 'Google User';
-    final email = _user?['email'] as String?;
+    final user = _authProvider.user;
+    if (user == null) return const SliverToBoxAdapter(child: SizedBox.shrink());
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.onDarkPrimary.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.onDarkPrimary.withOpacity(0.1),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        children: [
-          // User info row
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 32,
-                backgroundColor: AppColors.onDarkPrimary.withOpacity(0.12),
-                backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-                child: avatarUrl == null
-                    ? const Icon(Icons.person, color: AppColors.onDarkPrimary, size: 32)
-                    : null,
+    return SliverToBoxAdapter(
+      child: AnimatedBuilder(
+        animation: _headerAnimationController,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(0, 50 * (1 - _headerAnimationController.value)),
+            child: Opacity(
+              opacity: _headerAnimationController.value,
+                  child: Container(
+                margin: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.glassBackgroundStrong,
+                      AppColors.glassBackground,
+                    ],
+                  ),
+              border: Border.all(
+                    color: AppColors.glassBorder,
+                width: 1,
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayName,
-                      style: AppTextStyles.heading2OnDark.copyWith(fontSize: 20),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.shadowDark,
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
                     ),
-                    // Show email if available from Google Auth
-                    if (email != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        email,
-                        style: AppTextStyles.captionOnDark.copyWith(
-                          fontSize: 14,
-                          color: AppColors.onDarkSecondary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    // Show posts count if available
-                    if (_profileData != null) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.post_add, size: 16, color: AppColors.onDarkSecondary),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${_profileData!.user.postsCount} posts',
-                            style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
-                          ),
-                          const SizedBox(width: 16),
-                          const Icon(Icons.people, size: 16, color: AppColors.onDarkSecondary),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${_profileData!.user.followersCount} followers',
-                            style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ],
                   ],
                 ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProfileHeaderSkeleton() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.onDarkPrimary.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.onDarkPrimary.withOpacity(0.1),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.onDarkPrimary.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  height: 20,
-                  width: 150,
-                  decoration: BoxDecoration(
-                    color: AppColors.onDarkPrimary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
+                          child: Column(
+                            children: [
+                    // Profile Picture
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary,
+                            AppColors.primaryAccent,
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.3),
+                            blurRadius: 20,
+                            offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                      child: ClipOval(
+                        child: user['photoURL'] != null
+                            ? Image.network(
+                                user['photoURL'],
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 50,
+                                  );
+                                },
+                              )
+                            : const Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 50,
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    
+                    // User Name
+                    Text(
+                      user['displayName'] ?? 'User',
+                      style: AppTextStyles.heading2OnDark.copyWith(
+                        fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Container(
-                  height: 16,
-                  width: 200,
-                  decoration: BoxDecoration(
-                    color: AppColors.onDarkPrimary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-              ],
-            ),
+                    
+                    // User Email
+                Text(
+                      user['email'] ?? '',
+                      style: AppTextStyles.bodyOnDark.copyWith(
+                        color: AppColors.onDarkSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    
+                    // Action Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                        _buildActionButton(
+                          icon: Icons.edit,
+                          label: 'Edit Profile',
+                          onTap: () {
+                            // TODO: Implement edit profile
+                          },
+                        ),
+                        _buildActionButton(
+                          icon: Icons.settings,
+                          label: 'Settings',
+                          onTap: () {
+                            // TODO: Navigate to settings
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
           ),
-        ],
+        ),
+      ),
+    );
+        },
       ),
     );
   }
 
-  Widget _buildPostsSection() {
-    if (_loadingPosts) {
-      return _buildPostsSkeleton();
-    }
-
-    if (_userPosts.isEmpty) {
-      return Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(32),
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.onDarkPrimary.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(20),
+          color: AppColors.glassBackground,
           border: Border.all(
-            color: AppColors.onDarkPrimary.withOpacity(0.1),
+            color: AppColors.glassBorder,
             width: 1,
           ),
         ),
-        child: Column(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.post_add,
-              size: 48,
-              color: AppColors.onDarkSecondary,
+              icon,
+              color: AppColors.primary,
+              size: 18,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(width: 8),
             Text(
-              'No Posts Yet',
-              style: AppTextStyles.heading2OnDark,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Create your first post to share your music!',
-              style: AppTextStyles.bodyOnDark,
-              textAlign: TextAlign.center,
+              label,
+              style: AppTextStyles.captionOnDark.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
 
-    return Column(
-      children: [
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              Text(
-                'Your Posts',
-                style: AppTextStyles.heading2OnDark,
-              ),
-              const Spacer(),
-              Text(
-                '${_userPosts.length} posts',
-                style: AppTextStyles.captionOnDark,
-              ),
-            ],
+  Widget _buildStatsSection() {
+    final posts = _profileData?.posts ?? [];
+    final followers = 0; // TODO: Add followers count to ProfileData
+    final following = 0; // TODO: Add following count to ProfileData
+
+    return SliverToBoxAdapter(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: AppColors.glassBackground,
+          border: Border.all(
+            color: AppColors.glassBorder,
+            width: 1,
           ),
         ),
-        ..._userPosts.map((post) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: SwipeablePostCard(
-            post: post,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildStatItem('Posts', posts.length.toString()),
+            _buildStatItem('Followers', followers.toString()),
+            _buildStatItem('Following', following.toString()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value) {
+    return Column(
+                children: [
+                  Text(
+          value,
+          style: AppTextStyles.heading3OnDark.copyWith(
+                      fontWeight: FontWeight.bold,
+            color: AppColors.primary,
           ),
-        )),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: AppTextStyles.captionOnDark,
+        ),
       ],
     );
   }
 
-  Widget _buildPostsSkeleton() {
-    return Column(
-      children: List.generate(3, (index) => Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.onDarkPrimary.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppColors.onDarkPrimary.withOpacity(0.1),
-            width: 1,
-          ),
+  Widget _buildPostsSection() {
+    final posts = _profileData?.posts ?? [];
+
+    if (posts.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Container(
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: AppColors.glassBackground,
+        border: Border.all(
+              color: AppColors.glassBorder,
+          width: 1,
         ),
-        child: Column(
-          children: [
-            Row(
+      ),
+            child: Column(
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.onDarkPrimary.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        height: 16,
-                        width: 100,
-                        decoration: BoxDecoration(
-                          color: AppColors.onDarkPrimary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Container(
-                        height: 12,
-                        width: 60,
-                        decoration: BoxDecoration(
-                          color: AppColors.onDarkPrimary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              height: 60,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppColors.onDarkPrimary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
+              Icon(
+                Icons.music_note_outlined,
+                size: 60,
+                color: AppColors.onDarkSecondary,
               ),
+              const SizedBox(height: 16),
+                Text(
+                'No posts yet',
+                style: AppTextStyles.heading3OnDark.copyWith(
+                  color: AppColors.onDarkSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+                  Text(
+                'Share your favorite music with the world!',
+                style: AppTextStyles.bodyOnDark.copyWith(
+                  color: AppColors.onDarkTertiary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+      ),
+    );
+  }
+
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final post = posts[index];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+            child: SwipeablePostCard(
+              post: post,
             ),
-          ],
+            );
+          },
+          childCount: posts.length,
         ),
-      )),
+      ),
     );
   }
 
   Widget _buildFAB() {
-    return FloatingActionButton(
-      onPressed: () {
-        // Navigate to create post screen
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const CreatePostScreen(),
-          ),
-        ).then((success) {
-          if (success == true) {
-            // Post created successfully, refresh posts
-            _fetchUserPosts();
-            HapticFeedback.lightImpact();
-          }
-        });
+    return AnimatedBuilder(
+      animation: _fabAnimationController,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _fabAnimationController.value,
+        child: Container(
+          decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary,
+                  AppColors.primaryAccent,
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.4),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const CreatePostScreen(),
+                  ),
+                ).then((_) {
+                  _fetchAll(); // Refresh posts after creating
+                });
+              },
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: const Icon(
+                Icons.add,
+                color: Colors.white,
+                size: 28,
+              ),
+        ),
+      ),
+    );
       },
-      backgroundColor: AppColors.primary,
-      child: const Icon(Icons.add, color: Colors.white),
     );
   }
 
-  /// Scroll to top of the profile
-  void scrollToTop() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        0,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
-  }
 }

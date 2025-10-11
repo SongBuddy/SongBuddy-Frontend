@@ -17,16 +17,16 @@ import 'widgets/bottom_nav_bar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize Firebase
   await Firebase.initializeApp();
-  
+
   // Load environment variables
   await dotenv.load(fileName: ".env");
-  
+
   // Initialize HTTP client service
   HttpClientService.instance;
-  
+
   // Initialize Google auth provider
   await GoogleAuthProvider().initialize();
 
@@ -140,10 +140,8 @@ class _MainScreenContentState extends State<MainScreenContent> {
       GlobalKey<HomeFeedScreenState>();
   final GlobalKey<SearchFeedScreenState> _searchFeedKey =
       GlobalKey<SearchFeedScreenState>();
-  final GlobalKey<ProfileScreenState> _profileKey =
-      GlobalKey<ProfileScreenState>();
-  final GlobalKey<SettingsScreenState> _settingsKey =
-      GlobalKey<SettingsScreenState>();
+  final GlobalKey _profileKey = GlobalKey();
+  final GlobalKey _settingsKey = GlobalKey();
   late final List<Widget> _screens;
 
   @override
@@ -168,10 +166,10 @@ class _MainScreenContentState extends State<MainScreenContent> {
         _searchFeedKey.currentState?.scrollToTopAndRefresh();
       } else if (index == 2) {
         // Profile tab - scroll to top
-        _profileKey.currentState?.scrollToTop();
+        // TODO: Implement profile scroll to top
       } else if (index == 3) {
         // Settings tab - scroll to top
-        _settingsKey.currentState?.scrollToTop();
+        // TODO: Implement settings scroll to top
       }
     } else {
       // Switch to different tab

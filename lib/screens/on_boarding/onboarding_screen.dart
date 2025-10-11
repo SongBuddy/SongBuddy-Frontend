@@ -272,8 +272,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 gradient: _currentPage == index
                                     ? const LinearGradient(
                                         colors: [
-                                          AppColors.accentMint,
-                                          AppColors.accentGreen,
+                                          AppColors.primary,
+                                          AppColors.primaryAccent,
                                         ],
                                       )
                                     : null,
@@ -284,7 +284,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 boxShadow: _currentPage == index
                                     ? [
                                         BoxShadow(
-                                          color: AppColors.accentMint.withOpacity(0.4),
+                                          color: AppColors.primary.withOpacity(0.4),
                                           blurRadius: 12,
                                           spreadRadius: 2,
                                         ),
@@ -309,8 +309,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           colors: [
-                                            AppColors.accentMint.withOpacity(0.2),
-                                            AppColors.accentGreen.withOpacity(0.2),
+                                            AppColors.primary.withOpacity(0.2),
+                                            AppColors.primaryAccent.withOpacity(0.2),
                                           ],
                                         ),
                                         borderRadius: BorderRadius.circular(16),
@@ -365,8 +365,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           colors: [
-                                            AppColors.accentMint.withOpacity(0.2),
-                                            AppColors.accentGreen.withOpacity(0.2),
+                                            AppColors.primary.withOpacity(0.2),
+                                            AppColors.primaryAccent.withOpacity(0.2),
                                           ],
                                         ),
                                         borderRadius: BorderRadius.circular(16),

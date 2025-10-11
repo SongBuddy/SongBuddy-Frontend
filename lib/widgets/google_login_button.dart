@@ -32,7 +32,7 @@ class _GoogleLoginButtonState extends State<GoogleLoginButton>
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
-    
+
     _scaleAnimation = Tween<double>(
       begin: 1.0,
       end: 0.95,
@@ -40,7 +40,7 @@ class _GoogleLoginButtonState extends State<GoogleLoginButton>
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
-    
+
     _opacityAnimation = Tween<double>(
       begin: 1.0,
       end: 0.8,
@@ -93,7 +93,7 @@ class _GoogleLoginButtonState extends State<GoogleLoginButton>
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.accentMint.withOpacity(0.2),
+                      color: AppColors.primary.withOpacity(0.2),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -109,13 +109,13 @@ class _GoogleLoginButtonState extends State<GoogleLoginButton>
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            AppColors.accentMint.withOpacity(0.15),
-                            AppColors.accentGreen.withOpacity(0.1),
+                            AppColors.primary.withOpacity(0.15),
+                            AppColors.primaryAccent.withOpacity(0.1),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: AppColors.accentMint.withOpacity(0.3),
+                          color: AppColors.primary.withOpacity(0.3),
                           width: 1,
                         ),
                       ),
@@ -133,7 +133,7 @@ class _GoogleLoginButtonState extends State<GoogleLoginButton>
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      AppColors.accentMint,
+                                      AppColors.primary,
                                     ),
                                   ),
                                 ),
@@ -142,7 +142,8 @@ class _GoogleLoginButtonState extends State<GoogleLoginButton>
                                   'Connecting...',
                                   style: AppTextStyles.bodyOnDark.copyWith(
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.onDarkPrimary.withOpacity(0.8),
+                                    color: AppColors.onDarkPrimary
+                                        .withOpacity(0.8),
                                   ),
                                 ),
                               ],
@@ -159,14 +160,15 @@ class _GoogleLoginButtonState extends State<GoogleLoginButton>
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                       colors: [
-                                        AppColors.accentMint,
-                                        AppColors.accentGreen,
+                                        AppColors.primary,
+                                        AppColors.primaryAccent,
                                       ],
                                     ),
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: AppColors.accentMint.withOpacity(0.3),
+                                        color:
+                                            AppColors.primary.withOpacity(0.3),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),

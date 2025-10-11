@@ -86,7 +86,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
         userProfilePicture: _authProvider.user?['photoURL'] ?? '',
         songName: _selectedTrack?['title'] ?? 'General Post',
         artistName: _selectedTrack?['artist-credit']?[0]?['name'] ?? 'User',
-        songImage: _selectedTrack?['releases']?[0]?['cover-art-archive']?['front'] ?? '',
+        songImage: _selectedTrack?['releases']?[0] != null 
+            ? _musicBrainzService.getCoverArtUrl(_selectedTrack!['releases'][0]['id'])
+            : '',
         description: _descriptionController.text.trim(),
         likeCount: 0,
         createdAt: DateTime.now(),
@@ -493,11 +495,26 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                                   color: AppColors.primary.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Icon(
-                                  Icons.music_note,
-                                  color: AppColors.primary,
-                                  size: 20,
-                                ),
+                                child: track['releases']?[0] != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(
+                                          _musicBrainzService.getCoverArtUrl(track['releases'][0]['id']),
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return const Icon(
+                                              Icons.music_note,
+                                              color: AppColors.primary,
+                                              size: 20,
+                                            );
+                                          },
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.music_note,
+                                        color: AppColors.primary,
+                                        size: 20,
+                                      ),
                               ),
                               title: Text(
                                 track['title'] ?? 'Unknown Title',

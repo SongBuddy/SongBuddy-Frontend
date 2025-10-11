@@ -98,4 +98,14 @@ class MusicBrainzService {
   Future<Map<String, dynamic>> getReleaseDetails(String mbid) async {
     return await _makeRequest('/release/$mbid', queryParameters: {'inc': 'recordings+labels'});
   }
+
+  /// Get cover art URL from Cover Art Archive
+  String getCoverArtUrl(String releaseMbid) {
+    return 'https://coverartarchive.org/release/$releaseMbid/front-250';
+  }
+
+  /// Get cover art URL with fallback
+  String getCoverArtUrlWithFallback(String releaseMbid) {
+    return 'https://coverartarchive.org/release/$releaseMbid/front-500';
+  }
 }

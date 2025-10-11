@@ -193,8 +193,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildUserInfo(),
-                      const SizedBox(height: 24),
                       _buildMusicSearch(),
                       const SizedBox(height: 24),
                       _buildDescriptionInput(),
@@ -302,93 +300,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
     );
   }
 
-  Widget _buildUserInfo() {
-    final user = _authProvider.user;
-    if (user == null) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.glassBackgroundStrong,
-            AppColors.glassBackground,
-          ],
-        ),
-        border: Border.all(
-          color: AppColors.glassBorder,
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadowDark,
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primary,
-                  AppColors.primaryAccent,
-                ],
-              ),
-            ),
-            child: ClipOval(
-              child: user['photoURL'] != null
-                  ? Image.network(
-                      user['photoURL'],
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 25,
-                        );
-                      },
-                    )
-                  : const Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: 25,
-                    ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  user['displayName'] ?? 'User',
-                  style: AppTextStyles.bodyOnDark.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Share your thoughts...',
-                  style: AppTextStyles.captionOnDark.copyWith(
-                    color: AppColors.onDarkSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildMusicSearch() {
     return Container(

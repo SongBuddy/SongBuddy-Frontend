@@ -4,8 +4,7 @@ import 'onboarding_page.dart';
 import '../../main.dart';
 import '../../widgets/success_dialog.dart';
 import '../../widgets/spotify_style_popup.dart';
-import '../../providers/auth_provider.dart';
-import '../../services/auth_service.dart' show AuthState;
+import '../../providers/google_auth_provider.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_text_styles.dart';
 
@@ -20,7 +19,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
   final PageController _controller = PageController();
   int _currentPage = 0;
-  late final AuthProvider _authProvider;
+  late final GoogleAuthProvider _authProvider;
   bool _isErrorDialogVisible = false; // Guard to prevent conflicting dialogs
 
   late AnimationController _backgroundAnimationController;
@@ -29,7 +28,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   @override
   void initState() {
     super.initState();
-    _authProvider = AuthProvider();
+    _authProvider = GoogleAuthProvider();
     _authProvider.addListener(_onAuthStateChanged);
     _authProvider.initialize();
 
@@ -66,7 +65,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   void _onAuthStateChanged() {
     // While authenticating, make sure no stale error dialog is visible
-    if (_authProvider.state == AuthState.authenticating) {
+    if (_authProvider.state == GoogleAuthState.loading) {
       _dismissErrorDialog();
       return;
     }
@@ -75,7 +74,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       _dismissErrorDialog();
       // Show success animation before navigating
       _showSuccessAnimation();
-    } else if (_authProvider.state == AuthState.error) {
+    } else if (_authProvider.state == GoogleAuthState.error) {
       if (_isErrorDialogVisible) return; // Avoid stacking dialogs
       _isErrorDialogVisible = true;
       SpotifyStylePopup.show(
@@ -179,12 +178,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   void _handleGoogleLogin() async {
-    // TODO: Implement Google login
-    // For now, just navigate to main screen
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const MainScreen()),
-    );
+    // Sign in with Google
+    await _authProvider.signInWithGoogle();
   }
 
   @override

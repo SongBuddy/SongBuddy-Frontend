@@ -71,12 +71,11 @@ class _OnboardingPageState extends State<OnboardingPage>
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
     final screenWidth = MediaQuery.of(context).size.width;
 
     // Scale factors for responsiveness
     final iconSize = screenWidth * 0.18; // relative to screen width
-    final titleFontSize = screenWidth * 0.08; // relative to width
+    final titleFontSize = (screenWidth * 0.08).clamp(24.0, 48.0); // Clamp between 24-48px
     final bodyFontSize = screenWidth * 0.045;
 
     return SafeArea(
@@ -145,13 +144,16 @@ class _OnboardingPageState extends State<OnboardingPage>
               position: _slideAnimation,
               child: FadeTransition(
                 opacity: _fadeAnimation,
-                child: Text(
-                  widget.title,
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.heading1OnDark.copyWith(
-                    fontSize: titleFontSize,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    widget.title,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.heading1OnDark.copyWith(
+                      fontSize: titleFontSize,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
               ),

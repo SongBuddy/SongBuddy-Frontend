@@ -42,6 +42,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
     
     _fetchAll();
     _headerAnimationController.forward();
+    _fabAnimationController.forward();
   }
 
   @override
@@ -55,7 +56,7 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
   Future<void> _fetchAll() async {
     if (!mounted) return;
     
-    setState(() {
+      setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
@@ -68,6 +69,8 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
       }
 
       // Create profile with Google user data (no server calls)
+      // TODO: In the future, fetch posts from server here
+      // final posts = await _backendService.getUserPosts(_authProvider.userId!);
       final profileData = ProfileData(
         user: User(
           id: _authProvider.userId!,
@@ -78,10 +81,10 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
           followingCount: 0,
           postsCount: 0,
         ),
-        posts: [],
+        posts: [], // TODO: Replace with server posts when backend is ready
         pagination: const Pagination(
           page: 1,
-          limit: 10,
+              limit: 10,
           total: 0,
         ),
       );
@@ -94,12 +97,12 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
+      setState(() {
           _errorMessage = e.toString();
           _isLoading = false;
-        });
-      }
+      });
     }
+  }
   }
 
   Future<void> _refresh() async {
@@ -474,85 +477,41 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
         child: Container(
           margin: const EdgeInsets.all(20),
           padding: const EdgeInsets.all(40),
-          decoration: BoxDecoration(
+      decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             color: AppColors.glassBackground,
-            border: Border.all(
+        border: Border.all(
               color: AppColors.glassBorder,
-              width: 1,
-            ),
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primary.withOpacity(0.1),
-                      AppColors.primaryAccent.withOpacity(0.1),
-                    ],
-                  ),
-                ),
-                child: const Icon(
-                  Icons.music_note_outlined,
-                  size: 40,
-                  color: AppColors.primary,
-                ),
+          width: 1,
+        ),
+      ),
+            child: Column(
+              children: [
+              Icon(
+                Icons.music_note_outlined,
+                size: 60,
+                color: AppColors.onDarkSecondary,
               ),
-              const SizedBox(height: 20),
-              Text(
-                'Welcome to SongBuddy!',
+              const SizedBox(height: 16),
+                Text(
+                'No posts yet',
                 style: AppTextStyles.heading3OnDark.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
+                  color: AppColors.onDarkSecondary,
                 ),
               ),
-              const SizedBox(height: 12),
-              Text(
-                'Start your musical journey by creating your first post!',
+              const SizedBox(height: 8),
+                  Text(
+                'Share your favorite music with the world!',
                 style: AppTextStyles.bodyOnDark.copyWith(
-                  color: AppColors.onDarkSecondary,
+                  color: AppColors.onDarkTertiary,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppColors.primary.withOpacity(0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.add_circle_outline,
-                      color: AppColors.primary,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Tap the + button to create your first post',
-                      style: AppTextStyles.captionOnDark.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
-        ),
-      );
-    }
+      ),
+    );
+  }
 
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -574,50 +533,23 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
   }
 
   Widget _buildFAB() {
-    return AnimatedBuilder(
-      animation: _fabAnimationController,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _fabAnimationController.value,
-        child: Container(
-          decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primary,
-                  AppColors.primaryAccent,
-                ],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.4),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: FloatingActionButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const CreatePostScreen(),
-                  ),
-                ).then((_) {
-                  _fetchAll(); // Refresh posts after creating
-                });
-              },
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              child: const Icon(
-                Icons.add,
-                color: Colors.white,
-                size: 28,
-              ),
-        ),
-      ),
-    );
+    return FloatingActionButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const CreatePostScreen(),
+          ),
+        ).then((_) {
+          _fetchAll(); // Refresh posts after creating
+        });
       },
+      backgroundColor: AppColors.primary,
+      child: const Icon(
+        Icons.add,
+        color: Colors.white,
+        size: 28,
+      ),
     );
   }
 

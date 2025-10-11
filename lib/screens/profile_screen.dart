@@ -6,6 +6,7 @@ import '../providers/google_auth_provider.dart';
 import '../services/backend_service.dart';
 import '../models/Post.dart';
 import '../models/ProfileData.dart';
+import '../models/AppUser.dart';
 import '../screens/create_post_screen.dart';
 import '../widgets/swipeable_post_card.dart';
 
@@ -84,14 +85,21 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
           debugPrint('🔄 ProfileScreen: User not found in backend, creating new profile...');
           // For now, create a basic profile with Google user data
           final basicProfile = ProfileData(
-            user: AppUser(
+            user: User(
               id: _authProvider.userId!,
-              username: user['displayName'] ?? 'User',
-              email: user['email'] ?? '',
+              displayName: user['displayName'] ?? 'User',
+              username: user['displayName']?.toLowerCase().replaceAll(' ', '') ?? 'user',
               profilePicture: user['photoURL'] ?? '',
+              followersCount: 0,
+              followingCount: 0,
+              postsCount: 0,
             ),
             posts: [],
-            pagination: null,
+            pagination: const Pagination(
+              page: 1,
+              limit: 10,
+              total: 0,
+            ),
           );
           
           if (mounted) {
@@ -433,8 +441,8 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
 
   Widget _buildStatsSection() {
     final posts = _profileData?.posts ?? [];
-    final followers = 0; // TODO: Add followers count to ProfileData
-    final following = 0; // TODO: Add following count to ProfileData
+    final followers = _profileData?.user.followersCount ?? 0;
+    final following = _profileData?.user.followingCount ?? 0;
 
     return SliverToBoxAdapter(
       child: Container(

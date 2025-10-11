@@ -142,4 +142,7 @@ class GoogleAuthProvider extends ChangeNotifier {
   Future<String?> getUserPhoto() async {
     return await _authService.getUserPhoto();
   }
+
+  /// Get user ID
+  String? get userId => _user?['id'];
 }

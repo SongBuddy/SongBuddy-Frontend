@@ -3,7 +3,6 @@ import 'dart:ui';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../providers/google_auth_provider.dart';
-import '../services/backend_service.dart';
 import '../models/Post.dart';
 import '../models/ProfileData.dart';
 import '../models/AppUser.dart';
@@ -20,7 +19,6 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateMixin {
   late final ScrollController _scrollController;
   late final GoogleAuthProvider _authProvider;
-  late final BackendService _backendService;
   late final AnimationController _fabAnimationController;
   late final AnimationController _headerAnimationController;
   
@@ -33,7 +31,6 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
     super.initState();
     _scrollController = ScrollController();
     _authProvider = GoogleAuthProvider();
-    _backendService = BackendService();
     _fabAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -58,60 +55,42 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
   Future<void> _fetchAll() async {
     if (!mounted) return;
     
-      setState(() {
+    setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      // Fetch user data from Google Auth
+      // Fetch user data from Google Auth only
       final user = _authProvider.user;
       if (user == null) {
         throw Exception('User not authenticated');
       }
 
-      // Try to fetch profile data from backend
-      try {
-        final profileData = await _backendService.getUserProfile(_authProvider.userId!);
-        if (mounted) {
-          setState(() {
-            _profileData = profileData;
-            _isLoading = false;
-          });
-        }
-      } catch (backendError) {
-        // If backend returns 404, create a new user profile
-        if (backendError.toString().contains('404')) {
-          debugPrint('🔄 ProfileScreen: User not found in backend, creating new profile...');
-          // For now, create a basic profile with Google user data
-          final basicProfile = ProfileData(
-            user: User(
-              id: _authProvider.userId!,
-              displayName: user['displayName'] ?? 'User',
-              username: user['displayName']?.toLowerCase().replaceAll(' ', '') ?? 'user',
-              profilePicture: user['photoURL'] ?? '',
-              followersCount: 0,
-              followingCount: 0,
-              postsCount: 0,
-            ),
-            posts: [],
-            pagination: const Pagination(
-              page: 1,
-              limit: 10,
-              total: 0,
-            ),
-          );
-          
-          if (mounted) {
-            setState(() {
-              _profileData = basicProfile;
-              _isLoading = false;
-            });
-          }
-        } else {
-          // Other backend errors
-          throw backendError;
-        }
+      // Create profile with Google user data (no server calls)
+      final profileData = ProfileData(
+        user: User(
+          id: _authProvider.userId!,
+          displayName: user['displayName'] ?? 'User',
+          username: user['displayName']?.toLowerCase().replaceAll(' ', '') ?? 'user',
+          profilePicture: user['photoURL'] ?? '',
+          followersCount: 0,
+          followingCount: 0,
+          postsCount: 0,
+        ),
+        posts: [],
+        pagination: const Pagination(
+          page: 1,
+          limit: 10,
+          total: 0,
+        ),
+      );
+      
+      if (mounted) {
+        setState(() {
+          _profileData = profileData;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       if (mounted) {

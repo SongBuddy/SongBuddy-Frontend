@@ -563,11 +563,26 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+                    child: _selectedTrack!['releases']?[0] != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              _musicBrainzService.getCoverArtUrl(_selectedTrack!['releases'][0]['id']),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 20,
+                                );
+                              },
+                            ),
+                          )
+                        : const Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

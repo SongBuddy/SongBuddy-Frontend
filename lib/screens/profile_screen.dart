@@ -69,16 +69,43 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
         throw Exception('User not authenticated');
       }
 
-      // Fetch profile data from backend
-      final profileData = await _backendService.getUserProfile(_authProvider.userId!);
-      
-      if (mounted) {
-              setState(() {
-                _profileData = profileData;
-          _isLoading = false;
-              });
-            }
-          } catch (e) {
+      // Try to fetch profile data from backend
+      try {
+        final profileData = await _backendService.getUserProfile(_authProvider.userId!);
+        if (mounted) {
+          setState(() {
+            _profileData = profileData;
+            _isLoading = false;
+          });
+        }
+      } catch (backendError) {
+        // If backend returns 404, create a new user profile
+        if (backendError.toString().contains('404')) {
+          debugPrint('🔄 ProfileScreen: User not found in backend, creating new profile...');
+          // For now, create a basic profile with Google user data
+          final basicProfile = ProfileData(
+            user: AppUser(
+              id: _authProvider.userId!,
+              username: user['displayName'] ?? 'User',
+              email: user['email'] ?? '',
+              profilePicture: user['photoURL'] ?? '',
+            ),
+            posts: [],
+            pagination: null,
+          );
+          
+          if (mounted) {
+            setState(() {
+              _profileData = basicProfile;
+              _isLoading = false;
+            });
+          }
+        } else {
+          // Other backend errors
+          throw backendError;
+        }
+      }
+    } catch (e) {
       if (mounted) {
         setState(() {
           _errorMessage = e.toString();
@@ -460,41 +487,85 @@ class _ProfileScreenState extends State<ProfileScreen> with TickerProviderStateM
         child: Container(
           margin: const EdgeInsets.all(20),
           padding: const EdgeInsets.all(40),
-      decoration: BoxDecoration(
+          decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             color: AppColors.glassBackground,
-        border: Border.all(
+            border: Border.all(
               color: AppColors.glassBorder,
-          width: 1,
-        ),
-      ),
-            child: Column(
-              children: [
-              Icon(
-                Icons.music_note_outlined,
-                size: 60,
-                color: AppColors.onDarkSecondary,
-              ),
-              const SizedBox(height: 16),
-                Text(
-                'No posts yet',
-                style: AppTextStyles.heading3OnDark.copyWith(
-                  color: AppColors.onDarkSecondary,
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withOpacity(0.1),
+                      AppColors.primaryAccent.withOpacity(0.1),
+                    ],
+                  ),
+                ),
+                child: const Icon(
+                  Icons.music_note_outlined,
+                  size: 40,
+                  color: AppColors.primary,
                 ),
               ),
-              const SizedBox(height: 8),
-                  Text(
-                'Share your favorite music with the world!',
+              const SizedBox(height: 20),
+              Text(
+                'Welcome to SongBuddy!',
+                style: AppTextStyles.heading3OnDark.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Start your musical journey by creating your first post!',
                 style: AppTextStyles.bodyOnDark.copyWith(
-                  color: AppColors.onDarkTertiary,
+                  color: AppColors.onDarkSecondary,
                 ),
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.primary.withOpacity(0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.add_circle_outline,
+                      color: AppColors.primary,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Tap the + button to create your first post',
+                      style: AppTextStyles.captionOnDark.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
-      ),
-    );
-  }
+        ),
+      );
+    }
 
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 20),

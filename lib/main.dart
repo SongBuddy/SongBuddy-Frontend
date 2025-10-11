@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:songbuddy/screens/search_feed_Screen.dart';
 import 'package:songbuddy/screens/splash_screen.dart';
 import 'package:songbuddy/theme/app_theme.dart';
 import 'package:songbuddy/services/http_client_service.dart';
-import 'package:songbuddy/providers/auth_provider.dart';
+import 'package:songbuddy/providers/google_auth_provider.dart';
 import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/widgets/riverpod_connection_overlay.dart';
 import 'package:songbuddy/services/simple_lifecycle_manager.dart';
@@ -17,27 +18,30 @@ import 'widgets/bottom_nav_bar.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  // Initialize Firebase
+  await Firebase.initializeApp();
+  
   // Load environment variables
   await dotenv.load(fileName: ".env");
   
   // Initialize HTTP client service
   HttpClientService.instance;
   
-  // Initialize auth provider
-  await AuthProvider().initialize();
-  
+  // Initialize Google auth provider
+  await GoogleAuthProvider().initialize();
+
   // Initialize simple lifecycle manager
   await SimpleLifecycleManager.instance.initialize();
-  
+
   // Start sync service if user is authenticated
-  final authProvider = AuthProvider();
+  final authProvider = GoogleAuthProvider();
   if (authProvider.isAuthenticated) {
     await SimpleLifecycleManager.instance.start();
     debugPrint('✅ Main: Professional sync started for authenticated user');
   } else {
     debugPrint('ℹ️ Main: User not authenticated, sync not started');
   }
-  
+
   // Warm up backend (helps hosted backends avoid cold-start delays)
   try {
     final backendService = BackendService();
@@ -45,7 +49,7 @@ void main() async {
   } catch (_) {
     // Ignore failures; UI will handle with normal error flow
   }
-  
+
   runApp(const SongBuddyApp());
 }
 
@@ -84,32 +88,18 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
-  final GlobalKey<HomeFeedScreenState> _homeFeedKey = GlobalKey<HomeFeedScreenState>();
-  final GlobalKey<SearchFeedScreenState> _searchFeedKey = GlobalKey<SearchFeedScreenState>();
-  final GlobalKey<ProfileScreenState> _profileKey = GlobalKey<ProfileScreenState>();
-  final GlobalKey<SettingsScreenState> _settingsKey = GlobalKey<SettingsScreenState>();
-  
-  late final AuthProvider _authProvider;
-  late final List<Widget> _screens;
+  late final GoogleAuthProvider _authProvider;
 
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize auth provider
-    _authProvider = AuthProvider();
+    _authProvider = GoogleAuthProvider();
     _authProvider.addListener(_onAuthChanged);
-    
+
     // Start professional sync when main screen loads (user is authenticated)
     SimpleLifecycleManager.instance.start();
-    
-    _screens = [
-      HomeFeedScreen(key: _homeFeedKey),
-      SearchFeedScreen(key: _searchFeedKey),
-      ProfileScreen(key: _profileKey),
-      SettingsScreen(key: _settingsKey),
-    ];
   }
 
   @override
@@ -126,30 +116,6 @@ class _MainScreenState extends State<MainScreen> {
     } else {
       // Start professional sync when user logs in
       SimpleLifecycleManager.instance.start();
-    }
-  }
-
-  void _onItemTapped(int index) {
-    // If tapping the same tab, scroll to top
-    if (_selectedIndex == index) {
-      if (index == 0) {
-        // Home tab - scroll to top and refresh
-        _homeFeedKey.currentState?.scrollToTopAndRefresh();
-      } else if (index == 1) {
-        // Search tab - scroll to top and refresh
-        _searchFeedKey.currentState?.scrollToTopAndRefresh();
-      } else if (index == 2) {
-        // Profile tab - scroll to top
-        _profileKey.currentState?.scrollToTop();
-      } else if (index == 3) {
-        // Settings tab - scroll to top
-        _settingsKey.currentState?.scrollToTop();
-      }
-    } else {
-      // Switch to different tab
-      setState(() {
-        _selectedIndex = index;
-      });
     }
   }
 
@@ -170,10 +136,14 @@ class MainScreenContent extends StatefulWidget {
 
 class _MainScreenContentState extends State<MainScreenContent> {
   int _selectedIndex = 0;
-  final GlobalKey<HomeFeedScreenState> _homeFeedKey = GlobalKey<HomeFeedScreenState>();
-  final GlobalKey<SearchFeedScreenState> _searchFeedKey = GlobalKey<SearchFeedScreenState>();
-  final GlobalKey<ProfileScreenState> _profileKey = GlobalKey<ProfileScreenState>();
-  final GlobalKey<SettingsScreenState> _settingsKey = GlobalKey<SettingsScreenState>();
+  final GlobalKey<HomeFeedScreenState> _homeFeedKey =
+      GlobalKey<HomeFeedScreenState>();
+  final GlobalKey<SearchFeedScreenState> _searchFeedKey =
+      GlobalKey<SearchFeedScreenState>();
+  final GlobalKey<ProfileScreenState> _profileKey =
+      GlobalKey<ProfileScreenState>();
+  final GlobalKey<SettingsScreenState> _settingsKey =
+      GlobalKey<SettingsScreenState>();
   late final List<Widget> _screens;
 
   @override

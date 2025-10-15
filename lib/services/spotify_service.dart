@@ -206,6 +206,13 @@ class SpotifyService {
       final uri = Uri.parse('$_baseUrl$endpoint');
       http.Response response;
 
+      // Enhanced debugging for token validation
+      print('🔍 [Spotify] Making request to: $uri');
+      print('🔍 [Spotify] Method: $method');
+      print('🔍 [Spotify] Token length: ${accessToken.length}');
+      print('🔍 [Spotify] Token preview: ${accessToken.substring(0, 10)}...');
+      print('🔍 [Spotify] Base URL: $_baseUrl');
+
       switch (method.toUpperCase()) {
         case 'GET':
           response = await _client.get(
@@ -250,6 +257,7 @@ class SpotifyService {
       // Debug endpoint + status code (no token)
       // ignore: avoid_print
       print('[Spotify] $method $endpoint -> ${response.statusCode}');
+      print('🔍 [Spotify] Response headers: ${response.headers}');
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         if (response.body.isEmpty) {
@@ -262,8 +270,25 @@ class SpotifyService {
             ? json.decode(response.body) as Map<String, dynamic>
             : <String, dynamic>{};
         
+        // Enhanced error logging for debugging
+        print('❌ [Spotify] Error response body: ${response.body}');
+        print('❌ [Spotify] Parsed error data: $errorData');
+        
+        String errorMessage = 'API request failed';
+        if (response.statusCode == 403) {
+          errorMessage = 'Access forbidden (403). This usually means:\n'
+              '1. Invalid or expired access token\n'
+              '2. Insufficient permissions in your Spotify app\n'
+              '3. Token doesn\'t have required scopes\n'
+              '4. Spotify app configuration issue';
+        } else if (response.statusCode == 401) {
+          errorMessage = 'Unauthorized (401). Token is invalid or expired.';
+        } else if (errorData['error']?['message'] != null) {
+          errorMessage = errorData['error']['message'];
+        }
+        
         throw SpotifyException(
-          errorData['error']?['message'] ?? 'API request failed',
+          errorMessage,
           statusCode: response.statusCode,
           errorType: errorData['error']?['type'],
         );

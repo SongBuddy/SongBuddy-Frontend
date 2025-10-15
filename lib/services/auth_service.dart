@@ -9,6 +9,7 @@ import 'spotify_service.dart';
 import 'package:songbuddy/models/AppUser.dart';
 import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/services/AuthFlow.dart';
+import 'package:songbuddy/utils/token_debug_helper.dart';
 
 /// Authentication state enum
 enum AuthState {
@@ -356,13 +357,42 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
 
       // Validate token by getting user info
       try {
+        debugPrint('🔍 [Auth] Validating token with Spotify /me endpoint...');
+        debugPrint('🔍 [Auth] Token length: ${_accessToken!.length}');
+        debugPrint('🔍 [Auth] Token preview: ${_accessToken!.substring(0, 10)}...');
+        
+        // First test environment configuration
+        final envTest = TokenDebugHelper.testEnvironmentConfig();
+        if (!envTest['allConfigured']) {
+          throw Exception('Environment variables not properly configured. Check your .env file.');
+        }
+        
+        // Test network connectivity
+        final networkTest = await TokenDebugHelper.testNetworkConnectivity();
+        if (!networkTest['reachable']) {
+          throw Exception('Cannot reach Spotify API: ${networkTest['error']}');
+        }
+        
+        // Test token validity with detailed debugging
+        final tokenTest = await TokenDebugHelper.testTokenValidity(_accessToken!);
+        if (!tokenTest['valid']) {
+          throw Exception('Token validation failed: ${tokenTest['error']}');
+        }
+        
         final userInfo = await _spotifyService.getCurrentUser(_accessToken!);
+        debugPrint('🔍 [Auth] Successfully got user info: ${userInfo.keys}');
+        
         _userId = userInfo['id'] as String?;
 
         if (_userId == null) {
+          debugPrint('❌ [Auth] User ID is null in response: $userInfo');
           throw Exception('Unable to retrieve user information from Spotify');
         }
+        
+        debugPrint('✅ [Auth] Token validation successful. User ID: $_userId');
       } catch (e) {
+        debugPrint('❌ [Auth] Token validation failed: $e');
+        debugPrint('❌ [Auth] Error type: ${e.runtimeType}');
         // If we can't get user info, the token might be invalid
         throw Exception('Token validation failed: ${e.toString()}');
       }
@@ -512,6 +542,16 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
 
   String _friendlyMessage(Object e) {
     final msg = e.toString();
+
+    // Check for 403 Forbidden error
+    if (msg.contains('403') || (e is SpotifyException && e.statusCode == 403)) {
+      return 'Spotify permissions not granted.\n\n'
+          'Please ensure:\n'
+          '1. Your Spotify app is in "Development Mode" and your email is added to "User Management"\n'
+          '2. Or submit your app for "Extended Quota Mode" approval\n\n'
+          'Visit: developer.spotify.com/dashboard';
+    }
+
     if (msg.contains('No internet connection')) {
       return 'No internet connection. Check your network and try again.';
     }
@@ -524,6 +564,12 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
     if (msg.contains('state') && msg.contains('Invalid')) {
       return 'Security check failed. Please try logging in again.';
     }
+
+    // Generic token validation errors
+    if (msg.contains('Token validation failed')) {
+      return 'Login failed. Please check your Spotify app settings and try again.';
+    }
+
     return msg;
   }
 

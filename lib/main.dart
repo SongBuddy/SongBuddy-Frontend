@@ -9,6 +9,7 @@ import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/widgets/riverpod_connection_overlay.dart';
 import 'package:songbuddy/services/simple_lifecycle_manager.dart';
+import 'package:songbuddy/utils/app_logger.dart';
 import 'screens/home_feed_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
@@ -33,9 +34,7 @@ void main() async {
   final authProvider = AuthProvider();
   if (authProvider.isAuthenticated) {
     await SimpleLifecycleManager.instance.start();
-    debugPrint('✅ Main: Professional sync started for authenticated user');
-  } else {
-    debugPrint('ℹ️ Main: User not authenticated, sync not started');
+    AppLogger.success('Sync started for authenticated user', tag: 'Main');
   }
   
   // Warm up backend (helps hosted backends avoid cold-start delays)

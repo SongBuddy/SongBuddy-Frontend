@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 
 class NotificationScreen extends StatelessWidget {
@@ -122,7 +123,7 @@ class NotificationScreen extends StatelessWidget {
                     border: Border.all(color: Colors.white70, width: 1.5),
                   ),
                   child: CircleAvatar(
-                    backgroundImage: NetworkImage(notification["avatarUrl"]),
+                    backgroundImage: CachedNetworkImageProvider(notification["avatarUrl"]),
                     radius: 22,
                   ),
                 ),
@@ -146,11 +147,13 @@ class NotificationScreen extends StatelessWidget {
                 if (notification["coverUrl"] != null)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      notification["coverUrl"],
+                    child: CachedNetworkImage(
+                      imageUrl: notification["coverUrl"],
                       width: 48,
                       height: 48,
                       fit: BoxFit.cover,
+                      memCacheWidth: 96,
+                      memCacheHeight: 96,
                     ),
                   )
                 else

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'dart:convert';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
 import '../models/Post.dart';
@@ -306,12 +307,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: trackImage.isNotEmpty
-                  ? Image.network(
-                      trackImage,
+                  ? CachedNetworkImage(
+                      imageUrl: trackImage,
                       width: 60,
                       height: 60,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
+                      memCacheWidth: 120,
+                      memCacheHeight: 120,
+                      errorWidget: (context, url, error) => _buildPlaceholderImage(),
                     )
                   : _buildPlaceholderImage(),
             ),
@@ -426,7 +429,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: trackImage.isNotEmpty
-                        ? Image.network(trackImage, width: 120, height: 120, fit: BoxFit.cover)
+                        ? CachedNetworkImage(
+                            imageUrl: trackImage,
+                            width: 120,
+                            height: 120,
+                            fit: BoxFit.cover,
+                            memCacheWidth: 240,
+                            memCacheHeight: 240,
+                          )
                         : _buildPlaceholderImage(),
                   ),
                 ),

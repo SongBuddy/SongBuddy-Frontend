@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
 import 'package:songbuddy/screens/create_post_screen.dart';
@@ -187,7 +188,14 @@ class _CreatePostSheetState extends State<_CreatePostSheet> with SingleTickerPro
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: imageUrl != null
-                ? Image.network(imageUrl, width: 48, height: 48, fit: BoxFit.cover)
+                ? CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                    memCacheWidth: 96,
+                    memCacheHeight: 96,
+                  )
                 : Container(
                     width: 48,
                     height: 48,

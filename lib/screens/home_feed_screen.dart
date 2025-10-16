@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
 import 'package:songbuddy/screens/notification_screen.dart';
@@ -601,7 +602,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
               radius: 24,
               backgroundColor: Colors.purple,
               backgroundImage: profilePicture.isNotEmpty
-                  ? NetworkImage(profilePicture)
+                  ? CachedNetworkImageProvider(profilePicture)
                   : null,
               child: profilePicture.isEmpty
                   ? const Icon(Icons.person, color: Colors.white)

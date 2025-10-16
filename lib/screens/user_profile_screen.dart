@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
 import 'package:songbuddy/providers/auth_provider.dart';
@@ -598,7 +599,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
               CircleAvatar(
                 radius: 24,
                 backgroundColor: AppColors.onDarkPrimary.withOpacity(0.12),
-                backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                backgroundImage: avatarUrl != null ? CachedNetworkImageProvider(avatarUrl) : null,
                 child: avatarUrl == null
                     ? const Icon(Icons.person, color: AppColors.onDarkPrimary, size: 24)
                     : null,
@@ -873,7 +874,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: imageUrl != null
-                ? Image.network(imageUrl, width: 56, height: 56, fit: BoxFit.cover)
+                ? CachedNetworkImage(imageUrl: imageUrl, width: 56, height: 56, fit: BoxFit.cover, memCacheWidth: 112, memCacheHeight: 112)
                 : Container(
                     width: 56,
                     height: 56,
@@ -903,7 +904,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundImage: url != null ? NetworkImage(url) : null,
+                backgroundImage: url != null ? CachedNetworkImageProvider(url) : null,
                 child: url == null ? const Icon(Icons.person, color: AppColors.onDarkSecondary, size: 20) : null,
               ),
               const SizedBox(height: 6),
@@ -1002,11 +1003,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
                ClipRRect(
                  borderRadius: BorderRadius.circular(8),
                  child: imageUrl != null
-                     ? Image.network(
-                         imageUrl, 
-                         width: 48, 
-                         height: 48, 
+                     ? CachedNetworkImage(
+                         imageUrl: imageUrl,
+                         width: 48,
+                         height: 48,
                          fit: BoxFit.cover,
+                         memCacheWidth: 96,
+                         memCacheHeight: 96,
                        )
                      : Container(
                          width: 48,
@@ -1085,7 +1088,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
               leading: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: imageUrl != null
-                    ? Image.network(imageUrl, width: 40, height: 40, fit: BoxFit.cover)
+                    ? CachedNetworkImage(imageUrl: imageUrl, width: 40, height: 40, fit: BoxFit.cover, memCacheWidth: 80, memCacheHeight: 80)
                     : Container(
                         width: 40,
                         height: 40,
@@ -1750,7 +1753,7 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
             child: CircleAvatar(
               radius: 20,
               backgroundColor: AppColors.onDarkPrimary.withOpacity(0.1),
-              backgroundImage: profilePicture != null ? NetworkImage(profilePicture) : null,
+              backgroundImage: profilePicture != null ? CachedNetworkImageProvider(profilePicture) : null,
               child: profilePicture == null
                   ? const Icon(Icons.person, color: AppColors.onDarkPrimary, size: 20)
                   : null,

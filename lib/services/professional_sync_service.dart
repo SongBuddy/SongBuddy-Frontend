@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:songbuddy/services/spotify_service.dart';
 import 'package:songbuddy/services/backend_service.dart';
+import 'package:songbuddy/utils/app_logger.dart';
 
 /// Professional sync service - like Spotify, Instagram, Uber
 /// Single service that adapts based on app state
@@ -35,43 +35,37 @@ class ProfessionalSyncService {
   /// Initialize the service (called once at app start)
   Future<void> initialize() async {
     if (_isInitialized) return;
-    
-    debugPrint('🎵 ProfessionalSyncService: Initializing');
     _isInitialized = true;
-    debugPrint('✅ ProfessionalSyncService: Initialized');
+    AppLogger.success('Sync service initialized', tag: 'Sync');
   }
 
   /// Start sync service (called when user is authenticated)
   Future<void> start() async {
     if (!_isInitialized) await initialize();
     if (_isActive) return;
-    
-    debugPrint('🎵 ProfessionalSyncService: Starting');
+
     _isActive = true;
-    
+
     // Start with appropriate interval based on app state
     _startSyncTimer();
-    debugPrint('✅ ProfessionalSyncService: Started');
+    AppLogger.success('Sync service started', tag: 'Sync');
   }
 
   /// Stop sync service (called when user logs out)
   Future<void> stop() async {
     if (!_isActive) return;
-    
-    debugPrint('🎵 ProfessionalSyncService: Stopping');
+
     _stopSyncTimer();
     _isActive = false;
-    debugPrint('✅ ProfessionalSyncService: Stopped');
+    AppLogger.info('Sync service stopped', tag: 'Sync');
   }
 
   /// Handle app lifecycle changes (foreground/background)
   void handleAppStateChange(bool isForeground) {
     if (!_isActive) return;
-    
+
     if (_isAppInForeground != isForeground) {
       _isAppInForeground = isForeground;
-      debugPrint('🎵 ProfessionalSyncService: App ${isForeground ? 'foreground' : 'background'}');
-      
       // Restart timer with appropriate interval
       _startSyncTimer();
     }
@@ -80,17 +74,15 @@ class ProfessionalSyncService {
   /// Force immediate sync (for user actions)
   Future<void> forceSync() async {
     if (!_isActive) return;
-    debugPrint('🎵 ProfessionalSyncService: Force sync requested');
     await _performSync();
   }
 
   /// Start sync timer with appropriate interval
   void _startSyncTimer() {
     _stopSyncTimer();
-    
+
     final interval = _isAppInForeground ? _foregroundInterval : _backgroundInterval;
-    debugPrint('🎵 ProfessionalSyncService: Starting timer (${interval.inSeconds}s intervals)');
-    
+
     _syncTimer = Timer.periodic(interval, (timer) {
       _performSync();
     });
@@ -119,8 +111,6 @@ class ProfessionalSyncService {
 
       // Check if song has changed
       if (_hasSongChanged(_lastCurrentlyPlaying, currentlyPlaying)) {
-        debugPrint('🎵 ProfessionalSyncService: Song changed - syncing');
-        
         // Sync to backend
         final success = await _backendService.updateCurrentlyPlaying(
           userId,
@@ -129,12 +119,15 @@ class ProfessionalSyncService {
 
         if (success) {
           _lastCurrentlyPlaying = currentlyPlaying;
-          debugPrint('✅ ProfessionalSyncService: Synced successfully');
+          AppLogger.sync('Song synced successfully');
         }
       }
     } catch (e) {
-      // Silent error handling - don't spam logs with network errors
-      debugPrint('🎵 ProfessionalSyncService: Sync error (handled): ${e.runtimeType}');
+      // Silent error handling - common network errors don't need logging
+      // Only log unexpected errors
+      if (e.runtimeType.toString().contains('Exception')) {
+        AppLogger.error('Sync failed', error: e, tag: 'Sync');
+      }
     }
   }
 

@@ -651,20 +651,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> with WidgetsBindi
                         ],
                       ),
                     ],
-                    // Show followers count from widget data or profile data
-                    if (followers != null || _profileData != null) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.people, size: 12, color: AppColors.onDarkSecondary),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${followers ?? _profileData?.user.followersCount ?? 0} followers',
-                            style: AppTextStyles.captionOnDark.copyWith(fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ],
                   ],
                 ),
               ),

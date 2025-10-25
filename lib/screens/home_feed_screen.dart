@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
 import 'package:songbuddy/screens/notification_screen.dart';
@@ -13,6 +14,7 @@ import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/services/spotify_deep_link_service.dart';
 import 'package:songbuddy/utils/post_sharing_utils.dart';
 import 'package:songbuddy/utils/error_snackbar_utils.dart';
+import 'package:songbuddy/utils/app_logger.dart';
 
 class HomeFeedScreen extends StatefulWidget {
   const HomeFeedScreen({super.key});
@@ -114,7 +116,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
         await _loadSuggestedUsers();
       }
     } catch (e) {
-      print('❌ HomeFeedScreen: Failed to fetch posts: $e');
+      AppLogger.error('Failed to fetch posts', error: e, tag: 'HomeFeed');
       _hasError = true; // Set error state
       if (mounted) {
         ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'load_posts');
@@ -131,11 +133,6 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
 
   Future<void> _fetchFollowingPosts() async {
     try {
-      print('🔗 HomeFeedScreen: Fetching feed posts from users you follow...');
-      print('🔍 HomeFeedScreen: User ID: ${_authProvider.userId}');
-      print(
-          '🔍 HomeFeedScreen: Is authenticated: ${_authProvider.isAuthenticated}');
-
       final posts = await _backendService.getFeedPosts(
         _authProvider.userId!,
         currentUserId: _authProvider.userId,
@@ -143,28 +140,17 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
         offset: 0,
       );
 
-      print('📊 HomeFeedScreen: Received ${posts.length} posts from API');
-      print(
-          '📊 HomeFeedScreen: Posts details: ${posts.map((p) => '${p.songName} by ${p.artistName}').toList()}');
-
       setState(() {
         _posts = posts;
         _currentPage = 1;
         _hasMorePosts = posts.length >= _postsPerPage;
       });
 
-      print(
-          '✅ HomeFeedScreen: Successfully fetched ${posts.length} feed posts');
+      AppLogger.success('Fetched ${posts.length} posts', tag: 'HomeFeed');
     } catch (e) {
-      print('❌ HomeFeedScreen: Failed to fetch feed posts: $e');
-      print('❌ HomeFeedScreen: Error type: ${e.runtimeType}');
-      print('❌ HomeFeedScreen: Error details: $e');
-
-      // Don't show error here - let the caller handle it
-      // Just rethrow the error so the caller knows it failed
+      // Don't log here - let the caller handle it
       rethrow;
     }
-    // Removed finally block - let the caller handle loading state
   }
 
   Future<void> _loadMorePosts() async {
@@ -178,9 +164,6 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
       final nextPage = _currentPage + 1;
       final offset = (nextPage - 1) * _postsPerPage;
 
-      print(
-          '🔗 HomeFeedScreen: Loading more posts - Page: $nextPage, Offset: $offset');
-
       final newPosts = await _backendService.getFeedPosts(
         _authProvider.userId!,
         currentUserId: _authProvider.userId,
@@ -188,18 +171,15 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
         offset: offset,
       );
 
-      print('📊 HomeFeedScreen: Received ${newPosts.length} more posts');
-
       setState(() {
         _posts.addAll(newPosts);
         _currentPage = nextPage;
         _hasMorePosts = newPosts.length >= _postsPerPage;
       });
 
-      print(
-          '✅ HomeFeedScreen: Successfully loaded ${newPosts.length} more posts. Total: ${_posts.length}');
+      AppLogger.success('Loaded ${newPosts.length} more posts (total: ${_posts.length})', tag: 'HomeFeed');
     } catch (e) {
-      print('❌ HomeFeedScreen: Failed to load more posts: $e');
+      AppLogger.error('Failed to load more posts', error: e, tag: 'HomeFeed');
 
       if (mounted) {
         ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'load_posts');
@@ -267,19 +247,6 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
                   letterSpacing: 0.6,
                 ),
               ),
-              const Spacer(),
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const NotificationScreen()));
-                },
-                icon: const Icon(
-                  Icons.notifications_outlined,
-                  color: AppColors.onDarkSecondary,
-                ),
-              ),
             ],
           ),
         ),
@@ -309,15 +276,11 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
       final commonLetters = ['a', 'e', 'i', 'o', 'u'];
       for (final letter in commonLetters) {
         try {
-          print('🔍 HomeFeedScreen: Trying search with letter "$letter"');
           final users = await _backendService.searchUsers(letter, limit: 2);
-          print(
-              '✅ HomeFeedScreen: Found ${users.length} users with letter "$letter"');
           allUsers.addAll(users);
-
           if (allUsers.length >= 6) break;
         } catch (e) {
-          print('❌ HomeFeedScreen: Search failed for letter "$letter": $e');
+          continue; // Try next letter
         }
       }
 
@@ -326,15 +289,11 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
         final commonWords = ['user', 'music', 'song'];
         for (final word in commonWords) {
           try {
-            print('🔍 HomeFeedScreen: Trying search with word "$word"');
             final users = await _backendService.searchUsers(word, limit: 3);
-            print(
-                '✅ HomeFeedScreen: Found ${users.length} users with word "$word"');
             allUsers.addAll(users);
-
             if (allUsers.length >= 6) break;
           } catch (e) {
-            print('❌ HomeFeedScreen: Search failed for word "$word": $e');
+            continue; // Try next word
           }
         }
       }
@@ -354,17 +313,15 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
 
       final finalUsers = uniqueUsers.values.take(6).toList();
 
-      print(
-          '✅ HomeFeedScreen: Final suggested users: ${finalUsers.length} (current user filtered out)');
-      for (final user in finalUsers) {
-        print('   - ${user['displayName']} (@${user['username']})');
-      }
-
       setState(() {
         _suggestedUsers = finalUsers;
       });
+
+      if (finalUsers.isNotEmpty) {
+        AppLogger.success('Loaded ${finalUsers.length} suggested users', tag: 'HomeFeed');
+      }
     } catch (e) {
-      print('❌ HomeFeedScreen: Failed to load suggested users: $e');
+      AppLogger.error('Failed to load suggested users', error: e, tag: 'HomeFeed');
       // Set empty list on error
       setState(() {
         _suggestedUsers = [];
@@ -396,7 +353,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
         );
       }
     } catch (e) {
-      print('❌ HomeFeedScreen: Failed to follow user: $e');
+      AppLogger.error('Failed to follow user', error: e, tag: 'HomeFeed');
       if (mounted) {
         ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'follow_user');
       }
@@ -632,7 +589,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
               radius: 24,
               backgroundColor: Colors.purple,
               backgroundImage: profilePicture.isNotEmpty
-                  ? NetworkImage(profilePicture)
+                  ? CachedNetworkImageProvider(profilePicture)
                   : null,
               child: profilePicture.isEmpty
                   ? const Icon(Icons.person, color: Colors.white)
@@ -736,7 +693,7 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
 
           HapticFeedback.lightImpact();
         } catch (e) {
-          print('❌ HomeFeedScreen: Failed to toggle like: $e');
+          AppLogger.error('Failed to toggle like', error: e, tag: 'HomeFeed');
           ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'toggle_like');
         }
       },
@@ -745,18 +702,14 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
       },
       onOpenInSpotify: () async {
         try {
-          print(
-              '🔗 HomeFeedScreen: Opening song in Spotify: ${post.songName} by ${post.artistName}');
           final success = await SpotifyDeepLinkService.openSongInSpotify(
             songName: post.songName,
             artistName: post.artistName,
           );
 
           if (success) {
-            print('✅ HomeFeedScreen: Successfully opened song in Spotify');
             HapticFeedback.lightImpact();
           } else {
-            print('❌ HomeFeedScreen: Failed to open song in Spotify');
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content:
@@ -767,12 +720,11 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
             );
           }
         } catch (e) {
-          print('❌ HomeFeedScreen: Error opening Spotify: $e');
+          AppLogger.error('Error opening Spotify', error: e, tag: 'HomeFeed');
           ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'open_spotify');
         }
       },
       onUserTap: () {
-        print('👤 HomeFeedScreen: User tapped on ${post.username}');
         _navigateToUserProfile(
           post.userId,
           post.username,

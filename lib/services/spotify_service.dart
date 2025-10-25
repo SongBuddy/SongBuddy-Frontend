@@ -93,10 +93,7 @@ class SpotifyService {
           'redirect_uri': _redirectUri,
         },
       );
-      // Debug
-      // Do NOT log secrets; only method, endpoint, and status
-      // ignore: avoid_print
-      print('[Spotify] POST /api/token -> ${response.statusCode}');
+      // Token exchange successful - no need to log (success is implied by no error)
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
@@ -206,12 +203,7 @@ class SpotifyService {
       final uri = Uri.parse('$_baseUrl$endpoint');
       http.Response response;
 
-      // Enhanced debugging for token validation
-      print('🔍 [Spotify] Making request to: $uri');
-      print('🔍 [Spotify] Method: $method');
-      print('🔍 [Spotify] Token length: ${accessToken.length}');
-      print('🔍 [Spotify] Token preview: ${accessToken.substring(0, 10)}...');
-      print('🔍 [Spotify] Base URL: $_baseUrl');
+      // Verbose debug logging removed - errors provide sufficient detail
 
       switch (method.toUpperCase()) {
         case 'GET':
@@ -254,10 +246,7 @@ class SpotifyService {
           throw SpotifyException('Unsupported HTTP method: $method');
       }
 
-      // Debug endpoint + status code (no token)
-      // ignore: avoid_print
-      print('[Spotify] $method $endpoint -> ${response.statusCode}');
-      print('🔍 [Spotify] Response headers: ${response.headers}');
+      // API call successful - logging handled by error cases only
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         if (response.body.isEmpty) {
@@ -270,9 +259,7 @@ class SpotifyService {
             ? json.decode(response.body) as Map<String, dynamic>
             : <String, dynamic>{};
         
-        // Enhanced error logging for debugging
-        print('❌ [Spotify] Error response body: ${response.body}');
-        print('❌ [Spotify] Parsed error data: $errorData');
+        // Error details included in exception - no need for console spam
         
         String errorMessage = 'API request failed';
         if (response.statusCode == 403) {
@@ -328,8 +315,7 @@ class SpotifyService {
           'refresh_token': refreshToken,
         },
       );
-      // ignore: avoid_print
-      print('[Spotify] POST /api/token (refresh) -> ${response.statusCode}');
+      // Token refresh successful - no need to log
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;

@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class MusicPostCard extends StatefulWidget {
   final String username;
@@ -93,9 +94,17 @@ class _MusicPostCardState extends State<MusicPostCard> {
               Positioned.fill(
                 child: ImageFiltered(
                   imageFilter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: Image.network(
-                    widget.coverUrl,
+                  child: CachedNetworkImage(
+                    imageUrl: widget.coverUrl,
                     fit: BoxFit.cover,
+                    memCacheWidth: 400, // Reduce memory usage for blurred background
+                    fadeInDuration: const Duration(milliseconds: 200),
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey[900],
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[900],
+                    ),
                   ),
                 ),
               ),
@@ -134,7 +143,7 @@ class _MusicPostCardState extends State<MusicPostCard> {
                             ),
                             child: CircleAvatar(
                               radius: 14,
-                              backgroundImage: NetworkImage(widget.avatarUrl),
+                              backgroundImage: CachedNetworkImageProvider(widget.avatarUrl),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -213,27 +222,40 @@ class _MusicPostCardState extends State<MusicPostCard> {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: widget.coverUrl.isNotEmpty
-                                ? Image.network(
-                                    widget.coverUrl,
+                                ? CachedNetworkImage(
+                                    imageUrl: widget.coverUrl,
                                     width: 60,
                                     height: 60,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      print('❌ Image load error: $error');
-                                      return Container(
-                                        width: 60,
-                                        height: 60,
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[800],
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: const Icon(
-                                          Icons.music_note,
-                                          color: Colors.white70,
-                                          size: 24,
-                                        ),
-                                      );
-                                    },
+                                    memCacheWidth: 120, // 2x for retina displays
+                                    memCacheHeight: 120,
+                                    fadeInDuration: const Duration(milliseconds: 200),
+                                    placeholder: (context, url) => Container(
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[800],
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                        Icons.music_note,
+                                        color: Colors.white70,
+                                        size: 24,
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) => Container(
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[800],
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                        Icons.music_note,
+                                        color: Colors.white70,
+                                        size: 24,
+                                      ),
+                                    ),
                                   )
                                 : Container(
                                     width: 60,

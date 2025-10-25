@@ -10,6 +10,7 @@ import 'package:songbuddy/models/AppUser.dart';
 import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/services/AuthFlow.dart';
 import 'package:songbuddy/utils/token_debug_helper.dart';
+import 'package:songbuddy/utils/app_logger.dart';
 
 /// Authentication state enum
 enum AuthState {
@@ -99,7 +100,7 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
         }
       }
     } catch (e) {
-      debugPrint('Error initializing auth: $e');
+      AppLogger.error('Auth initialization failed', error: e, tag: 'Auth');
     }
 
     _state = AuthState.unauthenticated;
@@ -123,8 +124,7 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
       
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('Connectivity check failed: $e');
-      return false; // Return false if any network test fails
+      return false; // Network check failed - no need to log (expected in offline scenarios)
     }
   }
 
@@ -137,8 +137,7 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
       ).timeout(const Duration(seconds: 3));
       return response.statusCode == 200;
     } catch (e) {
-      debugPrint('Backend health check failed: $e');
-      return false;
+      return false; // Backend health check failed - no need to log (expected when server is down)
     }
   }
 
@@ -191,7 +190,6 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
 
       // Generate authorization URL with state
       final authUrl = _spotifyService.getAuthorizationUrl(state: stateParam);
-      debugPrint('Generated auth URL: $authUrl');
 
       // Launch the authorization URL
       final uri = Uri.parse(authUrl);
@@ -204,7 +202,6 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
           uri,
           mode: LaunchMode.externalApplication,
         );
-        debugPrint('External application launch: $launched');
         if (!launched) {
           // Fallback: in-app webview
           launched = await launchUrl(
@@ -213,15 +210,13 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
             webViewConfiguration:
                 const WebViewConfiguration(enableJavaScript: true),
           );
-          debugPrint('In-app webview launch: $launched');
         }
         if (!launched) {
           // Last resort: platform default
           launched = await launchUrl(uri);
-          debugPrint('Default launch: $launched');
         }
       } catch (e) {
-        debugPrint('URL launch failed: $e');
+        AppLogger.error('URL launch failed', error: e, tag: 'Auth');
       }
 
       if (!launched) {
@@ -229,15 +224,13 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
             'Could not open Spotify authorization page. Install or enable a web browser, or try again later.');
       }
 
-      debugPrint('URL launched successfully');
-
       // Smart OAuth monitoring - no arbitrary timeouts
       _isOAuthInProgress = true;
       _oauthStartTime = DateTime.now();
       _setupSmartOAuthMonitoring();
     } catch (e) {
-      debugPrint('Login error: $e');
-      
+      AppLogger.error('Login failed', error: e, tag: 'Auth');
+
       // Determine error type and provide appropriate message
       String errorMessage;
       final error = e.toString().toLowerCase();
@@ -275,24 +268,18 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Handle OAuth callback from deep link
   Future<void> _handleOAuthCallback(Uri uri) async {
-    debugPrint('Deep link received: $uri');
-    
     // OAuth process completed successfully
     _isOAuthInProgress = false;
     _timeoutTimer?.cancel();
     _timeoutTimer = null;
     WidgetsBinding.instance.removeObserver(this);
-    
+
     try {
       if (uri.scheme == 'songbuddy' && uri.host == 'callback') {
-        debugPrint('Processing Spotify callback...');
         final code = uri.queryParameters['code'];
         final error = uri.queryParameters['error'];
         final errorDescription = uri.queryParameters['error_description'];
         final state = uri.queryParameters['state'];
-
-        debugPrint(
-            'Callback parameters - code: ${code != null ? "present" : "missing"}, error: $error');
 
         // Validate state parameter to prevent CSRF
         final expectedState = await _secureStorage.read(key: _oauthStateKey);
@@ -303,7 +290,7 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
 
         if (error != null) {
           final errorMsg = errorDescription ?? error;
-          debugPrint('OAuth error received: $errorMsg');
+          AppLogger.error('OAuth error: $errorMsg', tag: 'Auth');
           if (error == 'access_denied') {
             throw Exception(
                 'You denied access. Please grant permissions to continue.');
@@ -312,19 +299,14 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
         }
 
         if (code == null) {
-          debugPrint('No authorization code received');
           throw Exception('No authorization code received from Spotify');
         }
 
-        debugPrint('Exchanging code for token...');
         // Exchange code for token
         await _exchangeCodeForToken(code);
-      } else {
-        debugPrint(
-            'Received non-Spotify deep link: ${uri.scheme}://${uri.host}');
       }
     } catch (e) {
-      debugPrint('Error in OAuth callback: $e');
+      AppLogger.error('OAuth callback failed', error: e, tag: 'Auth');
       _state = AuthState.error;
       _errorMessage = e.toString();
       notifyListeners();
@@ -357,42 +339,34 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
 
       // Validate token by getting user info
       try {
-        debugPrint('🔍 [Auth] Validating token with Spotify /me endpoint...');
-        debugPrint('🔍 [Auth] Token length: ${_accessToken!.length}');
-        debugPrint('🔍 [Auth] Token preview: ${_accessToken!.substring(0, 10)}...');
-        
         // First test environment configuration
         final envTest = TokenDebugHelper.testEnvironmentConfig();
         if (!envTest['allConfigured']) {
           throw Exception('Environment variables not properly configured. Check your .env file.');
         }
-        
+
         // Test network connectivity
         final networkTest = await TokenDebugHelper.testNetworkConnectivity();
         if (!networkTest['reachable']) {
           throw Exception('Cannot reach Spotify API: ${networkTest['error']}');
         }
-        
+
         // Test token validity with detailed debugging
         final tokenTest = await TokenDebugHelper.testTokenValidity(_accessToken!);
         if (!tokenTest['valid']) {
           throw Exception('Token validation failed: ${tokenTest['error']}');
         }
-        
+
         final userInfo = await _spotifyService.getCurrentUser(_accessToken!);
-        debugPrint('🔍 [Auth] Successfully got user info: ${userInfo.keys}');
-        
         _userId = userInfo['id'] as String?;
 
         if (_userId == null) {
-          debugPrint('❌ [Auth] User ID is null in response: $userInfo');
           throw Exception('Unable to retrieve user information from Spotify');
         }
-        
-        debugPrint('✅ [Auth] Token validation successful. User ID: $_userId');
+
+        AppLogger.success('Token validated: $_userId', tag: 'Auth');
       } catch (e) {
-        debugPrint('❌ [Auth] Token validation failed: $e');
-        debugPrint('❌ [Auth] Error type: ${e.runtimeType}');
+        AppLogger.error('Token validation failed', error: e, tag: 'Auth');
         // If we can't get user info, the token might be invalid
         throw Exception('Token validation failed: ${e.toString()}');
       }
@@ -402,32 +376,27 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
 
       // After successful Spotify auth, fetch profile and save to backend
       try {
-        debugPrint('Attempting to save user to backend...');
         final backendService = BackendService();
         // Initialize the backend service with auth service for token management
         backendService.initializeAuth(this);
         final authFlow = AuthFlow(_spotifyService, backendService);
         _appUser = await authFlow.loginAndSave(_accessToken!);
-        debugPrint('✅ User successfully saved to backend!');
+        AppLogger.success('User saved to backend', tag: 'Auth');
 
         // Ensure user data is properly loaded
         if (_appUser == null) {
-          debugPrint(
-              '⚠️ AppUser is null after backend save, loading from Spotify...');
           await _loadUserData();
         }
       } catch (e) {
         // Backend save failure - fallback to loading user data directly from Spotify
-        debugPrint('❌ Backend save failed: $e');
-        debugPrint(
-            '🔄 Falling back to loading user data directly from Spotify...');
+        AppLogger.warning('Backend save failed, using Spotify fallback', tag: 'Auth');
 
         try {
           // Load user data directly from Spotify as fallback
           await _loadUserData();
-          debugPrint('✅ User data loaded from Spotify as fallback');
+          AppLogger.success('User loaded from Spotify (fallback)', tag: 'Auth');
         } catch (spotifyError) {
-          debugPrint('❌ Failed to load user data from Spotify: $spotifyError');
+          AppLogger.error('Failed to load user data', error: spotifyError, tag: 'Auth');
 
           String errorMessage;
           if (e.toString().contains('Connection refused') ||
@@ -531,9 +500,9 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
 
       _state = AuthState.authenticated;
       notifyListeners();
-      debugPrint('✅ Token refreshed successfully');
+      AppLogger.success('Token refreshed', tag: 'Auth');
     } catch (e) {
-      debugPrint('❌ Token refresh failed: $e');
+      AppLogger.error('Token refresh failed', error: e, tag: 'Auth');
       // Don't automatically logout here - let the calling code decide
       // This allows for better error handling in different contexts
       rethrow;
@@ -597,9 +566,9 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
       // Step 3: All checks passed - proceed with logout
       await _performLogout();
       return LogoutResult.success();
-      
+
     } catch (e) {
-      debugPrint('Logout error: $e');
+      AppLogger.error('Logout failed', error: e, tag: 'Auth');
       return LogoutResult.failure('Logout failed: ${e.toString()}');
     }
   }
@@ -612,7 +581,7 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
       await _secureStorage.delete(key: _expiresAtKey);
       await _secureStorage.delete(key: _userIdKey);
     } catch (e) {
-      debugPrint('Error clearing stored tokens: $e');
+      AppLogger.error('Error clearing tokens', error: e, tag: 'Auth');
     }
 
     _accessToken = null;
@@ -654,9 +623,9 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
           await backendService.deleteUser(_userId!).timeout(
             const Duration(seconds: 10),
           );
-          debugPrint('✅ User account deleted from backend');
+          AppLogger.success('Account deleted from backend', tag: 'Auth');
         } catch (e) {
-          debugPrint('⚠️ Failed to delete user from backend: $e');
+          AppLogger.error('Backend account deletion failed', error: e, tag: 'Auth');
           return LogoutResult.failure('Failed to delete account from server: ${e.toString()}');
         }
       }
@@ -664,9 +633,9 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
       // Step 4: Clear all stored data locally
       await _performLogout();
       return LogoutResult.success();
-      
+
     } catch (e) {
-      debugPrint('Delete account error: $e');
+      AppLogger.error('Account deletion failed', error: e, tag: 'Auth');
       return LogoutResult.failure('Account deletion failed: ${e.toString()}');
     }
   }
@@ -699,12 +668,13 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
               : '',
         );
 
-        debugPrint('✅ User data loaded from Spotify: ${_appUser!.displayName}');
+        AppLogger.success('User data loaded: ${_appUser!.displayName}', tag: 'Auth');
         break; // Success, exit retry loop
       } catch (e) {
         retryCount++;
-        debugPrint(
-            'Failed to load user data from Spotify (attempt $retryCount): $e');
+        if (retryCount >= maxRetries) {
+          AppLogger.error('Failed to load user data after $retryCount attempts', error: e, tag: 'Auth');
+        }
 
         if (retryCount < maxRetries) {
           // Wait before retrying
@@ -725,8 +695,6 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
   /// Force refresh user data (useful after login)
   Future<void> refreshUserData() async {
     if (_accessToken == null) return;
-
-    debugPrint('🔄 Force refreshing user data...');
     await _loadUserData();
   }
 
@@ -776,7 +744,7 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Handle OAuth interruption (user cancelled, closed browser, etc.)
   void _handleOAuthInterruption(String message) {
-    debugPrint('OAuth interrupted: $message');
+    AppLogger.warning('OAuth interrupted: $message', tag: 'Auth');
     _isOAuthInProgress = false;
     _timeoutTimer?.cancel();
     _timeoutTimer = null;

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:songbuddy/screens/user_profile_screen.dart';
 import 'package:songbuddy/widgets/music_post_card.dart';
 import 'package:songbuddy/widgets/shimmer_post_card.dart';
@@ -347,10 +348,10 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
           return ListTile(
             leading: CircleAvatar(
               backgroundColor: Colors.purple,
-              backgroundImage: profilePicture.isNotEmpty 
-                  ? NetworkImage(profilePicture) 
+              backgroundImage: profilePicture.isNotEmpty
+                  ? CachedNetworkImageProvider(profilePicture)
                   : null,
-              child: profilePicture.isEmpty 
+              child: profilePicture.isEmpty
                   ? const Icon(Icons.person, color: Colors.white)
                   : null,
             ),

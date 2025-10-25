@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:songbuddy/screens/search_feed_Screen.dart';
@@ -9,6 +10,7 @@ import 'package:songbuddy/providers/auth_provider.dart';
 import 'package:songbuddy/services/backend_service.dart';
 import 'package:songbuddy/widgets/riverpod_connection_overlay.dart';
 import 'package:songbuddy/services/simple_lifecycle_manager.dart';
+import 'package:songbuddy/utils/app_logger.dart';
 import 'screens/home_feed_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
@@ -16,6 +18,12 @@ import 'widgets/bottom_nav_bar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Lock screen orientation to portrait mode only
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   
   // Load environment variables
   await dotenv.load(fileName: ".env");
@@ -33,9 +41,7 @@ void main() async {
   final authProvider = AuthProvider();
   if (authProvider.isAuthenticated) {
     await SimpleLifecycleManager.instance.start();
-    debugPrint('✅ Main: Professional sync started for authenticated user');
-  } else {
-    debugPrint('ℹ️ Main: User not authenticated, sync not started');
+    AppLogger.success('Sync started for authenticated user', tag: 'Main');
   }
   
   // Warm up backend (helps hosted backends avoid cold-start delays)

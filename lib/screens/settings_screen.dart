@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/auth_provider.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_text_styles.dart';
@@ -112,10 +113,10 @@ class SettingsScreenState extends State<SettingsScreen> {
     return _user?['email'] as String? ?? _authProvider.userId ?? 'Connected';
   }
 
-  NetworkImage? _getProfileImage() {
+  CachedNetworkImageProvider? _getProfileImage() {
     final images = (_user?['images'] as List<dynamic>?) ?? const [];
     if (images.isNotEmpty && images.first['url'] != null) {
-      return NetworkImage(images.first['url'] as String);
+      return CachedNetworkImageProvider(images.first['url'] as String);
     }
     return null;
   }

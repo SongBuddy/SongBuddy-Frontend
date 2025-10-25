@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:songbuddy/models/AppUser.dart';
 import 'package:songbuddy/models/Post.dart';
 import 'package:songbuddy/models/ProfileData.dart';
+import 'package:songbuddy/utils/app_logger.dart';
 import 'backend_api_service.dart';
 import 'http_client_service.dart';
 import 'auth_service.dart';
@@ -72,29 +72,23 @@ class BackendService {
 
   /// Test all possible backend URLs and return the working one
   static Future<String?> testAllUrls() async {
-    print('🔍 BackendService: Testing all possible backend URLs...');
-
     for (String url in alternativeUrls) {
       try {
-        print('🔍 BackendService: Testing URL: $url');
         final response = await SimpleHttpClient.get(
           "$url/health",
           headers: {"Content-Type": "application/json"},
         );
 
         if (response.statusCode == 200) {
-          print('✅ BackendService: SUCCESS! Working URL: $url');
+          AppLogger.success('Connected to backend: $url', tag: 'Backend');
           return url;
-        } else {
-          print(
-              '❌ BackendService: URL $url returned status ${response.statusCode}');
         }
       } catch (e) {
-        print('❌ BackendService: URL $url failed: $e');
+        continue; // Try next URL
       }
     }
 
-    print('❌ BackendService: No working URLs found!');
+    AppLogger.error('No working backend found', tag: 'Backend');
     return null;
   }
 
@@ -108,40 +102,35 @@ class BackendService {
 
       return response.statusCode == 200;
     } catch (e) {
-      print('❌ Backend connection test failed: $e');
+      AppLogger.warning('Backend health check failed', tag: 'Backend');
       return false;
     }
   }
 
   /// Find working backend URL by trying alternatives
   Future<String?> findWorkingBackendUrl() async {
-    print('🔍 BackendService: Trying to find working backend URL...');
-
     for (String url in alternativeUrls) {
       try {
-        print('🔍 BackendService: Trying URL: $url');
         final response = await SimpleHttpClient.get(
           "$url/health",
           headers: {"Content-Type": "application/json"},
         );
 
         if (response.statusCode == 200) {
-          print('✅ BackendService: Found working URL: $url');
+          AppLogger.success('Found working backend: $url', tag: 'Backend');
           return url;
         }
       } catch (e) {
-        print('❌ BackendService: URL $url failed: $e');
-        continue;
+        continue; // Try next URL
       }
     }
 
-    print('❌ BackendService: No working backend URL found');
+    AppLogger.error('No working backend URL found', tag: 'Backend');
     return null;
   }
 
   Future<AppUser?> saveUser(AppUser user) async {
     final url = "$baseUrl/api/users/save";
-    print('🔗 BackendService: Attempting to save user to: $url');
 
     try {
       final response = await _httpClient.post(
@@ -152,11 +141,9 @@ class BackendService {
         ),
       );
 
-      print(
-          '📡 BackendService: Save user response - Status: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = response.data;
+        AppLogger.success('User saved: ${user.displayName}', tag: 'Backend');
         return AppUser(
           id: data['id'] ?? '',
           displayName: data['displayName'] ?? '',
@@ -179,7 +166,7 @@ class BackendService {
             "Failed to save user: ${response.statusCode} - ${response.data}");
       }
     } catch (e) {
-      print('❌ BackendService: Save user error: $e');
+      AppLogger.error('Failed to save user', error: e, tag: 'Backend');
       throw Exception("Failed to save user: $e");
     }
   }
@@ -219,25 +206,21 @@ class BackendService {
 
   /// Update currently playing data for a user
   Future<bool> updateCurrentlyPlaying(String userId, Map<String, dynamic>? currentlyPlaying) async {
-    debugPrint('🎵 BackendService: Updating currently playing for user: $userId');
-    debugPrint('🎵 BackendService: Currently playing data: $currentlyPlaying');
-    
     try {
       final updates = {
         'currentlyPlaying': currentlyPlaying,
       };
-      
+
       final result = await updateUser(userId, updates);
-      
+
       if (result != null) {
-        debugPrint('✅ BackendService: Successfully updated currently playing');
         return true;
       } else {
-        debugPrint('❌ BackendService: Failed to update currently playing - no result');
+        AppLogger.warning('Failed to update currently playing', tag: 'Backend');
         return false;
       }
     } catch (e) {
-      debugPrint('❌ BackendService: Error updating currently playing: $e');
+      AppLogger.error('Error updating currently playing', error: e, tag: 'Backend');
       return false;
     }
   }
@@ -245,9 +228,6 @@ class BackendService {
   /// Delete user from backend
   Future<bool> deleteUser(String userId) async {
     try {
-      print(
-          '🔗 BackendService: Deleting user $userId from: $baseUrl/api/users/$userId');
-
       final response = await SimpleHttpClient.delete(
         "$baseUrl/api/users/$userId",
         headers: {
@@ -257,17 +237,15 @@ class BackendService {
         },
       );
 
-      print(
-          '📡 BackendService: Delete response - Status: ${response.statusCode}, Body: ${response.data}');
-
       if (response.statusCode == 200 || response.statusCode == 204) {
+        AppLogger.success('User deleted: $userId', tag: 'Backend');
         return true;
       } else {
         throw Exception(
             "Failed to delete user: ${response.statusCode} - ${response.data}");
       }
     } catch (e) {
-      print('❌ BackendService: Delete user error: $e');
+      AppLogger.error('Failed to delete user', error: e, tag: 'Backend');
 
       if (e
           .toString()
@@ -329,21 +307,7 @@ class BackendService {
   /// Create a new post
   Future<Post> createPost(Post post) async {
     final url = "$baseUrl/api/posts/create";
-    print('🔗 BackendService: Creating post at: $url');
-
-    // Debug: Print the JSON being sent
     final postJson = post.toJson();
-    print('🔍 BackendService: Sending JSON: ${jsonEncode(postJson)}');
-
-    // Debug: Check if username field exists and is not empty
-    if (postJson['username'] == null) {
-      print('❌ BackendService: Username field is NULL in JSON');
-    } else if (postJson['username'].toString().isEmpty) {
-      print('❌ BackendService: Username field is EMPTY in JSON');
-    } else {
-      print(
-          '✅ BackendService: Username field exists: "${postJson['username']}"');
-    }
 
     try {
       final response = await SimpleHttpClient.post(
@@ -356,18 +320,15 @@ class BackendService {
         body: jsonEncode(postJson),
       );
 
-      print(
-          '📡 BackendService: Create post response - Status: ${response.statusCode}, Body: ${response.data}');
-
       if (response.statusCode == 201) {
         final data = response.data;
-        print('🔍 BackendService: Backend returned data: $data');
 
         try {
-          return Post.fromJson(data);
+          final createdPost = Post.fromJson(data);
+          AppLogger.success('Post created: ${post.songName}', tag: 'Backend');
+          return createdPost;
         } catch (e) {
-          print('❌ BackendService: Error parsing Post.fromJson: $e');
-          print('❌ BackendService: Data that failed to parse: $data');
+          AppLogger.error('Failed to parse post response', error: e, tag: 'Backend');
           throw Exception("Failed to parse post data from backend: $e");
         }
       } else {
@@ -375,7 +336,7 @@ class BackendService {
             "Failed to create post: ${response.statusCode} - ${response.data}");
       }
     } catch (e) {
-      print('❌ BackendService: Create post error: $e');
+      AppLogger.error('Failed to create post', error: e, tag: 'Backend');
 
       if (e
           .toString()
@@ -399,7 +360,6 @@ class BackendService {
       {int limit = 20, int offset = 0, String? currentUserId}) async {
     final url =
         "$baseUrl/api/posts/following/$userId?limit=$limit&offset=$offset${currentUserId != null ? '&currentUserId=$currentUserId' : ''}";
-    print('🔗 BackendService: Getting following posts from: $url');
 
     final response = await SimpleHttpClient.get(
       url,
@@ -411,6 +371,7 @@ class BackendService {
       final posts = (data['posts'] as List<dynamic>? ?? [])
           .map((post) => Post.fromJson(post))
           .toList();
+      AppLogger.debug('Loaded ${posts.length} following posts', tag: 'Backend');
       return posts;
     } else {
       throw Exception("Failed to get following posts: ${response.data}");
@@ -422,7 +383,6 @@ class BackendService {
       {int limit = 20, int offset = 0, String? currentUserId}) async {
     final url =
         "$baseUrl/api/posts/feed/$userId?limit=$limit&offset=$offset${currentUserId != null ? '&currentUserId=$currentUserId' : ''}";
-    print('🔗 BackendService: Getting feed posts from: $url');
 
     final response = await _httpClient.get(
       url,
@@ -433,43 +393,25 @@ class BackendService {
       ),
     );
 
-    print('📡 BackendService: Feed response - Status: ${response.statusCode}');
-    print('📡 BackendService: Raw response body: ${response.data}');
-
     if (response.statusCode == 200) {
       final data = response.data;
-      print('🔍 BackendService: Parsed JSON data: $data');
-      print(
-          '🔍 BackendService: Data keys: ${data is Map ? data.keys.toList() : 'Not a Map'}');
 
       // Check different possible response structures
       List<dynamic> postsList = [];
 
       if (data['posts'] != null) {
         postsList = data['posts'] as List<dynamic>;
-        print(
-            '📊 BackendService: Found posts in data["posts"]: ${postsList.length} items');
       } else if (data['data'] != null) {
         postsList = data['data'] as List<dynamic>;
-        print(
-            '📊 BackendService: Found posts in data["data"]: ${postsList.length} items');
       } else if (data is List) {
         postsList = data;
-        print(
-            '📊 BackendService: Data is directly a list: ${postsList.length} items');
       } else {
-        print(
-            '❌ BackendService: No posts found in response. Available keys: ${data.keys.toList()}');
+        AppLogger.warning('No posts found in feed response', tag: 'Backend');
         return [];
       }
 
-      final posts = postsList.map((post) {
-        print('🔍 BackendService: Processing post: $post');
-        return Post.fromJson(post);
-      }).toList();
-
-      print(
-          '📊 BackendService: Successfully parsed ${posts.length} posts from feed');
+      final posts = postsList.map((post) => Post.fromJson(post)).toList();
+      AppLogger.info('Loaded ${posts.length} feed posts', tag: 'Backend');
       return posts;
     } else {
       throw Exception("Failed to get feed posts: ${response.data}");
@@ -481,8 +423,6 @@ class BackendService {
       {int page = 1, int limit = 20}) async {
     final url =
         "$baseUrl/api/users/search?q=${Uri.encodeComponent(query)}&page=$page&limit=$limit";
-    print('🔗 BackendService: Searching users with query: "$query"');
-    print('🔍 BackendService: URL -> $url');
 
     try {
       final response = await SimpleHttpClient.get(
@@ -490,12 +430,8 @@ class BackendService {
         headers: {"Content-Type": "application/json"},
       );
 
-      print(
-          '📡 BackendService: Search users response - Status: ${response.statusCode}');
-
       // Handle no results (404)
       if (response.statusCode == 404) {
-        print('⚠️ BackendService: No users found for query "$query"');
         return [];
       }
 
@@ -505,14 +441,14 @@ class BackendService {
 
         if (data is Map<String, dynamic> && data['data'] is List) {
           final users = List<Map<String, dynamic>>.from(data['data']);
-          print('✅ BackendService: Found ${users.length} users');
+          AppLogger.debug('Found ${users.length} users for "$query"', tag: 'Backend');
           return users;
         }
       }
 
       throw Exception('Unexpected response format: ${response.statusCode}');
     } catch (e) {
-      print('❌ BackendService: Search error: $e');
+      AppLogger.error('User search failed', error: e, tag: 'Backend');
       return [];
     }
   }
@@ -522,8 +458,6 @@ class BackendService {
       {String? userId, int page = 1, int limit = 20}) async {
     final url =
         "$baseUrl/api/posts/discovery?userId=${Uri.encodeComponent(userId ?? '')}&page=$page&limit=$limit";
-    print('🔗 BackendService: Getting discovery posts for user: $userId');
-    print('🔍 BackendService: URL -> $url');
 
     try {
       final response = await SimpleHttpClient.get(
@@ -531,22 +465,19 @@ class BackendService {
         headers: {"Content-Type": "application/json"},
       );
 
-      print(
-          '📡 BackendService: Discovery posts response - Status: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = response.data;
 
         if (data is Map<String, dynamic> && data['data'] is List) {
           final posts = List<Map<String, dynamic>>.from(data['data']);
-          print('✅ BackendService: Found ${posts.length} discovery posts');
+          AppLogger.debug('Found ${posts.length} discovery posts', tag: 'Backend');
           return posts;
         }
       }
 
       throw Exception('Unexpected response format: ${response.statusCode}');
     } catch (e) {
-      print('❌ BackendService: Discovery posts error: $e');
+      AppLogger.error('Discovery posts failed', error: e, tag: 'Backend');
       return [];
     }
   }
@@ -556,7 +487,6 @@ class BackendService {
       {int page = 1, int limit = 20, String? currentUserId}) async {
     final url =
         "$baseUrl/api/posts/search?q=${Uri.encodeComponent(query)}&page=$page&limit=$limit${currentUserId != null ? '&currentUserId=$currentUserId' : ''}";
-    print('🔗 BackendService: Searching posts with query: "$query"');
 
     try {
       final response = await SimpleHttpClient.get(
@@ -564,19 +494,15 @@ class BackendService {
         headers: {"Content-Type": "application/json"},
       );
 
-      print(
-          '📡 BackendService: Search posts response - Status: ${response.statusCode}');
-
       if (response.statusCode == 200) {
         final data = response.data;
         if (data['success'] == true && data['data'] != null) {
           final posts = (data['data'] as List<dynamic>)
               .map((post) => Post.fromJson(post))
               .toList();
-          print('✅ BackendService: Found ${posts.length} posts');
+          AppLogger.debug('Found ${posts.length} posts for "$query"', tag: 'Backend');
           return posts;
         } else {
-          print('❌ BackendService: Search posts failed: ${data['message']}');
           return [];
         }
       } else {
@@ -584,7 +510,7 @@ class BackendService {
             "Failed to search posts: ${response.statusCode} - ${response.data}");
       }
     } catch (e) {
-      print('❌ BackendService: Search posts error: $e');
+      AppLogger.error('Post search failed', error: e, tag: 'Backend');
       throw Exception("Failed to search posts: $e");
     }
   }
@@ -592,7 +518,6 @@ class BackendService {
   /// Like a post
   Future<bool> likePost(String postId, String userId) async {
     final url = "$baseUrl/api/posts/$postId/like";
-    print('🔗 BackendService: Liking post: $postId');
 
     final response = await SimpleHttpClient.post(
       url,
@@ -611,7 +536,6 @@ class BackendService {
   /// Unlike a post
   Future<bool> unlikePost(String postId, String userId) async {
     final url = "$baseUrl/api/posts/$postId/like";
-    print('🔗 BackendService: Unliking post: $postId');
 
     final response = await SimpleHttpClient.delete(
       url,
@@ -643,8 +567,6 @@ class BackendService {
   Future<Post> updatePost(
       String postId, String userId, String description) async {
     final url = "$baseUrl/api/posts/$postId";
-    print(
-        '🔗 BackendService: Updating post: $postId with description: $description');
 
     final response = await SimpleHttpClient.put(
       url,
@@ -655,11 +577,9 @@ class BackendService {
       }),
     );
 
-    print(
-        '📡 BackendService: Update response - Status: ${response.statusCode}, Body: ${response.data}');
-
     if (response.statusCode == 200) {
       final data = response.data;
+      AppLogger.success('Post updated: $postId', tag: 'Backend');
       return Post.fromJson(data);
     } else {
       throw Exception("Failed to update post: ${response.data}");
@@ -670,7 +590,6 @@ class BackendService {
   Future<Map<String, dynamic>> followUser(
       String currentUserId, String targetUserId) async {
     final url = "$baseUrl/api/users/$targetUserId/follow";
-    print('🔗 BackendService: Following user: $currentUserId -> $targetUserId');
 
     final response = await SimpleHttpClient.post(
       url,
@@ -680,13 +599,10 @@ class BackendService {
       }),
     );
 
-    print(
-        '📡 BackendService: Follow response - Status: ${response.statusCode}, Body: ${response.data}');
-
     if (response.statusCode == 200) {
       final data = response.data;
       if (data['success'] == true) {
-        print('✅ BackendService: Successfully followed user');
+        AppLogger.info('Followed user: $targetUserId', tag: 'Backend');
         return data['data'];
       } else {
         throw Exception("Failed to follow user: ${data['message']}");
@@ -701,8 +617,6 @@ class BackendService {
   Future<Map<String, dynamic>> unfollowUser(
       String currentUserId, String targetUserId) async {
     final url = "$baseUrl/api/users/$targetUserId/follow";
-    print(
-        '🔗 BackendService: Unfollowing user: $currentUserId -> $targetUserId');
 
     final response = await SimpleHttpClient.delete(
       url,
@@ -712,13 +626,10 @@ class BackendService {
       }),
     );
 
-    print(
-        '📡 BackendService: Unfollow response - Status: ${response.statusCode}, Body: ${response.data}');
-
     if (response.statusCode == 200) {
       final data = response.data;
       if (data['success'] == true) {
-        print('✅ BackendService: Successfully unfollowed user');
+        AppLogger.info('Unfollowed user: $targetUserId', tag: 'Backend');
         return data['data'];
       } else {
         throw Exception("Failed to unfollow user: ${data['message']}");
@@ -734,21 +645,15 @@ class BackendService {
       String currentUserId, String targetUserId) async {
     final url =
         "$baseUrl/api/users/$targetUserId/follow-status?currentUserId=$currentUserId";
-    print(
-        '🔗 BackendService: Checking follow status: $currentUserId -> $targetUserId');
 
     final response = await SimpleHttpClient.get(
       url,
       headers: {"Content-Type": "application/json"},
     );
 
-    print(
-        '📡 BackendService: Follow status response - Status: ${response.statusCode}, Body: ${response.data}');
-
     if (response.statusCode == 200) {
       final data = response.data;
       if (data['success'] == true) {
-        print('✅ BackendService: Successfully got follow status');
         return data['data'];
       } else {
         throw Exception("Failed to get follow status: ${data['message']}");
@@ -766,7 +671,6 @@ class BackendService {
     if (currentUserId != null) {
       url += "&currentUserId=$currentUserId";
     }
-    print('🔗 BackendService: Getting followers for user: $userId');
 
     try {
       final response = await SimpleHttpClient.get(
@@ -774,20 +678,15 @@ class BackendService {
         headers: {"Content-Type": "application/json"},
       );
 
-      print(
-          '📡 BackendService: Followers response - Status: ${response.statusCode}, Body: ${response.data}');
-
       if (response.statusCode == 200) {
         final data = response.data;
         if (data['success'] == true) {
-          print('✅ BackendService: Successfully got followers');
-          // Handle case where data might be null or undefined
           if (data['data'] == null) {
-            print(
-                '⚠️ BackendService: Followers data is null, returning empty list');
             return [];
           }
-          return List<Map<String, dynamic>>.from(data['data']);
+          final followers = List<Map<String, dynamic>>.from(data['data']);
+          AppLogger.debug('Loaded ${followers.length} followers', tag: 'Backend');
+          return followers;
         } else {
           throw Exception("Failed to get followers: ${data['message']}");
         }
@@ -796,9 +695,7 @@ class BackendService {
             "Failed to get followers: ${response.statusCode} - ${response.data}");
       }
     } catch (e) {
-      print('❌ BackendService: Error getting followers: $e');
-      // Return empty list instead of throwing error for better UX
-      print('⚠️ BackendService: Returning empty followers list due to error');
+      AppLogger.warning('Error getting followers', tag: 'Backend');
       return [];
     }
   }
@@ -810,7 +707,6 @@ class BackendService {
     if (currentUserId != null) {
       url += "&currentUserId=$currentUserId";
     }
-    print('🔗 BackendService: Getting following for user: $userId');
 
     try {
       final response = await SimpleHttpClient.get(
@@ -818,20 +714,15 @@ class BackendService {
         headers: {"Content-Type": "application/json"},
       );
 
-      print(
-          '📡 BackendService: Following response - Status: ${response.statusCode}, Body: ${response.data}');
-
       if (response.statusCode == 200) {
         final data = response.data;
         if (data['success'] == true) {
-          print('✅ BackendService: Successfully got following');
-          // Handle case where data might be null or undefined
           if (data['data'] == null) {
-            print(
-                '⚠️ BackendService: Following data is null, returning empty list');
             return [];
           }
-          return List<Map<String, dynamic>>.from(data['data']);
+          final following = List<Map<String, dynamic>>.from(data['data']);
+          AppLogger.debug('Loaded ${following.length} following', tag: 'Backend');
+          return following;
         } else {
           throw Exception("Failed to get following: ${data['message']}");
         }
@@ -840,9 +731,7 @@ class BackendService {
             "Failed to get following: ${response.statusCode} - ${response.data}");
       }
     } catch (e) {
-      print('❌ BackendService: Error getting following: $e');
-      // Return empty list instead of throwing error for better UX
-      print('⚠️ BackendService: Returning empty following list due to error');
+      AppLogger.warning('Error getting following', tag: 'Backend');
       return [];
     }
   }
@@ -850,8 +739,6 @@ class BackendService {
   /// Follow/unfollow a user (LEGACY - kept for backward compatibility)
   Future<bool> toggleFollow(String currentUserId, String targetUserId) async {
     final url = "$baseUrl/api/users/follow";
-    print(
-        '🔗 BackendService: Toggling follow: $currentUserId -> $targetUserId');
 
     final response = await SimpleHttpClient.post(
       url,
@@ -875,21 +762,15 @@ class BackendService {
       {String? currentUserId}) async {
     final url =
         "$baseUrl/api/users/$userId/profile${currentUserId != null ? '?currentUserId=$currentUserId' : ''}";
-    print('🔗 BackendService: Getting user profile from: $url');
-    print(
-        '🔍 BackendService: User ID: $userId, Current User ID: $currentUserId');
 
     // Test connection first
-    print('🔍 BackendService: Testing connection to backend...');
     final connectionTest = await testConnection();
     if (!connectionTest) {
-      print('❌ BackendService: Primary URL failed, trying alternatives...');
       final workingUrl = await findWorkingBackendUrl();
       if (workingUrl == null) {
         throw Exception(
             'Cannot connect to backend server. Please check your network connection and ensure the backend is running.');
       }
-      print('✅ BackendService: Using alternative URL: $workingUrl');
     }
 
     try {
@@ -898,31 +779,22 @@ class BackendService {
         headers: {"Content-Type": "application/json"},
       );
 
-      print(
-          '📡 BackendService: Get user profile response - Status: ${response.statusCode}');
-      print('📡 BackendService: Response body: ${response.data}');
-
       if (response.statusCode == 200) {
         final data = response.data;
-        print('🔍 BackendService: Parsed data: $data');
 
         if (data['success'] == true && data['data'] != null) {
           final profileData = ProfileData.fromJson(data['data']);
-          print('✅ BackendService: Successfully parsed profile data');
-          print(
-              '🔍 BackendService: User: ${profileData.user.displayName}, Posts: ${profileData.posts.length}');
+          AppLogger.info('Loaded profile: ${profileData.user.displayName} (${profileData.posts.length} posts)', tag: 'Backend');
           return profileData;
         } else {
           throw Exception("Invalid response format: ${response.data}");
         }
       } else {
-        print(
-            '❌ BackendService: HTTP error ${response.statusCode}: ${response.data}');
         throw Exception(
             "Failed to get user profile: ${response.statusCode} - ${response.data}");
       }
     } catch (e) {
-      print('❌ BackendService: Get user profile error: $e');
+      AppLogger.error('Failed to get user profile', error: e, tag: 'Backend');
       rethrow;
     }
   }
@@ -932,21 +804,15 @@ class BackendService {
       {int limit = 20, int offset = 0, String? currentUserId}) async {
     final url =
         "$baseUrl/api/posts/user/$userId?limit=$limit&offset=$offset${currentUserId != null ? '&currentUserId=$currentUserId' : ''}";
-    print('🔗 BackendService: Getting user posts from: $url');
-    print(
-        '🔍 BackendService: User ID: $userId, Current User ID: $currentUserId');
 
     // Test connection first
-    print('🔍 BackendService: Testing connection to backend...');
     final connectionTest = await testConnection();
     if (!connectionTest) {
-      print('❌ BackendService: Primary URL failed, trying alternatives...');
       final workingUrl = await findWorkingBackendUrl();
       if (workingUrl == null) {
         throw Exception(
             'Cannot connect to backend server. Please check your network connection and ensure the backend is running.');
       }
-      print('✅ BackendService: Using alternative URL: $workingUrl');
     }
 
     try {
@@ -955,17 +821,11 @@ class BackendService {
         headers: {"Content-Type": "application/json"},
       );
 
-      print(
-          '📡 BackendService: Get user posts response - Status: ${response.statusCode}');
-      print('📡 BackendService: Response body: ${response.data}');
-
       if (response.statusCode == 200) {
         final data = response.data;
-        print('🔍 BackendService: Parsed data: $data');
 
         // Check if data is null or empty
         if (data == null) {
-          print('❌ BackendService: Data is null');
           return [];
         }
 
@@ -973,35 +833,22 @@ class BackendService {
         List<dynamic>? postsList;
         if (data.containsKey('data')) {
           postsList = data['data'] as List<dynamic>?;
-          print('🔍 BackendService: Found posts in "data" field');
         } else if (data.containsKey('posts')) {
           postsList = data['posts'] as List<dynamic>?;
-          print('🔍 BackendService: Found posts in "posts" field');
         } else {
-          print('❌ BackendService: No "data" or "posts" field in response');
-          print('🔍 BackendService: Available keys: ${data.keys.toList()}');
-          return [];
-        }
-        print('🔍 BackendService: Posts list: $postsList');
-
-        if (postsList == null) {
-          print('❌ BackendService: Posts list is null');
           return [];
         }
 
-        if (postsList.isEmpty) {
-          print('✅ BackendService: Posts list is empty (no posts found)');
+        if (postsList == null || postsList.isEmpty) {
           return [];
         }
 
         final posts = postsList
             .map((post) {
-              print('🔍 BackendService: Processing post: $post');
               try {
                 return Post.fromJson(post);
               } catch (e) {
-                print('❌ BackendService: Error parsing post: $e');
-                print('❌ BackendService: Problematic post data: $post');
+                AppLogger.warning('Error parsing post', tag: 'Backend');
                 return null;
               }
             })
@@ -1009,16 +856,14 @@ class BackendService {
             .cast<Post>()
             .toList();
 
-        print('✅ BackendService: Successfully parsed ${posts.length} posts');
+        AppLogger.debug('Loaded ${posts.length} user posts', tag: 'Backend');
         return posts;
       } else {
-        print(
-            '❌ BackendService: HTTP error ${response.statusCode}: ${response.data}');
         throw Exception(
             "Failed to get user posts: ${response.statusCode} - ${response.data}");
       }
     } catch (e) {
-      print('❌ BackendService: Get user posts error: $e');
+      AppLogger.error('Failed to get user posts', error: e, tag: 'Backend');
       throw Exception("Failed to get user posts: $e");
     }
   }
@@ -1026,11 +871,9 @@ class BackendService {
   /// Delete a post
   Future<bool> deletePost(String postId, {String? userId}) async {
     final url = "$baseUrl/api/posts/$postId";
-    print('🔗 BackendService: Deleting post: $postId with userId: $userId');
 
     // Prepare request body with userId
     final requestBody = userId != null ? jsonEncode({"userId": userId}) : null;
-    print('🔍 BackendService: Request body: $requestBody');
 
     final response = await SimpleHttpClient.delete(
       url,
@@ -1038,10 +881,8 @@ class BackendService {
       body: requestBody,
     );
 
-    print(
-        '📡 BackendService: Delete response - Status: ${response.statusCode}, Body: ${response.data}');
-
     if (response.statusCode == 200 || response.statusCode == 204) {
+      AppLogger.success('Post deleted: $postId', tag: 'Backend');
       return true;
     } else {
       throw Exception("Failed to delete post: ${response.data}");

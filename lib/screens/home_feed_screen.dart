@@ -247,19 +247,6 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
                   letterSpacing: 0.6,
                 ),
               ),
-              const Spacer(),
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const NotificationScreen()));
-                },
-                icon: const Icon(
-                  Icons.notifications_outlined,
-                  color: AppColors.onDarkSecondary,
-                ),
-              ),
             ],
           ),
         ),

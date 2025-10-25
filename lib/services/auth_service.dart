@@ -28,7 +28,8 @@ class LogoutResult {
   LogoutResult._(this.isSuccess, this.errorMessage);
 
   factory LogoutResult.success() => LogoutResult._(true, null);
-  factory LogoutResult.failure(String message) => LogoutResult._(false, message);
+  factory LogoutResult.failure(String message) =>
+      LogoutResult._(false, message);
 }
 
 /// Authentication service to handle Spotify OAuth flow
@@ -115,13 +116,13 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
       if (connectivityResult == ConnectivityResult.none) {
         return false;
       }
-      
+
       // Then test actual network connectivity with a quick request
       final response = await http.get(
         Uri.parse('https://www.google.com'),
         headers: {'Content-Type': 'application/json'},
       ).timeout(const Duration(seconds: 3));
-      
+
       return response.statusCode == 200;
     } catch (e) {
       return false; // Network check failed - no need to log (expected in offline scenarios)
@@ -164,7 +165,8 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
       );
       if (!hasInternet) {
         _state = AuthState.error;
-        _errorMessage = 'No internet connection. Please check your network and try again.';
+        _errorMessage =
+            'No internet connection. Please check your network and try again.';
         notifyListeners();
         return;
       }
@@ -176,7 +178,8 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
       );
       if (!isBackendHealthy) {
         _state = AuthState.error;
-        _errorMessage = 'Server is currently unavailable. Please try again later.';
+        _errorMessage =
+            'Server is currently unavailable. Please try again later.';
         notifyListeners();
         return;
       }
@@ -234,19 +237,22 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
       // Determine error type and provide appropriate message
       String errorMessage;
       final error = e.toString().toLowerCase();
-      
+
       if (error.contains('timeout')) {
         errorMessage = 'Connection timeout. Please try again.';
       } else if (error.contains('network') || error.contains('connection')) {
-        errorMessage = 'Network connection failed. Please check your internet connection.';
+        errorMessage =
+            'Network connection failed. Please check your internet connection.';
       } else if (error.contains('server') || error.contains('backend')) {
-        errorMessage = 'Server is currently unavailable. Please try again later.';
+        errorMessage =
+            'Server is currently unavailable. Please try again later.';
       } else if (error.contains('browser') || error.contains('launch')) {
-        errorMessage = 'Cannot open Spotify authorization page. Please install a web browser and try again.';
+        errorMessage =
+            'Cannot open Spotify authorization page. Please install a web browser and try again.';
       } else {
         errorMessage = 'An unexpected error occurred. Please try again.';
       }
-      
+
       _handleConnectionError(errorMessage);
     }
   }
@@ -342,7 +348,8 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
         // First test environment configuration
         final envTest = TokenDebugHelper.testEnvironmentConfig();
         if (!envTest['allConfigured']) {
-          throw Exception('Environment variables not properly configured. Check your .env file.');
+          throw Exception(
+              'Environment variables not properly configured. Check your .env file.');
         }
 
         // Test network connectivity
@@ -352,7 +359,8 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
         }
 
         // Test token validity with detailed debugging
-        final tokenTest = await TokenDebugHelper.testTokenValidity(_accessToken!);
+        final tokenTest =
+            await TokenDebugHelper.testTokenValidity(_accessToken!);
         if (!tokenTest['valid']) {
           throw Exception('Token validation failed: ${tokenTest['error']}');
         }
@@ -389,14 +397,16 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
         }
       } catch (e) {
         // Backend save failure - fallback to loading user data directly from Spotify
-        AppLogger.warning('Backend save failed, using Spotify fallback', tag: 'Auth');
+        AppLogger.warning('Backend save failed, using Spotify fallback',
+            tag: 'Auth');
 
         try {
           // Load user data directly from Spotify as fallback
           await _loadUserData();
           AppLogger.success('User loaded from Spotify (fallback)', tag: 'Auth');
         } catch (spotifyError) {
-          AppLogger.error('Failed to load user data', error: spotifyError, tag: 'Auth');
+          AppLogger.error('Failed to load user data',
+              error: spotifyError, tag: 'Auth');
 
           String errorMessage;
           if (e.toString().contains('Connection refused') ||
@@ -551,7 +561,8 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
         onTimeout: () => false,
       );
       if (!hasInternet) {
-        return LogoutResult.failure('No internet connection. Cannot logout safely.');
+        return LogoutResult.failure(
+            'No internet connection. Cannot logout safely.');
       }
 
       // Step 2: Check backend availability for proper session cleanup
@@ -560,13 +571,13 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
         onTimeout: () => false,
       );
       if (!isBackendHealthy) {
-        return LogoutResult.failure('Server unavailable. Cannot logout safely.');
+        return LogoutResult.failure(
+            'Server unavailable. Cannot logout safely.');
       }
 
       // Step 3: All checks passed - proceed with logout
       await _performLogout();
       return LogoutResult.success();
-
     } catch (e) {
       AppLogger.error('Logout failed', error: e, tag: 'Auth');
       return LogoutResult.failure('Logout failed: ${e.toString()}');
@@ -604,7 +615,8 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
         onTimeout: () => false,
       );
       if (!hasInternet) {
-        return LogoutResult.failure('No internet connection. Cannot delete account.');
+        return LogoutResult.failure(
+            'No internet connection. Cannot delete account.');
       }
 
       // Step 2: Check backend availability
@@ -613,7 +625,8 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
         onTimeout: () => false,
       );
       if (!isBackendHealthy) {
-        return LogoutResult.failure('Server unavailable. Cannot delete account.');
+        return LogoutResult.failure(
+            'Server unavailable. Cannot delete account.');
       }
 
       // Step 3: Delete user from backend
@@ -621,19 +634,20 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
         try {
           final backendService = BackendService();
           await backendService.deleteUser(_userId!).timeout(
-            const Duration(seconds: 10),
-          );
+                const Duration(seconds: 10),
+              );
           AppLogger.success('Account deleted from backend', tag: 'Auth');
         } catch (e) {
-          AppLogger.error('Backend account deletion failed', error: e, tag: 'Auth');
-          return LogoutResult.failure('Failed to delete account from server: ${e.toString()}');
+          AppLogger.error('Backend account deletion failed',
+              error: e, tag: 'Auth');
+          return LogoutResult.failure(
+              'Failed to delete account from server: ${e.toString()}');
         }
       }
 
       // Step 4: Clear all stored data locally
       await _performLogout();
       return LogoutResult.success();
-
     } catch (e) {
       AppLogger.error('Account deletion failed', error: e, tag: 'Auth');
       return LogoutResult.failure('Account deletion failed: ${e.toString()}');
@@ -668,12 +682,14 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
               : '',
         );
 
-        AppLogger.success('User data loaded: ${_appUser!.displayName}', tag: 'Auth');
+        AppLogger.success('User data loaded: ${_appUser!.displayName}',
+            tag: 'Auth');
         break; // Success, exit retry loop
       } catch (e) {
         retryCount++;
         if (retryCount >= maxRetries) {
-          AppLogger.error('Failed to load user data after $retryCount attempts', error: e, tag: 'Auth');
+          AppLogger.error('Failed to load user data after $retryCount attempts',
+              error: e, tag: 'Auth');
         }
 
         if (retryCount < maxRetries) {
@@ -715,7 +731,8 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
     // Fallback: Only use timeout as last resort (much longer)
     _timeoutTimer = Timer(const Duration(minutes: 2), () {
       if (_isOAuthInProgress && _state == AuthState.authenticating) {
-        _handleOAuthInterruption('OAuth process took too long. Please try again.');
+        _handleOAuthInterruption(
+            'OAuth process took too long. Please try again.');
       }
     });
   }
@@ -723,10 +740,10 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
   /// Check if OAuth was completed when user returns to app
   void _checkOAuthCompletion() {
     if (!_isOAuthInProgress) return;
-    
+
     // Check if enough time has passed for user to complete OAuth
     final elapsedTime = DateTime.now().difference(_oauthStartTime!);
-    
+
     if (elapsedTime.inSeconds < 3) {
       // User returned too quickly - likely cancelled or closed browser
       _handleOAuthInterruption('OAuth was cancelled. Please try again.');
@@ -736,7 +753,8 @@ class AuthService extends ChangeNotifier with WidgetsBindingObserver {
       _timeoutTimer?.cancel();
       _timeoutTimer = Timer(const Duration(seconds: 10), () {
         if (_isOAuthInProgress && _state == AuthState.authenticating) {
-          _handleOAuthInterruption('OAuth process incomplete. Please try again.');
+          _handleOAuthInterruption(
+              'OAuth process incomplete. Please try again.');
         }
       });
     }

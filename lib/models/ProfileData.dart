@@ -23,7 +23,7 @@ class ProfileData {
   factory ProfileData.fromJson(Map<String, dynamic> json) {
     // Extract music data from the user object
     final userJson = json['user'] as Map<String, dynamic>;
-    
+
     return ProfileData(
       user: User.fromJson(userJson),
       posts: (json['posts'] as List<dynamic>)
@@ -32,13 +32,13 @@ class ProfileData {
       pagination: Pagination.fromJson(json['pagination']),
       // Music data is inside the user object
       currentlyPlaying: userJson['currentlyPlaying'] as Map<String, dynamic>?,
-      topArtists: userJson['topArtists'] != null 
+      topArtists: userJson['topArtists'] != null
           ? List<Map<String, dynamic>>.from(userJson['topArtists'])
           : const [],
-      topTracks: userJson['topTracks'] != null 
+      topTracks: userJson['topTracks'] != null
           ? List<Map<String, dynamic>>.from(userJson['topTracks'])
           : const [],
-      recentlyPlayed: userJson['recentlyPlayed'] != null 
+      recentlyPlayed: userJson['recentlyPlayed'] != null
           ? List<Map<String, dynamic>>.from(userJson['recentlyPlayed'])
           : const [],
     );
@@ -87,7 +87,8 @@ class User {
       followersCount: json['followersCount'] as int,
       followingCount: json['followingCount'] as int,
       postsCount: json['postsCount'] as int,
-      isFollowing: json['isFollowing'] as bool? ?? false, // Handle missing field
+      isFollowing:
+          json['isFollowing'] as bool? ?? false, // Handle missing field
     );
   }
 

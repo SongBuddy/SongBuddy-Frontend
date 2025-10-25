@@ -17,20 +17,20 @@ class ErrorSnackbarUtils {
     print('🔍 ErrorSnackbarUtils: Error: $error');
     print('🔍 ErrorSnackbarUtils: Operation: $operation');
 
-    final message = operation != null 
+    final message = operation != null
         ? ApiErrorHandler.getOperationErrorMessage(operation, error)
         : ApiErrorHandler.getUserFriendlyMessage(error);
-    
+
     print('🔍 ErrorSnackbarUtils: Generated message: $message');
-    
+
     // Temporarily show all errors for debugging
     if (message == null) {
       print('🔍 ErrorSnackbarUtils: Message is null, not showing snackbar');
       return;
     }
-    
+
     final severity = ApiErrorHandler.getErrorSeverity(error);
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),

@@ -19,7 +19,7 @@ class SettingsScreenState extends State<SettingsScreen> {
   late final AuthProvider _authProvider;
   late final SpotifyService _spotifyService;
   late final ScrollController _scrollController;
-  
+
   bool _loading = false;
   Map<String, dynamic>? _user;
 
@@ -63,7 +63,7 @@ class SettingsScreenState extends State<SettingsScreen> {
   void _onAuthStateChanged() {
     if (!mounted) return;
     setState(() {});
-    
+
     // If user just logged in, fetch user data
     if (_authProvider.isAuthenticated && _user == null) {
       _fetchUserData();
@@ -71,13 +71,15 @@ class SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _fetchUserData() async {
-    if (!_authProvider.isAuthenticated || _authProvider.accessToken == null) return;
+    if (!_authProvider.isAuthenticated || _authProvider.accessToken == null) {
+      return;
+    }
     setState(() {
       _loading = true;
     });
     final token = _authProvider.accessToken;
     if (token == null) return;
-    
+
     try {
       // Get user data directly from Spotify API (same as profile screen)
       final user = await _spotifyService.getCurrentUser(token);
@@ -97,7 +99,7 @@ class SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _refreshData() async {
     if (!_authProvider.isAuthenticated) return;
-    
+
     try {
       await _fetchUserData();
     } catch (e) {
@@ -152,17 +154,18 @@ class SettingsScreenState extends State<SettingsScreen> {
       }
 
       final result = await _authProvider.logout();
-      
+
       if (mounted) {
         if (result.isSuccess) {
           // Success - navigate to onboarding
-        Navigator.pushAndRemoveUntil(
-          context,
-            MaterialPageRoute(builder: (context) => const RiverpodConnectionOverlay(
-              child: OnboardingScreen(),
-            )),
-          (route) => false,
-        );
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const RiverpodConnectionOverlay(
+                      child: OnboardingScreen(),
+                    )),
+            (route) => false,
+          );
         } else {
           // Show error snackbar
           ScaffoldMessenger.of(context).showSnackBar(
@@ -215,15 +218,16 @@ class SettingsScreenState extends State<SettingsScreen> {
     }
 
     final result = await _authProvider.deleteAccount();
-    
-      if (mounted) {
+
+    if (mounted) {
       if (result.isSuccess) {
         // Success - navigate to onboarding
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const RiverpodConnectionOverlay(
-            child: OnboardingScreen(),
-          )),
+          MaterialPageRoute(
+              builder: (context) => const RiverpodConnectionOverlay(
+                    child: OnboardingScreen(),
+                  )),
           (route) => false,
         );
       } else {
@@ -248,7 +252,10 @@ class SettingsScreenState extends State<SettingsScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
+            colors: [
+              AppColors.darkBackgroundStart,
+              AppColors.darkBackgroundEnd
+            ],
           ),
         ),
         child: SafeArea(
@@ -314,7 +321,6 @@ class SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -357,7 +363,8 @@ class SettingsScreenState extends State<SettingsScreen> {
             ? const _SkeletonBox(width: 120, height: 16, radius: 4)
             : Text(
                 _getDisplayName(),
-                style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+                style: AppTextStyles.bodyOnDark
+                    .copyWith(fontWeight: FontWeight.w600),
               ),
         subtitle: _loading
             ? const _SkeletonBox(width: 180, height: 12, radius: 4)
@@ -377,7 +384,8 @@ class SettingsScreenState extends State<SettingsScreen> {
                     // Ignore errors
                   }
                 },
-                icon: const Icon(Icons.refresh, color: AppColors.primary, size: 20),
+                icon: const Icon(Icons.refresh,
+                    color: AppColors.primary, size: 20),
               ),
             const Icon(Icons.check_circle, color: AppColors.primary),
           ],
@@ -454,7 +462,8 @@ class SettingsScreenState extends State<SettingsScreen> {
           subtitle,
           style: AppTextStyles.captionOnDark,
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.onDarkSecondary, size: 16),
+        trailing: const Icon(Icons.arrow_forward_ios,
+            color: AppColors.onDarkSecondary, size: 16),
         onTap: onTap,
       ),
     );
@@ -500,7 +509,8 @@ class _SkeletonBox extends StatelessWidget {
   final double width;
   final double height;
   final double radius;
-  const _SkeletonBox({required this.width, required this.height, this.radius = 8});
+  const _SkeletonBox(
+      {required this.width, required this.height, this.radius = 8});
 
   @override
   Widget build(BuildContext context) {
@@ -544,13 +554,15 @@ class _Shimmer extends StatefulWidget {
   State<_Shimmer> createState() => _ShimmerState();
 }
 
-class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin {
+class _ShimmerState extends State<_Shimmer>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 3500))
+    _controller = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 3500))
       ..repeat();
   }
 
@@ -586,5 +598,3 @@ class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin 
     );
   }
 }
-
-

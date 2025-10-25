@@ -97,7 +97,8 @@ class _MusicPostCardState extends State<MusicPostCard> {
                   child: CachedNetworkImage(
                     imageUrl: widget.coverUrl,
                     fit: BoxFit.cover,
-                    memCacheWidth: 400, // Reduce memory usage for blurred background
+                    memCacheWidth:
+                        400, // Reduce memory usage for blurred background
                     fadeInDuration: const Duration(milliseconds: 200),
                     placeholder: (context, url) => Container(
                       color: Colors.grey[900],
@@ -128,7 +129,8 @@ class _MusicPostCardState extends State<MusicPostCard> {
 
               // Foreground content
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.max,
@@ -143,7 +145,8 @@ class _MusicPostCardState extends State<MusicPostCard> {
                             ),
                             child: CircleAvatar(
                               radius: 14,
-                              backgroundImage: CachedNetworkImageProvider(widget.avatarUrl),
+                              backgroundImage:
+                                  CachedNetworkImageProvider(widget.avatarUrl),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -174,12 +177,15 @@ class _MusicPostCardState extends State<MusicPostCard> {
                               onPressed: widget.onFollowPressed,
                               style: TextButton.styleFrom(
                                 backgroundColor: Colors.white.withOpacity(0.15),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 4),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20)),
                               ),
                               child: const Text(
                                 "Follow",
-                                style: TextStyle(color: Colors.white, fontSize: 12),
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 12),
                               ),
                             ),
                           ]
@@ -227,9 +233,11 @@ class _MusicPostCardState extends State<MusicPostCard> {
                                     width: 60,
                                     height: 60,
                                     fit: BoxFit.cover,
-                                    memCacheWidth: 120, // 2x for retina displays
+                                    memCacheWidth:
+                                        120, // 2x for retina displays
                                     memCacheHeight: 120,
-                                    fadeInDuration: const Duration(milliseconds: 200),
+                                    fadeInDuration:
+                                        const Duration(milliseconds: 200),
                                     placeholder: (context, url) => Container(
                                       width: 60,
                                       height: 60,
@@ -243,7 +251,8 @@ class _MusicPostCardState extends State<MusicPostCard> {
                                         size: 24,
                                       ),
                                     ),
-                                    errorWidget: (context, url, error) => Container(
+                                    errorWidget: (context, url, error) =>
+                                        Container(
                                       width: 60,
                                       height: 60,
                                       decoration: BoxDecoration(
@@ -333,7 +342,8 @@ class _MusicPostCardState extends State<MusicPostCard> {
                         const SizedBox(width: 4),
                         Text(
                           "$likes",
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 12),
                         ),
                         const SizedBox(width: 16),
                         IconButton(
@@ -365,5 +375,3 @@ class _MusicPostCardState extends State<MusicPostCard> {
     );
   }
 }
-
-

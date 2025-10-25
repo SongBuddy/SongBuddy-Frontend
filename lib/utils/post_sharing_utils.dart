@@ -11,26 +11,26 @@ class PostSharingUtils {
     String? description,
   }) {
     final buffer = StringBuffer();
-    
+
     // Song and artist with emoji
     buffer.writeln('🎵 $songName - $artistName');
-    
+
     // Posted by user
     buffer.writeln('Posted by $username');
-    
+
     // Add description if available
     if (description != null && description.trim().isNotEmpty) {
       buffer.writeln();
       buffer.writeln(description.trim());
     }
-    
+
     // Add app promotion
     buffer.writeln();
     buffer.write('Shared via SongBuddy 🎶');
-    
+
     return buffer.toString();
   }
-  
+
   /// Share a post using the Post model
   static void sharePost(Post post) {
     final text = generateShareText(
@@ -39,13 +39,13 @@ class PostSharingUtils {
       username: post.username,
       description: post.description,
     );
-    
+
     Share.share(
       text,
       subject: "Check out this song on SongBuddy!",
     );
   }
-  
+
   /// Share a post using individual parameters (for discovery posts)
   static void sharePostFromData({
     required String songName,
@@ -59,7 +59,7 @@ class PostSharingUtils {
       username: username,
       description: description,
     );
-    
+
     Share.share(
       text,
       subject: "Check out this song on SongBuddy!",

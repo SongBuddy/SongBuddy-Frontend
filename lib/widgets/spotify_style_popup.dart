@@ -40,9 +40,9 @@ class SpotifyStylePopup extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              
+
               const SizedBox(height: 16),
-              
+
               // Subtitle
               Text(
                 message,
@@ -53,9 +53,9 @@ class SpotifyStylePopup extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // Action button
               if (onRetry != null)
                 SizedBox(

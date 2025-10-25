@@ -5,14 +5,14 @@ import 'package:http/http.dart' as http;
 class BackendDiscoveryService {
   // Common IP addresses to try
   static const List<String> commonIPs = [
-    '127.0.0.1',      // Localhost
-    '10.0.2.2',       // Android Emulator
-    'localhost',       // Fallback
+    '127.0.0.1', // Localhost
+    '10.0.2.2', // Android Emulator
+    'localhost', // Fallback
   ];
-  
+
   // Common ports to try
   static const List<int> commonPorts = [3000, 3001, 8080, 8000];
-  
+
   // Cache for discovered backend
   static String? _discoveredBackendUrl;
   static DateTime? _lastDiscovery;
@@ -21,14 +21,14 @@ class BackendDiscoveryService {
   /// Discover the backend URL automatically
   static Future<String?> discoverBackend() async {
     // Check cache first
-    if (_discoveredBackendUrl != null && 
-        _lastDiscovery != null && 
+    if (_discoveredBackendUrl != null &&
+        _lastDiscovery != null &&
         DateTime.now().difference(_lastDiscovery!) < cacheTimeout) {
       return _discoveredBackendUrl;
     }
 
     print('🔍 Discovering backend...');
-    
+
     // Try common IPs and ports
     for (String ip in commonIPs) {
       for (int port in commonPorts) {
@@ -41,10 +41,10 @@ class BackendDiscoveryService {
         }
       }
     }
-    
+
     // Try to get local network IPs
     await _tryLocalNetworkIPs();
-    
+
     print('❌ Backend not found automatically');
     return null;
   }
@@ -56,7 +56,7 @@ class BackendDiscoveryService {
         Uri.parse('$baseUrl/health'),
         headers: {'Content-Type': 'application/json'},
       ).timeout(const Duration(seconds: 2));
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         return data['success'] == true;
@@ -73,10 +73,11 @@ class BackendDiscoveryService {
       // Get local IP addresses
       for (var interface in await NetworkInterface.list()) {
         for (var addr in interface.addresses) {
-          if (addr.type == InternetAddressType.IPv4 && 
+          if (addr.type == InternetAddressType.IPv4 &&
               !addr.isLoopback &&
-              !addr.address.startsWith('169.254.')) { // Skip auto-assigned IPs
-            
+              !addr.address.startsWith('169.254.')) {
+            // Skip auto-assigned IPs
+
             String ip = addr.address;
             for (int port in commonPorts) {
               String url = 'http://$ip:$port';

@@ -25,7 +25,8 @@ class CreatePostScreen extends StatefulWidget {
   State<CreatePostScreen> createState() => _CreatePostScreenState();
 }
 
-class _CreatePostScreenState extends State<CreatePostScreen> with TickerProviderStateMixin {
+class _CreatePostScreenState extends State<CreatePostScreen>
+    with TickerProviderStateMixin {
   late final TextEditingController _descriptionController;
   late final AuthProvider _authProvider;
   late final BackendService _backendService;
@@ -118,19 +119,23 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
 
   Future<void> _createPost() async {
     print('🚀 ===== STARTING POST CREATION =====');
-    print('🔍 CreatePost: User authenticated: ${_authProvider.isAuthenticated}');
-    print('🔍 CreatePost: Access token available: ${_authProvider.accessToken != null}');
+    print(
+        '🔍 CreatePost: User authenticated: ${_authProvider.isAuthenticated}');
+    print(
+        '🔍 CreatePost: Access token available: ${_authProvider.accessToken != null}');
     print('🔍 CreatePost: Selected track: ${widget.selectedTrack['name']}');
-    print('🔍 CreatePost: Description length: ${_descriptionController.text.length}');
-    
+    print(
+        '🔍 CreatePost: Description length: ${_descriptionController.text.length}');
+
     // Check if user is authenticated
     if (!_authProvider.isAuthenticated) {
       _showSnackBar('Please log in to create a post', Colors.orange);
       return;
     }
-    
+
     if (_authProvider.accessToken == null) {
-      _showSnackBar('Access token not found. Please log in again.', Colors.orange);
+      _showSnackBar(
+          'Access token not found. Please log in again.', Colors.orange);
       return;
     }
 
@@ -141,23 +146,26 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
     try {
       // Fetch current user data from Spotify API
       print('🔍 CreatePost: Fetching user data from Spotify API...');
-      final userData = await _spotifyService.getCurrentUser(_authProvider.accessToken!);
-      
+      final userData =
+          await _spotifyService.getCurrentUser(_authProvider.accessToken!);
+
       // Extract user information from Spotify API response
       final userId = userData['id'] as String? ?? '';
       final displayName = userData['display_name'] as String? ?? '';
-      final profilePicture = (userData['images'] as List<dynamic>?)?.isNotEmpty == true
-          ? userData['images'][0]['url'] as String
-          : '';
-      
+      final profilePicture =
+          (userData['images'] as List<dynamic>?)?.isNotEmpty == true
+              ? userData['images'][0]['url'] as String
+              : '';
+
       print('🔍 CreatePost: Spotify User ID: $userId');
       print('🔍 CreatePost: Spotify Display Name: $displayName');
       print('🔍 CreatePost: Spotify Profile Picture: $profilePicture');
-      
+
       // Ensure we have a valid username
-      final finalUsername = displayName.trim().isNotEmpty ? displayName.trim() : 'Spotify User';
+      final finalUsername =
+          displayName.trim().isNotEmpty ? displayName.trim() : 'Spotify User';
       print('🔍 CreatePost: Final username: $finalUsername');
-      
+
       Post post;
       try {
         post = Post(
@@ -167,13 +175,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
           userProfilePicture: profilePicture,
           songName: widget.selectedTrack['name'] ?? 'Unknown Song',
           artistName: (widget.selectedTrack['artists'] as List<dynamic>?)
-              ?.map((artist) => artist['name'] as String)
-              .join(', ') ?? 'Unknown Artist',
-          songImage: (widget.selectedTrack['album']?['images'] as List<dynamic>?)
-              ?.isNotEmpty == true
-              ? widget.selectedTrack['album']['images'][0]['url'] as String
-              : '',
-          description: _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+                  ?.map((artist) => artist['name'] as String)
+                  .join(', ') ??
+              'Unknown Artist',
+          songImage:
+              (widget.selectedTrack['album']?['images'] as List<dynamic>?)
+                          ?.isNotEmpty ==
+                      true
+                  ? widget.selectedTrack['album']['images'][0]['url'] as String
+                  : '',
+          description: _descriptionController.text.trim().isEmpty
+              ? null
+              : _descriptionController.text.trim(),
           likeCount: 0,
           createdAt: DateTime.now(),
           timeline: 'now',
@@ -184,18 +197,21 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
         print('❌ CreatePost: Error creating Post object: $e');
         throw Exception('Failed to create post object: $e');
       }
-      
+
       // Debug: Print individual fields before creating Post
       print('🔍 CreatePost: userId: "$userId"');
       print('🔍 CreatePost: username: "$finalUsername"');
       print('🔍 CreatePost: userProfilePicture: "$profilePicture"');
-      print('🔍 CreatePost: songName: "${widget.selectedTrack['name'] ?? 'NULL'}"');
-      print('🔍 CreatePost: artistName: "${(widget.selectedTrack['artists'] as List<dynamic>?)?.map((artist) => artist['name'] as String).join(', ') ?? 'NULL'}"');
-      print('🔍 CreatePost: songImage: "${(widget.selectedTrack['album']?['images'] as List<dynamic>?)?.isNotEmpty == true ? widget.selectedTrack['album']['images'][0]['url'] as String : 'NULL'}"');
-      
+      print(
+          '🔍 CreatePost: songName: "${widget.selectedTrack['name'] ?? 'NULL'}"');
+      print(
+          '🔍 CreatePost: artistName: "${(widget.selectedTrack['artists'] as List<dynamic>?)?.map((artist) => artist['name'] as String).join(', ') ?? 'NULL'}"');
+      print(
+          '🔍 CreatePost: songImage: "${(widget.selectedTrack['album']?['images'] as List<dynamic>?)?.isNotEmpty == true ? widget.selectedTrack['album']['images'][0]['url'] as String : 'NULL'}"');
+
       // Debug: Print the post data being sent
       print('🔍 CreatePost: Post data: ${post.toJson()}');
-      
+
       // Comprehensive logging of all post information
       print('📝 ===== POST CREATION SUMMARY =====');
       print('👤 USER INFORMATION:');
@@ -203,11 +219,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
       print('   • Username: $finalUsername');
       print('   • Profile Picture: $profilePicture');
       print('🎵 SONG INFORMATION:');
-      print('   • Song Name: ${widget.selectedTrack['name'] ?? 'Unknown Song'}');
-      print('   • Artist Name: ${(widget.selectedTrack['artists'] as List<dynamic>?)?.map((artist) => artist['name'] as String).join(', ') ?? 'Unknown Artist'}');
-      print('   • Song Image: ${(widget.selectedTrack['album']?['images'] as List<dynamic>?)?.isNotEmpty == true ? widget.selectedTrack['album']['images'][0]['url'] as String : 'No Image'}');
+      print(
+          '   • Song Name: ${widget.selectedTrack['name'] ?? 'Unknown Song'}');
+      print(
+          '   • Artist Name: ${(widget.selectedTrack['artists'] as List<dynamic>?)?.map((artist) => artist['name'] as String).join(', ') ?? 'Unknown Artist'}');
+      print(
+          '   • Song Image: ${(widget.selectedTrack['album']?['images'] as List<dynamic>?)?.isNotEmpty == true ? widget.selectedTrack['album']['images'][0]['url'] as String : 'No Image'}');
       print('📝 POST CONTENT:');
-      print('   • Description: ${_descriptionController.text.trim().isEmpty ? 'No description' : _descriptionController.text.trim()}');
+      print(
+          '   • Description: ${_descriptionController.text.trim().isEmpty ? 'No description' : _descriptionController.text.trim()}');
       print('   • Like Count: 0');
       print('   • Created At: ${DateTime.now()}');
       print('   • Timeline: now');
@@ -222,7 +242,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
         // Show success animation
         await _successAnimationController.forward();
 
-        ErrorSnackbarUtils.showSuccessSnackbar(context, 'Post created successfully!');
+        ErrorSnackbarUtils.showSuccessSnackbar(
+            context, 'Post created successfully!');
 
         // Delay to show success animation
         await Future.delayed(const Duration(milliseconds: 500));
@@ -231,7 +252,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
       }
     } catch (e) {
       if (mounted) {
-        ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'create_post');
+        ErrorSnackbarUtils.showErrorSnackbar(context, e,
+            operation: 'create_post');
       }
     } finally {
       if (mounted) {
@@ -256,15 +278,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
   Widget build(BuildContext context) {
     final track = widget.selectedTrack;
     final albumImages = track['album']?['images'] as List<dynamic>? ?? [];
-    final trackImage = albumImages.isNotEmpty
-        ? albumImages.first['url'] as String
-        : '';
+    final trackImage =
+        albumImages.isNotEmpty ? albumImages.first['url'] as String : '';
     final artists = track['artists'] as List<dynamic>? ?? [];
-    final artistNames = artists.map((artist) => artist['name'] as String).join(', ');
+    final artistNames =
+        artists.map((artist) => artist['name'] as String).join(', ');
     final trackName = track['name'] ?? 'Unknown Track';
 
     return Scaffold(
-      backgroundColor: AppColors.darkBackgroundStart, // App theme dark background
+      backgroundColor:
+          AppColors.darkBackgroundStart, // App theme dark background
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -517,7 +540,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               counterText: '',
             ),
             cursorColor: AppColors.primary,
@@ -682,7 +706,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                       height: 24,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentMint),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(AppColors.accentMint),
                       ),
                     ),
                   )
@@ -731,7 +756,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
     );
   }
 
-  Widget _buildEnhancedHeroBanner(String trackImage, Map<String, dynamic> track, String artistNames) {
+  Widget _buildEnhancedHeroBanner(
+      String trackImage, Map<String, dynamic> track, String artistNames) {
     return AnimatedBuilder(
       animation: _heroBannerController,
       builder: (context, child) {
@@ -742,7 +768,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.accentMint.withOpacity(0.2 * _heroBannerGlowAnimation.value),
+                  color: AppColors.accentMint
+                      .withOpacity(0.2 * _heroBannerGlowAnimation.value),
                   blurRadius: 30,
                   spreadRadius: 5,
                 ),
@@ -786,8 +813,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                   colors: [
-                                    AppColors.accentMint.withOpacity(0.05 * _backgroundAnimation.value),
-                                    AppColors.accentGreen.withOpacity(0.05 * (1 - _backgroundAnimation.value)),
+                                    AppColors.accentMint.withOpacity(
+                                        0.05 * _backgroundAnimation.value),
+                                    AppColors.accentGreen.withOpacity(0.05 *
+                                        (1 - _backgroundAnimation.value)),
                                   ],
                                 ),
                               ),
@@ -806,7 +835,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.accentMint.withOpacity(0.3 * _heroBannerGlowAnimation.value),
+                                    color: AppColors.accentMint.withOpacity(
+                                        0.3 * _heroBannerGlowAnimation.value),
                                     blurRadius: 20,
                                     spreadRadius: 3,
                                   ),
@@ -822,7 +852,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                                         fit: BoxFit.cover,
                                         memCacheWidth: 200,
                                         memCacheHeight: 200,
-                                        errorWidget: (context, url, error) => _buildPlaceholderImage(),
+                                        errorWidget: (context, url, error) =>
+                                            _buildPlaceholderImage(),
                                       )
                                     : _buildPlaceholderImage(),
                               ),
@@ -836,7 +867,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                                 children: [
                                   Text(
                                     track['name'] ?? 'Unknown Song',
-                                    style: AppTextStyles.heading2OnDark.copyWith(
+                                    style:
+                                        AppTextStyles.heading2OnDark.copyWith(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w800,
                                       letterSpacing: 0.5,
@@ -855,7 +887,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                                           shape: BoxShape.circle,
                                           boxShadow: [
                                             BoxShadow(
-                                              color: AppColors.accentMint.withOpacity(0.5),
+                                              color: AppColors.accentMint
+                                                  .withOpacity(0.5),
                                               blurRadius: 6,
                                               spreadRadius: 1,
                                             ),
@@ -866,7 +899,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                                       Expanded(
                                         child: Text(
                                           artistNames,
-                                          style: AppTextStyles.captionOnDark.copyWith(
+                                          style: AppTextStyles.captionOnDark
+                                              .copyWith(
                                             color: AppColors.onDarkSecondary,
                                             fontSize: 14,
                                           ),
@@ -1047,7 +1081,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
     );
   }
 
-  Widget _buildSelectedTrackCard(Map<String, dynamic> track, String trackImage, String artistNames) {
+  Widget _buildSelectedTrackCard(
+      Map<String, dynamic> track, String trackImage, String artistNames) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.onDarkPrimary.withOpacity(0.05),
@@ -1072,13 +1107,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                       fit: BoxFit.cover,
                       memCacheWidth: 120,
                       memCacheHeight: 120,
-                      errorWidget: (context, url, error) => _buildPlaceholderImage(),
+                      errorWidget: (context, url, error) =>
+                          _buildPlaceholderImage(),
                     )
                   : _buildPlaceholderImage(),
             ),
-            
+
             const SizedBox(width: 16),
-            
+
             // Track info
             Expanded(
               child: Column(
@@ -1105,7 +1141,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                 ],
               ),
             ),
-            
+
             // Check icon
             Container(
               padding: const EdgeInsets.all(8),
@@ -1141,15 +1177,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
   Widget _buildCharacterCount() {
     final currentLength = _descriptionController.text.length;
     final remaining = _maxDescriptionLength - currentLength;
-    
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Text(
           '$currentLength/$_maxDescriptionLength',
           style: AppTextStyles.captionOnDark.copyWith(
-            color: remaining < 20 
-                ? Colors.orange 
+            color: remaining < 20
+                ? Colors.orange
                 : AppColors.onDarkSecondary.withOpacity(0.6),
             fontSize: 11,
           ),
@@ -1158,7 +1194,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
     );
   }
 
-  Widget _buildHeroBanner(String trackImage, Map<String, dynamic> track, String artistNames) {
+  Widget _buildHeroBanner(
+      String trackImage, Map<String, dynamic> track, String artistNames) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: Stack(
@@ -1175,7 +1212,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                   AppColors.onDarkPrimary.withOpacity(0.04),
                 ],
               ),
-              border: Border.all(color: AppColors.onDarkPrimary.withOpacity(0.08)),
+              border:
+                  Border.all(color: AppColors.onDarkPrimary.withOpacity(0.08)),
             ),
           ),
           Positioned.fill(
@@ -1202,21 +1240,24 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
                 // Texts
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.only(right: 12, top: 12, bottom: 12),
+                    padding:
+                        const EdgeInsets.only(right: 12, top: 12, bottom: 12),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
                           track['name'] ?? 'Unknown Song',
-                          style: AppTextStyles.heading2OnDark.copyWith(fontSize: 18, fontWeight: FontWeight.w700),
+                          style: AppTextStyles.heading2OnDark.copyWith(
+                              fontSize: 18, fontWeight: FontWeight.w700),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 6),
                         Text(
                           artistNames,
-                          style: AppTextStyles.captionOnDark.copyWith(color: AppColors.onDarkSecondary),
+                          style: AppTextStyles.captionOnDark
+                              .copyWith(color: AppColors.onDarkSecondary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -1236,7 +1277,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> with TickerProvider
 class _ComposerGlass extends StatelessWidget {
   final Widget child;
   final double borderRadius;
-  const _ComposerGlass({required this.child, this.borderRadius = 12});
+  const _ComposerGlass({required this.child, this.borderRadius = 12.0});
 
   @override
   Widget build(BuildContext context) {
@@ -1248,7 +1289,8 @@ class _ComposerGlass extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.onDarkPrimary.withOpacity(0.03),
             borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(color: AppColors.onDarkPrimary.withOpacity(0.08)),
+            border:
+                Border.all(color: AppColors.onDarkPrimary.withOpacity(0.08)),
           ),
           child: child,
         ),
@@ -1261,10 +1303,12 @@ class _CupertinoComposerInput extends StatefulWidget {
   final TextEditingController controller;
   final int maxLength;
   final ValueChanged<String>? onChanged;
-  const _CupertinoComposerInput({required this.controller, required this.maxLength, this.onChanged});
+  const _CupertinoComposerInput(
+      {required this.controller, required this.maxLength, this.onChanged});
 
   @override
-  State<_CupertinoComposerInput> createState() => _CupertinoComposerInputState();
+  State<_CupertinoComposerInput> createState() =>
+      _CupertinoComposerInputState();
 }
 
 class _CupertinoComposerInputState extends State<_CupertinoComposerInput> {

@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
-import 'package:songbuddy/screens/notification_screen.dart';
 import 'package:songbuddy/screens/user_profile_screen.dart';
 import 'package:songbuddy/widgets/music_post_card.dart';
 import 'package:songbuddy/widgets/shimmer_post_card.dart';
@@ -119,7 +118,8 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
       AppLogger.error('Failed to fetch posts', error: e, tag: 'HomeFeed');
       _hasError = true; // Set error state
       if (mounted) {
-        ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'load_posts');
+        ErrorSnackbarUtils.showErrorSnackbar(context, e,
+            operation: 'load_posts');
       }
     } finally {
       if (mounted) {
@@ -177,12 +177,15 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
         _hasMorePosts = newPosts.length >= _postsPerPage;
       });
 
-      AppLogger.success('Loaded ${newPosts.length} more posts (total: ${_posts.length})', tag: 'HomeFeed');
+      AppLogger.success(
+          'Loaded ${newPosts.length} more posts (total: ${_posts.length})',
+          tag: 'HomeFeed');
     } catch (e) {
       AppLogger.error('Failed to load more posts', error: e, tag: 'HomeFeed');
 
       if (mounted) {
-        ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'load_posts');
+        ErrorSnackbarUtils.showErrorSnackbar(context, e,
+            operation: 'load_posts');
       }
     } finally {
       setState(() {
@@ -318,10 +321,12 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
       });
 
       if (finalUsers.isNotEmpty) {
-        AppLogger.success('Loaded ${finalUsers.length} suggested users', tag: 'HomeFeed');
+        AppLogger.success('Loaded ${finalUsers.length} suggested users',
+            tag: 'HomeFeed');
       }
     } catch (e) {
-      AppLogger.error('Failed to load suggested users', error: e, tag: 'HomeFeed');
+      AppLogger.error('Failed to load suggested users',
+          error: e, tag: 'HomeFeed');
       // Set empty list on error
       setState(() {
         _suggestedUsers = [];
@@ -355,7 +360,8 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
     } catch (e) {
       AppLogger.error('Failed to follow user', error: e, tag: 'HomeFeed');
       if (mounted) {
-        ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'follow_user');
+        ErrorSnackbarUtils.showErrorSnackbar(context, e,
+            operation: 'follow_user');
       }
     }
   }
@@ -425,7 +431,8 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
         } catch (e) {
           _hasError = true; // Set error state on failure
           if (mounted) {
-            ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'load_posts');
+            ErrorSnackbarUtils.showErrorSnackbar(context, e,
+                operation: 'load_posts');
           }
         } finally {
           if (mounted) {
@@ -599,7 +606,8 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
           const SizedBox(width: 16),
           Expanded(
             child: GestureDetector(
-              onTap: () => _navigateToUserProfile(user['id'], user['username'] ?? '', user['profilePicture'] ?? ''),
+              onTap: () => _navigateToUserProfile(user['id'],
+                  user['username'] ?? '', user['profilePicture'] ?? ''),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -694,7 +702,8 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
           HapticFeedback.lightImpact();
         } catch (e) {
           AppLogger.error('Failed to toggle like', error: e, tag: 'HomeFeed');
-          ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'toggle_like');
+          ErrorSnackbarUtils.showErrorSnackbar(context, e,
+              operation: 'toggle_like');
         }
       },
       onShare: () {
@@ -721,7 +730,8 @@ class HomeFeedScreenState extends State<HomeFeedScreen> {
           }
         } catch (e) {
           AppLogger.error('Error opening Spotify', error: e, tag: 'HomeFeed');
-          ErrorSnackbarUtils.showErrorSnackbar(context, e, operation: 'open_spotify');
+          ErrorSnackbarUtils.showErrorSnackbar(context, e,
+              operation: 'open_spotify');
         }
       },
       onUserTap: () {

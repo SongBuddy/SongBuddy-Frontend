@@ -17,9 +17,8 @@ class _ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _controller = AnimationController(
-      vsync: this, 
-      duration: const Duration(milliseconds: 3500)
-    )..repeat();
+        vsync: this, duration: const Duration(milliseconds: 3500))
+      ..repeat();
   }
 
   @override
@@ -60,7 +59,7 @@ class ShimmerBox extends StatelessWidget {
   final double width;
   final double height;
   final double radius;
-  
+
   const ShimmerBox({
     super.key,
     required this.width,
@@ -86,7 +85,7 @@ class ShimmerBox extends StatelessWidget {
 /// Shimmer skeleton circle
 class ShimmerCircle extends StatelessWidget {
   final double diameter;
-  
+
   const ShimmerCircle({
     super.key,
     required this.diameter,
@@ -111,7 +110,7 @@ class ShimmerCircle extends StatelessWidget {
 class ShimmerPostCard extends StatelessWidget {
   final double height;
   final double borderRadius;
-  
+
   const ShimmerPostCard({
     super.key,
     this.height = 180,
@@ -145,7 +144,7 @@ class ShimmerPostCard extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Content
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -163,7 +162,7 @@ class ShimmerPostCard extends StatelessWidget {
                     ],
                   ),
                   SizedBox(height: 12),
-                  
+
                   // Middle: cover + song info
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,7 +186,7 @@ class ShimmerPostCard extends StatelessWidget {
                     ],
                   ),
                   Spacer(),
-                  
+
                   // Bottom: 3 circles for action buttons
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -215,7 +214,7 @@ class ShimmerPostList extends StatelessWidget {
   final double height;
   final double borderRadius;
   final EdgeInsets padding;
-  
+
   const ShimmerPostList({
     super.key,
     this.itemCount = 3,

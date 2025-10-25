@@ -205,7 +205,8 @@ class BackendService {
   }
 
   /// Update currently playing data for a user
-  Future<bool> updateCurrentlyPlaying(String userId, Map<String, dynamic>? currentlyPlaying) async {
+  Future<bool> updateCurrentlyPlaying(
+      String userId, Map<String, dynamic>? currentlyPlaying) async {
     try {
       final updates = {
         'currentlyPlaying': currentlyPlaying,
@@ -220,7 +221,8 @@ class BackendService {
         return false;
       }
     } catch (e) {
-      AppLogger.error('Error updating currently playing', error: e, tag: 'Backend');
+      AppLogger.error('Error updating currently playing',
+          error: e, tag: 'Backend');
       return false;
     }
   }
@@ -328,7 +330,8 @@ class BackendService {
           AppLogger.success('Post created: ${post.songName}', tag: 'Backend');
           return createdPost;
         } catch (e) {
-          AppLogger.error('Failed to parse post response', error: e, tag: 'Backend');
+          AppLogger.error('Failed to parse post response',
+              error: e, tag: 'Backend');
           throw Exception("Failed to parse post data from backend: $e");
         }
       } else {
@@ -441,7 +444,8 @@ class BackendService {
 
         if (data is Map<String, dynamic> && data['data'] is List) {
           final users = List<Map<String, dynamic>>.from(data['data']);
-          AppLogger.debug('Found ${users.length} users for "$query"', tag: 'Backend');
+          AppLogger.debug('Found ${users.length} users for "$query"',
+              tag: 'Backend');
           return users;
         }
       }
@@ -470,7 +474,8 @@ class BackendService {
 
         if (data is Map<String, dynamic> && data['data'] is List) {
           final posts = List<Map<String, dynamic>>.from(data['data']);
-          AppLogger.debug('Found ${posts.length} discovery posts', tag: 'Backend');
+          AppLogger.debug('Found ${posts.length} discovery posts',
+              tag: 'Backend');
           return posts;
         }
       }
@@ -500,7 +505,8 @@ class BackendService {
           final posts = (data['data'] as List<dynamic>)
               .map((post) => Post.fromJson(post))
               .toList();
-          AppLogger.debug('Found ${posts.length} posts for "$query"', tag: 'Backend');
+          AppLogger.debug('Found ${posts.length} posts for "$query"',
+              tag: 'Backend');
           return posts;
         } else {
           return [];
@@ -685,7 +691,8 @@ class BackendService {
             return [];
           }
           final followers = List<Map<String, dynamic>>.from(data['data']);
-          AppLogger.debug('Loaded ${followers.length} followers', tag: 'Backend');
+          AppLogger.debug('Loaded ${followers.length} followers',
+              tag: 'Backend');
           return followers;
         } else {
           throw Exception("Failed to get followers: ${data['message']}");
@@ -721,7 +728,8 @@ class BackendService {
             return [];
           }
           final following = List<Map<String, dynamic>>.from(data['data']);
-          AppLogger.debug('Loaded ${following.length} following', tag: 'Backend');
+          AppLogger.debug('Loaded ${following.length} following',
+              tag: 'Backend');
           return following;
         } else {
           throw Exception("Failed to get following: ${data['message']}");
@@ -784,7 +792,9 @@ class BackendService {
 
         if (data['success'] == true && data['data'] != null) {
           final profileData = ProfileData.fromJson(data['data']);
-          AppLogger.info('Loaded profile: ${profileData.user.displayName} (${profileData.posts.length} posts)', tag: 'Backend');
+          AppLogger.info(
+              'Loaded profile: ${profileData.user.displayName} (${profileData.posts.length} posts)',
+              tag: 'Backend');
           return profileData;
         } else {
           throw Exception("Invalid response format: ${response.data}");

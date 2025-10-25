@@ -20,17 +20,19 @@ class ProfessionalSyncService {
   final SpotifyService _spotifyService = SpotifyService();
   final BackendService _backendService = BackendService();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
-  
+
   // State management
   Timer? _syncTimer;
   bool _isInitialized = false;
   bool _isActive = false;
   bool _isAppInForeground = true;
   Map<String, dynamic>? _lastCurrentlyPlaying;
-  
+
   // Sync intervals (like professional apps)
-  static const Duration _foregroundInterval = Duration(seconds: 15); // Like Spotify
-  static const Duration _backgroundInterval = Duration(seconds: 10);  // Battery efficient
+  static const Duration _foregroundInterval =
+      Duration(seconds: 15); // Like Spotify
+  static const Duration _backgroundInterval =
+      Duration(seconds: 10); // Battery efficient
 
   /// Initialize the service (called once at app start)
   Future<void> initialize() async {
@@ -81,7 +83,8 @@ class ProfessionalSyncService {
   void _startSyncTimer() {
     _stopSyncTimer();
 
-    final interval = _isAppInForeground ? _foregroundInterval : _backgroundInterval;
+    final interval =
+        _isAppInForeground ? _foregroundInterval : _backgroundInterval;
 
     _syncTimer = Timer.periodic(interval, (timer) {
       _performSync();
@@ -98,16 +101,20 @@ class ProfessionalSyncService {
   Future<void> _performSync() async {
     try {
       // Get credentials
-      final accessToken = await _secureStorage.read(key: 'spotify_access_token');
+      final accessToken =
+          await _secureStorage.read(key: 'spotify_access_token');
       final userId = await _secureStorage.read(key: 'spotify_user_id');
 
-      if (accessToken == null || userId == null || 
-          accessToken.isEmpty || userId.isEmpty) {
+      if (accessToken == null ||
+          userId == null ||
+          accessToken.isEmpty ||
+          userId.isEmpty) {
         return; // Skip silently - no need to spam logs
       }
 
       // Get currently playing from Spotify
-      final currentlyPlaying = await _spotifyService.getCurrentlyPlaying(accessToken);
+      final currentlyPlaying =
+          await _spotifyService.getCurrentlyPlaying(accessToken);
 
       // Check if song has changed
       if (_hasSongChanged(_lastCurrentlyPlaying, currentlyPlaying)) {
@@ -132,13 +139,14 @@ class ProfessionalSyncService {
   }
 
   /// Check if song has changed
-  bool _hasSongChanged(Map<String, dynamic>? old, Map<String, dynamic>? current) {
+  bool _hasSongChanged(
+      Map<String, dynamic>? old, Map<String, dynamic>? current) {
     if (old == null && current == null) return false;
     if (old == null || current == null) return true;
-    
+
     final oldTrackId = old['item']?['id'] ?? old['id'];
     final newTrackId = current['item']?['id'] ?? current['id'];
-    
+
     return oldTrackId != newTrackId;
   }
 
@@ -158,4 +166,3 @@ class ProfessionalSyncService {
     _isActive = false;
   }
 }
-

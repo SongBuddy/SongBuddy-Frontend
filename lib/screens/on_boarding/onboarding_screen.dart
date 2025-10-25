@@ -82,7 +82,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       SpotifyStylePopup.show(
         context: context,
         title: 'Connection Error',
-        message: _authProvider.errorMessage ?? 'Something went wrong. Please try again.',
+        message: _authProvider.errorMessage ??
+            'Something went wrong. Please try again.',
         onRetry: () {
           Navigator.of(context, rootNavigator: true).pop(); // Close dialog
           _isErrorDialogVisible = false;
@@ -95,7 +96,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       );
     }
   }
-
 
   void _showSuccessAnimation() {
     // Show success dialog with animation
@@ -113,8 +113,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const MainScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const MainScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
               const begin = Offset(1.0, 0.0);
               const end = Offset.zero;
               const curve = Curves.easeInOut;
@@ -141,17 +143,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   final List<OnboardingPage> _pages = const [
     OnboardingPage(
       title: "Welcome to SongBuddy",
-      description: "Your ultimate music companion app. Discover, share, and connect with music lovers around the world.",
+      description:
+          "Your ultimate music companion app. Discover, share, and connect with music lovers around the world.",
       icon: Icons.music_note_rounded,
     ),
     OnboardingPage(
       title: "Discover Amazing Features",
-      description: "Stay updated with trending tracks, follow your favorite artists, and build your musical community.",
+      description:
+          "Stay updated with trending tracks, follow your favorite artists, and build your musical community.",
       icon: Icons.star_rounded,
     ),
     OnboardingPage(
       title: "Connect with Spotify",
-      description: "Link your Spotify account for a personalized experience and seamless music integration.",
+      description:
+          "Link your Spotify account for a personalized experience and seamless music integration.",
       icon: Icons.link_rounded,
     ),
   ];
@@ -169,7 +174,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       );
     }
   }
- 
+
   void _skip() {
     // Navigate to the last page (Spotify login page)
     _controller.animateToPage(
@@ -196,8 +201,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color.lerp(AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd, _backgroundAnimation.value)!,
-                  Color.lerp(AppColors.darkBackgroundEnd, AppColors.darkBackgroundStart, _backgroundAnimation.value)!,
+                  Color.lerp(AppColors.darkBackgroundStart,
+                      AppColors.darkBackgroundEnd, _backgroundAnimation.value)!,
+                  Color.lerp(
+                      AppColors.darkBackgroundEnd,
+                      AppColors.darkBackgroundStart,
+                      _backgroundAnimation.value)!,
                 ],
               ),
             ),
@@ -207,7 +216,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   // Modern skip button with glassmorphism (hide on last page)
                   if (_currentPage < _pages.length - 1)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 16),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
@@ -226,7 +236,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 child: TextButton(
                                   onPressed: _skip,
                                   style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 20, vertical: 12),
                                   ),
                                   child: Text(
                                     "Skip",
@@ -257,7 +268,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
                   // Modern bottom section with indicators and navigation
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 32),
                     child: Column(
                       children: [
                         // Modern page indicators
@@ -286,7 +298,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 boxShadow: _currentPage == index
                                     ? [
                                         BoxShadow(
-                                          color: AppColors.accentMint.withOpacity(0.4),
+                                          color: AppColors.accentMint
+                                              .withOpacity(0.4),
                                           blurRadius: 12,
                                           spreadRadius: 2,
                                         ),
@@ -322,7 +335,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 child: _currentPage == _pages.length - 1
                                     ? SpotifyLoginButton(
                                         onPressed: _handleSpotifyLogin,
-                                        isLoading: _authProvider.state == AuthState.authenticating,
+                                        isLoading: _authProvider.state ==
+                                            AuthState.authenticating,
                                       )
                                     : ElevatedButton(
                                         onPressed: _nextPage,
@@ -335,15 +349,18 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                             vertical: 16,
                                           ),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(16),
+                                            borderRadius:
+                                                BorderRadius.circular(16),
                                           ),
                                         ),
                                         child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
                                           children: [
                                             Text(
                                               "Continue",
-                                              style: AppTextStyles.bodyOnDark.copyWith(
+                                              style: AppTextStyles.bodyOnDark
+                                                  .copyWith(
                                                 fontWeight: FontWeight.w600,
                                                 fontSize: 16,
                                               ),

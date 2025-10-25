@@ -24,10 +24,10 @@ class AppColors {
   static const Color accentGreen = Color(0xFF3DDC97);
 
   // On-dark text colors
-  static const Color onDarkPrimary = Colors.white;      // 100%
-  static const Color onDarkSecondary = Colors.white70;  // ~70%
-  static const Color onDarkTertiary = Colors.white54;   // ~54%
-  static const Color onDarkMuted = Colors.white38;      // ~38%
+  static const Color onDarkPrimary = Colors.white; // 100%
+  static const Color onDarkSecondary = Colors.white70; // ~70%
+  static const Color onDarkTertiary = Colors.white54; // ~54%
+  static const Color onDarkMuted = Colors.white38; // ~38%
 
   // Utility
   static const Color black = Colors.black;

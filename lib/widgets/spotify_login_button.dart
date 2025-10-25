@@ -32,7 +32,7 @@ class _SpotifyLoginButtonState extends State<SpotifyLoginButton>
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
-    
+
     _scaleAnimation = Tween<double>(
       begin: 1.0,
       end: 0.95,
@@ -40,7 +40,7 @@ class _SpotifyLoginButtonState extends State<SpotifyLoginButton>
       parent: _animationController,
       curve: Curves.easeInOut,
     ));
-    
+
     _opacityAnimation = Tween<double>(
       begin: 1.0,
       end: 0.8,
@@ -142,7 +142,8 @@ class _SpotifyLoginButtonState extends State<SpotifyLoginButton>
                                   'Connecting...',
                                   style: AppTextStyles.bodyOnDark.copyWith(
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.onDarkPrimary.withOpacity(0.8),
+                                    color: AppColors.onDarkPrimary
+                                        .withOpacity(0.8),
                                   ),
                                 ),
                               ],
@@ -166,7 +167,8 @@ class _SpotifyLoginButtonState extends State<SpotifyLoginButton>
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: AppColors.accentMint.withOpacity(0.3),
+                                        color: AppColors.accentMint
+                                            .withOpacity(0.3),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),

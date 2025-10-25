@@ -31,7 +31,7 @@ class HttpClientService {
 
     // Add token refresh interceptor
     _dio.interceptors.add(TokenRefreshInterceptor(this));
-    
+
     // Add logging interceptor in debug mode
     if (kDebugMode) {
       _dio.interceptors.add(LogInterceptor(
@@ -127,7 +127,7 @@ class TokenRefreshInterceptor extends Interceptor {
         options.headers['Authorization'] = 'Bearer $accessToken';
       }
     }
-    
+
     debugPrint('[HTTP] ${options.method} ${options.path}');
     handler.next(options);
   }
@@ -137,7 +137,7 @@ class TokenRefreshInterceptor extends Interceptor {
     // Only handle 401 Unauthorized errors
     if (err.response?.statusCode == 401) {
       debugPrint('[HTTP] Received 401, attempting token refresh...');
-      
+
       // If we're already refreshing, queue this request
       if (_isRefreshing) {
         _pendingRequests.add(err.requestOptions);
@@ -152,32 +152,32 @@ class TokenRefreshInterceptor extends Interceptor {
         if (authService != null && authService.isAuthenticated) {
           // Attempt to refresh the token
           await authService.refreshTokenIfNeeded();
-          
+
           // Check if we still have a valid token after refresh
           if (authService.isAuthenticated) {
             final newToken = authService.accessToken;
             if (newToken != null) {
               // Update the original request with new token
               err.requestOptions.headers['Authorization'] = 'Bearer $newToken';
-              
+
               // Retry the original request
               debugPrint('[HTTP] Retrying original request with new token...');
-              final response = await _httpClientService.dio.fetch(err.requestOptions);
+              final response =
+                  await _httpClientService.dio.fetch(err.requestOptions);
               handler.resolve(response);
-              
+
               // Process any pending requests
               await _processPendingRequests(newToken);
               return;
             }
           }
         }
-        
+
         // If refresh failed, clear auth state and redirect to login
         debugPrint('[HTTP] Token refresh failed, clearing auth state...');
         if (authService != null) {
           await authService.logout();
         }
-        
       } catch (e) {
         debugPrint('[HTTP] Error during token refresh: $e');
         // Clear auth state on any error
@@ -190,25 +190,27 @@ class TokenRefreshInterceptor extends Interceptor {
         _pendingRequests.clear();
       }
     }
-    
+
     // For non-401 errors or if refresh failed, pass through the error
     handler.next(err);
   }
 
   /// Process pending requests with the new token
   Future<void> _processPendingRequests(String newToken) async {
-    debugPrint('[HTTP] Processing ${_pendingRequests.length} pending requests...');
-    
+    debugPrint(
+        '[HTTP] Processing ${_pendingRequests.length} pending requests...');
+
     for (final requestOptions in _pendingRequests) {
       try {
         requestOptions.headers['Authorization'] = 'Bearer $newToken';
         await _httpClientService.dio.fetch(requestOptions);
-        debugPrint('[HTTP] Successfully processed pending request: ${requestOptions.method} ${requestOptions.path}');
+        debugPrint(
+            '[HTTP] Successfully processed pending request: ${requestOptions.method} ${requestOptions.path}');
       } catch (e) {
         debugPrint('[HTTP] Failed to process pending request: $e');
       }
     }
-    
+
     _pendingRequests.clear();
   }
 }

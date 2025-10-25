@@ -140,16 +140,12 @@ class BeautifulErrorDialog extends StatelessWidget {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: isSecondary 
-            ? Colors.transparent 
-            : AppColors.primary,
-        foregroundColor: isSecondary 
-            ? Colors.white70 
-            : Colors.white,
+        backgroundColor: isSecondary ? Colors.transparent : AppColors.primary,
+        foregroundColor: isSecondary ? Colors.white70 : Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: isSecondary 
+          side: isSecondary
               ? BorderSide(color: Colors.white.withOpacity(0.3))
               : BorderSide.none,
         ),

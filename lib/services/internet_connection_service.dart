@@ -12,7 +12,8 @@ class InternetConnectionService {
 
   InternetConnectionService._internal();
 
-  final StreamController<bool> _connectionController = StreamController<bool>.broadcast();
+  final StreamController<bool> _connectionController =
+      StreamController<bool>.broadcast();
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   Timer? _connectivityTimer;
   bool _isConnected = true;
@@ -27,18 +28,18 @@ class InternetConnectionService {
   /// Initialize the connection monitoring
   Future<void> initialize() async {
     if (_isInitialized) return;
-    
+
     try {
       // Check initial connection status
       await _checkInternetConnection();
-      
+
       // Start monitoring connectivity changes
       _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
         (List<ConnectivityResult> results) {
           _handleConnectivityChange(results);
         },
       );
-      
+
       _isInitialized = true;
       print('✅ InternetConnectionService: Initialized');
     } catch (e) {
@@ -51,17 +52,16 @@ class InternetConnectionService {
 
   void _handleConnectivityChange(List<ConnectivityResult> results) {
     print('🔧 InternetConnectionService: Connectivity changed: $results');
-    
+
     // Cancel any existing timer
     _connectivityTimer?.cancel();
-    
+
     // Check if we have any connection
-    final hasConnection = results.any((result) => 
-      result == ConnectivityResult.mobile || 
-      result == ConnectivityResult.wifi ||
-      result == ConnectivityResult.ethernet
-    );
-    
+    final hasConnection = results.any((result) =>
+        result == ConnectivityResult.mobile ||
+        result == ConnectivityResult.wifi ||
+        result == ConnectivityResult.ethernet);
+
     if (!hasConnection) {
       // No connection at all
       _updateConnectionStatus(false);
@@ -77,15 +77,16 @@ class InternetConnectionService {
   Future<void> _checkInternetConnection() async {
     try {
       print('🔧 InternetConnectionService: Checking internet connection...');
-      
+
       // Try to connect to a reliable server
       final result = await InternetAddress.lookup('google.com')
           .timeout(const Duration(seconds: 5));
-      
+
       final isConnected = result.isNotEmpty && result[0].rawAddress.isNotEmpty;
       _updateConnectionStatus(isConnected);
-      
-      print('🔧 InternetConnectionService: Internet check result: $isConnected');
+
+      print(
+          '🔧 InternetConnectionService: Internet check result: $isConnected');
     } catch (e) {
       print('🔧 InternetConnectionService: Internet check failed: $e');
       _updateConnectionStatus(false);
@@ -94,7 +95,8 @@ class InternetConnectionService {
 
   void _updateConnectionStatus(bool isConnected) {
     if (_isConnected != isConnected) {
-      print('🌐 InternetConnectionService: Connection status changed from $_isConnected to $isConnected');
+      print(
+          '🌐 InternetConnectionService: Connection status changed from $_isConnected to $isConnected');
       _isConnected = isConnected;
       _connectionController.add(_isConnected);
     }

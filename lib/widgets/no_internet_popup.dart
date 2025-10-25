@@ -9,8 +9,6 @@ class NoInternetPopup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-
-    
       backgroundColor: Colors.transparent,
       elevation: 0,
       child: Container(
@@ -61,12 +59,12 @@ class NoInternetPopup extends StatelessWidget {
   static void show(BuildContext context) {
     // Check if context is still valid
     if (!context.mounted) return;
-    
+
     // Check if dialog is already showing
     if (Navigator.of(context, rootNavigator: true).canPop()) {
       return;
     }
-    
+
     showDialog(
       context: context,
       barrierColor: Colors.transparent, // remove black overlay
@@ -78,7 +76,7 @@ class NoInternetPopup extends StatelessWidget {
   /// Hide the no internet popup
   static void hide(BuildContext context) {
     if (!context.mounted) return;
-    
+
     try {
       if (Navigator.of(context, rootNavigator: true).canPop()) {
         Navigator.of(context, rootNavigator: true).pop();

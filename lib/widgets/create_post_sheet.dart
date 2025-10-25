@@ -39,7 +39,8 @@ class _CreatePostSheet extends StatefulWidget {
   State<_CreatePostSheet> createState() => _CreatePostSheetState();
 }
 
-class _CreatePostSheetState extends State<_CreatePostSheet> with SingleTickerProviderStateMixin {
+class _CreatePostSheetState extends State<_CreatePostSheet>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabController;
 
   @override
@@ -79,10 +80,13 @@ class _CreatePostSheetState extends State<_CreatePostSheet> with SingleTickerPro
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: Row(
                   children: [
-                    Text('Create post', style: AppTextStyles.heading2OnDark.copyWith(fontWeight: FontWeight.w800)),
+                    Text('Create post',
+                        style: AppTextStyles.heading2OnDark
+                            .copyWith(fontWeight: FontWeight.w800)),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.close, color: AppColors.onDarkPrimary),
+                      icon: const Icon(Icons.close,
+                          color: AppColors.onDarkPrimary),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
@@ -129,7 +133,8 @@ class _CreatePostSheetState extends State<_CreatePostSheet> with SingleTickerPro
           title: item['name'] as String? ?? '',
           subtitle: _joinArtists(item['artists'] as List<dynamic>?),
           imageUrl: _albumImage(item['album'] as Map<String, dynamic>?),
-          onTap: () => _goToCreatePost(context, item, item['id'] as String? ?? ''),
+          onTap: () =>
+              _goToCreatePost(context, item, item['id'] as String? ?? ''),
         ),
       ],
     );
@@ -144,7 +149,8 @@ class _CreatePostSheetState extends State<_CreatePostSheet> with SingleTickerPro
           title: track['name'] as String? ?? '',
           subtitle: _joinArtists(track['artists'] as List<dynamic>?),
           imageUrl: _albumImage(track['album'] as Map<String, dynamic>?),
-          onTap: () => _goToCreatePost(context, track, track['id'] as String? ?? ''),
+          onTap: () =>
+              _goToCreatePost(context, track, track['id'] as String? ?? ''),
         );
       },
       separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -162,11 +168,13 @@ class _CreatePostSheetState extends State<_CreatePostSheet> with SingleTickerPro
           title: track['name'] as String? ?? '',
           subtitle: _joinArtists(track['artists'] as List<dynamic>?),
           imageUrl: _albumImage(track['album'] as Map<String, dynamic>?),
-          onTap: () => _goToCreatePost(context, track, track['id'] as String? ?? ''),
+          onTap: () =>
+              _goToCreatePost(context, track, track['id'] as String? ?? ''),
         );
       },
       separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemCount: widget.recentPlayed.length > 25 ? 25 : widget.recentPlayed.length,
+      itemCount:
+          widget.recentPlayed.length > 25 ? 25 : widget.recentPlayed.length,
     );
   }
 
@@ -200,12 +208,16 @@ class _CreatePostSheetState extends State<_CreatePostSheet> with SingleTickerPro
                     width: 48,
                     height: 48,
                     color: AppColors.onDarkPrimary.withOpacity(0.12),
-                    child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
+                    child: const Icon(Icons.music_note,
+                        color: AppColors.onDarkSecondary),
                   ),
           ),
-          title: Text(title, style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600)),
+          title: Text(title,
+              style: AppTextStyles.bodyOnDark
+                  .copyWith(fontWeight: FontWeight.w600)),
           subtitle: Text(subtitle, style: AppTextStyles.captionOnDark),
-          trailing: const Icon(Icons.chevron_right, color: AppColors.onDarkSecondary),
+          trailing:
+              const Icon(Icons.chevron_right, color: AppColors.onDarkSecondary),
         ),
       ),
     );
@@ -215,7 +227,9 @@ class _CreatePostSheetState extends State<_CreatePostSheet> with SingleTickerPro
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
-        child: Text(message, style: AppTextStyles.bodyOnDark.copyWith(color: AppColors.onDarkSecondary)),
+        child: Text(message,
+            style: AppTextStyles.bodyOnDark
+                .copyWith(color: AppColors.onDarkSecondary)),
       ),
     );
   }
@@ -234,7 +248,8 @@ class _CreatePostSheetState extends State<_CreatePostSheet> with SingleTickerPro
     return names.isEmpty ? '' : names.join(', ');
   }
 
-  void _goToCreatePost(BuildContext context, Map<String, dynamic> track, String trackId) {
+  void _goToCreatePost(
+      BuildContext context, Map<String, dynamic> track, String trackId) {
     Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -251,5 +266,3 @@ class _CreatePostSheetState extends State<_CreatePostSheet> with SingleTickerPro
     });
   }
 }
-
-

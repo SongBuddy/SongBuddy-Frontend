@@ -24,26 +24,26 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  
+
   // Load environment variables
   await dotenv.load(fileName: ".env");
-  
+
   // Initialize HTTP client service
   HttpClientService.instance;
-  
+
   // Initialize auth provider
   await AuthProvider().initialize();
-  
+
   // Initialize simple lifecycle manager
   await SimpleLifecycleManager.instance.initialize();
-  
+
   // Start sync service if user is authenticated
   final authProvider = AuthProvider();
   if (authProvider.isAuthenticated) {
     await SimpleLifecycleManager.instance.start();
     AppLogger.success('Sync started for authenticated user', tag: 'Main');
   }
-  
+
   // Warm up backend (helps hosted backends avoid cold-start delays)
   try {
     final backendService = BackendService();
@@ -51,7 +51,7 @@ void main() async {
   } catch (_) {
     // Ignore failures; UI will handle with normal error flow
   }
-  
+
   runApp(const SongBuddyApp());
 }
 
@@ -91,25 +91,29 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  final GlobalKey<HomeFeedScreenState> _homeFeedKey = GlobalKey<HomeFeedScreenState>();
-  final GlobalKey<SearchFeedScreenState> _searchFeedKey = GlobalKey<SearchFeedScreenState>();
-  final GlobalKey<ProfileScreenState> _profileKey = GlobalKey<ProfileScreenState>();
-  final GlobalKey<SettingsScreenState> _settingsKey = GlobalKey<SettingsScreenState>();
-  
+  final GlobalKey<HomeFeedScreenState> _homeFeedKey =
+      GlobalKey<HomeFeedScreenState>();
+  final GlobalKey<SearchFeedScreenState> _searchFeedKey =
+      GlobalKey<SearchFeedScreenState>();
+  final GlobalKey<ProfileScreenState> _profileKey =
+      GlobalKey<ProfileScreenState>();
+  final GlobalKey<SettingsScreenState> _settingsKey =
+      GlobalKey<SettingsScreenState>();
+
   late final AuthProvider _authProvider;
   late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize auth provider
     _authProvider = AuthProvider();
     _authProvider.addListener(_onAuthChanged);
-    
+
     // Start professional sync when main screen loads (user is authenticated)
     SimpleLifecycleManager.instance.start();
-    
+
     _screens = [
       HomeFeedScreen(key: _homeFeedKey),
       SearchFeedScreen(key: _searchFeedKey),
@@ -176,10 +180,14 @@ class MainScreenContent extends StatefulWidget {
 
 class _MainScreenContentState extends State<MainScreenContent> {
   int _selectedIndex = 0;
-  final GlobalKey<HomeFeedScreenState> _homeFeedKey = GlobalKey<HomeFeedScreenState>();
-  final GlobalKey<SearchFeedScreenState> _searchFeedKey = GlobalKey<SearchFeedScreenState>();
-  final GlobalKey<ProfileScreenState> _profileKey = GlobalKey<ProfileScreenState>();
-  final GlobalKey<SettingsScreenState> _settingsKey = GlobalKey<SettingsScreenState>();
+  final GlobalKey<HomeFeedScreenState> _homeFeedKey =
+      GlobalKey<HomeFeedScreenState>();
+  final GlobalKey<SearchFeedScreenState> _searchFeedKey =
+      GlobalKey<SearchFeedScreenState>();
+  final GlobalKey<ProfileScreenState> _profileKey =
+      GlobalKey<ProfileScreenState>();
+  final GlobalKey<SettingsScreenState> _settingsKey =
+      GlobalKey<SettingsScreenState>();
   late final List<Widget> _screens;
 
   @override

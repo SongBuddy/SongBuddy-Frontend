@@ -8,7 +8,7 @@ class ApiErrorHandler {
   /// Returns null for network errors to avoid conflicts with network status indicators
   static String? getUserFriendlyMessage(dynamic error) {
     print('🔍 ApiErrorHandler: Processing error: $error');
-    
+
     if (error == null) return 'An unexpected error occurred. Please try again.';
 
     // Network connectivity errors - return null to avoid conflicts with network status
@@ -56,37 +56,40 @@ class ApiErrorHandler {
   static bool _isNetworkError(dynamic error) {
     final errorString = error.toString().toLowerCase();
     return errorString.contains('socketexception') ||
-           errorString.contains('connection refused') ||
-           errorString.contains('network is unreachable') ||
-           errorString.contains('no internet connection') ||
-           errorString.contains('connection timed out') ||
-           errorString.contains('failed to connect') ||
-           errorString.contains('connection reset') ||
-           (error is DioException && error.type == DioExceptionType.connectionError);
+        errorString.contains('connection refused') ||
+        errorString.contains('network is unreachable') ||
+        errorString.contains('no internet connection') ||
+        errorString.contains('connection timed out') ||
+        errorString.contains('failed to connect') ||
+        errorString.contains('connection reset') ||
+        (error is DioException &&
+            error.type == DioExceptionType.connectionError);
   }
 
   /// Check if error is timeout-related
   static bool _isTimeoutError(dynamic error) {
     final errorString = error.toString().toLowerCase();
     return errorString.contains('timeout') ||
-           errorString.contains('deadline exceeded') ||
-           (error is DioException && error.type == DioExceptionType.receiveTimeout) ||
-           (error is DioException && error.type == DioExceptionType.connectionTimeout);
+        errorString.contains('deadline exceeded') ||
+        (error is DioException &&
+            error.type == DioExceptionType.receiveTimeout) ||
+        (error is DioException &&
+            error.type == DioExceptionType.connectionTimeout);
   }
 
   /// Check if error is server-related
   static bool _isServerError(dynamic error) {
     final errorString = error.toString().toLowerCase();
     return errorString.contains('500') ||
-           errorString.contains('internal server error') ||
-           errorString.contains('502') ||
-           errorString.contains('bad gateway') ||
-           errorString.contains('503') ||
-           errorString.contains('service unavailable') ||
-           errorString.contains('504') ||
-           errorString.contains('gateway timeout') ||
-           (error is DioException && 
-            error.response?.statusCode != null && 
+        errorString.contains('internal server error') ||
+        errorString.contains('502') ||
+        errorString.contains('bad gateway') ||
+        errorString.contains('503') ||
+        errorString.contains('service unavailable') ||
+        errorString.contains('504') ||
+        errorString.contains('gateway timeout') ||
+        (error is DioException &&
+            error.response?.statusCode != null &&
             error.response!.statusCode! >= 500);
   }
 
@@ -94,50 +97,52 @@ class ApiErrorHandler {
   static bool _isAuthError(dynamic error) {
     final errorString = error.toString().toLowerCase();
     return errorString.contains('401') ||
-           errorString.contains('unauthorized') ||
-           errorString.contains('invalid token') ||
-           errorString.contains('token expired') ||
-           errorString.contains('authentication failed') ||
-           (error is DioException && error.response?.statusCode == 401);
+        errorString.contains('unauthorized') ||
+        errorString.contains('invalid token') ||
+        errorString.contains('token expired') ||
+        errorString.contains('authentication failed') ||
+        (error is DioException && error.response?.statusCode == 401);
   }
 
   /// Check if error is permission-related
   static bool _isPermissionError(dynamic error) {
     final errorString = error.toString().toLowerCase();
     return errorString.contains('403') ||
-           errorString.contains('forbidden') ||
-           errorString.contains('access denied') ||
-           errorString.contains('permission denied') ||
-           (error is DioException && error.response?.statusCode == 403);
+        errorString.contains('forbidden') ||
+        errorString.contains('access denied') ||
+        errorString.contains('permission denied') ||
+        (error is DioException && error.response?.statusCode == 403);
   }
 
   /// Check if error is Spotify-related
   static bool _isSpotifyError(dynamic error) {
     final errorString = error.toString().toLowerCase();
     return errorString.contains('spotify') ||
-           errorString.contains('spotify app') ||
-           errorString.contains('spotify service') ||
-           errorString.contains('cannot open spotify') ||
-           errorString.contains('spotify unavailable');
+        errorString.contains('spotify app') ||
+        errorString.contains('spotify service') ||
+        errorString.contains('cannot open spotify') ||
+        errorString.contains('spotify unavailable');
   }
 
   /// Check if error is general API-related
   static bool _isApiError(dynamic error) {
     final errorString = error.toString().toLowerCase();
     return errorString.contains('api') ||
-           errorString.contains('endpoint') ||
-           errorString.contains('404') ||
-           errorString.contains('not found') ||
-           errorString.contains('bad request') ||
-           (error is DioException && error.response?.statusCode != null);
+        errorString.contains('endpoint') ||
+        errorString.contains('404') ||
+        errorString.contains('not found') ||
+        errorString.contains('bad request') ||
+        (error is DioException && error.response?.statusCode != null);
   }
 
   /// Get specific error message for different operations
   /// Returns null for network errors to avoid conflicts with network status indicators
   static String? getOperationErrorMessage(String operation, dynamic error) {
     final baseMessage = getUserFriendlyMessage(error);
-    if (baseMessage == null) return null; // Don't show snackbar for network errors
-    
+    if (baseMessage == null) {
+      return null; // Don't show snackbar for network errors
+    }
+
     switch (operation.toLowerCase()) {
       case 'create_post':
         return 'Failed to create post. $baseMessage';
@@ -177,18 +182,18 @@ class ApiErrorHandler {
     if (_isNetworkError(error) || _isTimeoutError(error)) {
       return ErrorSeverity.warning; // Orange/yellow
     }
-    
+
     if (_isServerError(error) || _isAuthError(error)) {
       return ErrorSeverity.error; // Red
     }
-    
+
     return ErrorSeverity.info; // Blue/default
   }
 }
 
 /// Error severity levels for UI styling
 enum ErrorSeverity {
-  info,    // Blue/default - informational
+  info, // Blue/default - informational
   warning, // Orange/yellow - network/timeout issues
-  error,   // Red - server/auth issues
+  error, // Red - server/auth issues
 }

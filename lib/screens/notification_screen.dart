@@ -19,7 +19,8 @@ class NotificationScreen extends StatelessWidget {
       "avatarUrl": "https://i.pravatar.cc/100?img=2",
       "time": "5m",
       "postTitle": "Night Changes",
-      "coverUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDTJ4AuwUIeQ-wc-z78atPgem_s9RgBtGP_A&s"
+      "coverUrl":
+          "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDTJ4AuwUIeQ-wc-z78atPgem_s9RgBtGP_A&s"
     },
     {
       "type": "new_post",
@@ -27,7 +28,8 @@ class NotificationScreen extends StatelessWidget {
       "avatarUrl": "https://i.pravatar.cc/100?img=3",
       "time": "15m",
       "postTitle": "Blinding Lights",
-      "coverUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDTJ4AuwUIeQ-wc-z78atPgem_s9RgBtGP_A&s"
+      "coverUrl":
+          "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSDTJ4AuwUIeQ-wc-z78atPgem_s9RgBtGP_A&s"
     },
   ];
 
@@ -123,7 +125,8 @@ class NotificationScreen extends StatelessWidget {
                     border: Border.all(color: Colors.white70, width: 1.5),
                   ),
                   child: CircleAvatar(
-                    backgroundImage: CachedNetworkImageProvider(notification["avatarUrl"]),
+                    backgroundImage:
+                        CachedNetworkImageProvider(notification["avatarUrl"]),
                     radius: 22,
                   ),
                 ),
@@ -161,7 +164,8 @@ class NotificationScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _getIconColor(notification["type"]).withOpacity(0.15),
+                      color:
+                          _getIconColor(notification["type"]).withOpacity(0.15),
                     ),
                     child: Icon(_getIcon(notification["type"]),
                         size: 20, color: _getIconColor(notification["type"])),

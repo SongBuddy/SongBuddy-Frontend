@@ -18,10 +18,10 @@ class AuthProvider extends ChangeNotifier {
 
     _authService = AuthService();
     _authService.addListener(_onAuthStateChanged);
-    
+
     // Initialize HTTP client service with auth service for token management
     HttpClientService.instance.setAuthService(_authService);
-    
+
     _initialized = true;
   }
 

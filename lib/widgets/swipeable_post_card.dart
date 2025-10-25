@@ -35,11 +35,11 @@ class SwipeablePostCard extends StatefulWidget {
 class _SwipeablePostCardState extends State<SwipeablePostCard>
     with TickerProviderStateMixin {
   late AnimationController _resetController;
-  
+
   double _dragOffset = 0.0;
   bool _isDragging = false;
   bool _hasTriggeredAction = false;
-  
+
   // Performance optimizations
   static const double _maxDragDistance = 250.0;
   static const double _triggerThreshold = 100.0;
@@ -70,20 +70,21 @@ class _SwipeablePostCardState extends State<SwipeablePostCard>
 
   void _onPanUpdate(DragUpdateDetails details) {
     if (!_isDragging || _hasTriggeredAction) return;
-    
+
     // Optimize: Only update if significant movement
-    final newOffset = (_dragOffset + details.delta.dx).clamp(-_maxDragDistance, _maxDragDistance);
-    
+    final newOffset = (_dragOffset + details.delta.dx)
+        .clamp(-_maxDragDistance, _maxDragDistance);
+
     if ((newOffset - _dragOffset).abs() < 2.0) return; // Skip micro-movements
-    
+
     _dragOffset = newOffset;
-    
+
     // Haptic feedback at threshold (only once per swipe)
     if (!_hasTriggeredHaptic && _dragOffset.abs() > _hapticThreshold) {
       _hasTriggeredHaptic = true;
       HapticFeedback.selectionClick();
     }
-    
+
     // Only rebuild when necessary
     if (mounted) {
       setState(() {});
@@ -92,13 +93,13 @@ class _SwipeablePostCardState extends State<SwipeablePostCard>
 
   void _onPanEnd(DragEndDetails details) {
     if (!_isDragging) return;
-    
+
     _isDragging = false;
-    
+
     // Check if threshold was reached and actions are available
     if (_dragOffset.abs() > _triggerThreshold && !_hasTriggeredAction) {
       _hasTriggeredAction = true;
-      
+
       if (_dragOffset < 0 && widget.onDelete != null) {
         // Swipe left - Delete (only if delete is available)
         HapticFeedback.mediumImpact();
@@ -119,7 +120,7 @@ class _SwipeablePostCardState extends State<SwipeablePostCard>
 
   void _resetPosition() {
     if (_dragOffset == 0.0) return;
-    
+
     // Simple and reliable reset using AnimatedBuilder pattern
     _resetController.reset();
     _resetController.forward().then((_) {
@@ -197,18 +198,21 @@ class _SwipeablePostCardState extends State<SwipeablePostCard>
       animation: _resetController,
       builder: (context, child) {
         // Calculate current offset (either from drag or reset animation)
-        final currentOffset = _isDragging 
-            ? _dragOffset 
+        final currentOffset = _isDragging
+            ? _dragOffset
             : _dragOffset * (1.0 - _resetController.value);
-        
+
         // Calculate opacity based on drag distance for smooth visual feedback
-        final dragProgress = (currentOffset.abs() / _triggerThreshold).clamp(0.0, 1.0);
+        final dragProgress =
+            (currentOffset.abs() / _triggerThreshold).clamp(0.0, 1.0);
         final backgroundOpacity = (dragProgress * 0.9).clamp(0.0, 0.9);
-        
+
         return Stack(
           children: [
             // Optimized background indicators - only show when dragging and action is available
-            if (currentOffset < -10 && widget.onDelete != null) // Swipe left - Delete indicator (only if delete is available)
+            if (currentOffset < -10 &&
+                widget.onDelete !=
+                    null) // Swipe left - Delete indicator (only if delete is available)
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
@@ -244,8 +248,10 @@ class _SwipeablePostCardState extends State<SwipeablePostCard>
                   ),
                 ),
               ),
-            
-            if (currentOffset > 10 && widget.onEditDescription != null) // Swipe right - Edit indicator (only if edit is available)
+
+            if (currentOffset > 10 &&
+                widget.onEditDescription !=
+                    null) // Swipe right - Edit indicator (only if edit is available)
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
@@ -285,14 +291,24 @@ class _SwipeablePostCardState extends State<SwipeablePostCard>
             // Main post card with conditional swipe gestures
             GestureDetector(
               // Only enable pan gestures if delete or edit actions are available
-              onPanStart: (widget.onDelete != null || widget.onEditDescription != null) ? _onPanStart : null,
-              onPanUpdate: (widget.onDelete != null || widget.onEditDescription != null) ? _onPanUpdate : null,
-              onPanEnd: (widget.onDelete != null || widget.onEditDescription != null) ? _onPanEnd : null,
+              onPanStart:
+                  (widget.onDelete != null || widget.onEditDescription != null)
+                      ? _onPanStart
+                      : null,
+              onPanUpdate:
+                  (widget.onDelete != null || widget.onEditDescription != null)
+                      ? _onPanUpdate
+                      : null,
+              onPanEnd:
+                  (widget.onDelete != null || widget.onEditDescription != null)
+                      ? _onPanEnd
+                      : null,
               child: Transform.translate(
                 offset: Offset(currentOffset, 0),
                 child: MusicPostCard(
                   username: widget.showUserInfo ? widget.post.username : '',
-                  avatarUrl: widget.showUserInfo ? widget.post.userProfilePicture : '',
+                  avatarUrl:
+                      widget.showUserInfo ? widget.post.userProfilePicture : '',
                   trackTitle: widget.post.songName,
                   artist: widget.post.artistName,
                   coverUrl: widget.post.songImage,
@@ -338,7 +354,8 @@ class _EditPostDialogState extends State<_EditPostDialog> {
   @override
   void initState() {
     super.initState();
-    _descriptionController = TextEditingController(text: widget.post.description ?? '');
+    _descriptionController =
+        TextEditingController(text: widget.post.description ?? '');
   }
 
   @override
@@ -381,24 +398,26 @@ class _EditPostDialogState extends State<_EditPostDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _isUpdating ? null : () {
-            Navigator.pop(context);
-            widget.onCancel?.call();
-          },
+          onPressed: _isUpdating
+              ? null
+              : () {
+                  Navigator.pop(context);
+                  widget.onCancel?.call();
+                },
           child: const Text('Cancel'),
         ),
         TextButton(
           onPressed: _isUpdating ? null : _updatePost,
-          child: _isUpdating 
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Text(
-                'Update',
-                style: TextStyle(color: Colors.green),
-              ),
+          child: _isUpdating
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text(
+                  'Update',
+                  style: TextStyle(color: Colors.green),
+                ),
         ),
       ],
     );
@@ -423,7 +442,7 @@ class _EditPostDialogState extends State<_EditPostDialog> {
       // Call the onEdit callback with the new description
       widget.onEdit(_descriptionController.text.trim());
       Navigator.pop(context);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Post updated successfully'),

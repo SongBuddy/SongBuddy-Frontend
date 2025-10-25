@@ -20,7 +20,8 @@ class ConnectionProgressIndicator extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Connections progress', style: textStyle?.copyWith(fontWeight: FontWeight.w600)),
+        Text('Connections progress',
+            style: textStyle?.copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
@@ -32,7 +33,8 @@ class ConnectionProgressIndicator extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        Text('$completedSteps of $totalSteps completed', style: Theme.of(context).textTheme.bodyMedium),
+        Text('$completedSteps of $totalSteps completed',
+            style: Theme.of(context).textTheme.bodyMedium),
       ],
     );
   }

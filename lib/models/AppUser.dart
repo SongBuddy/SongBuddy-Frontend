@@ -37,21 +37,19 @@ class AppUser {
           ? json['images'][0]['url'] ?? ''
           : '',
       currentlyPlaying: json['currentlyPlaying'],
-      topArtists: json['topArtists'] != null 
+      topArtists: json['topArtists'] != null
           ? List<Map<String, dynamic>>.from(json['topArtists'])
           : [],
-      topTracks: json['topTracks'] != null 
+      topTracks: json['topTracks'] != null
           ? List<Map<String, dynamic>>.from(json['topTracks'])
           : [],
-      recentlyPlayed: json['recentlyPlayed'] != null 
+      recentlyPlayed: json['recentlyPlayed'] != null
           ? List<Map<String, dynamic>>.from(json['recentlyPlayed'])
           : [],
-      following: json['following'] != null 
-          ? List<String>.from(json['following'])
-          : [],
-      followers: json['followers'] != null 
-          ? List<String>.from(json['followers'])
-          : [],
+      following:
+          json['following'] != null ? List<String>.from(json['following']) : [],
+      followers:
+          json['followers'] != null ? List<String>.from(json['followers']) : [],
       postCount: json['postCount'] ?? 0,
     );
   }

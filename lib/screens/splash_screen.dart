@@ -6,7 +6,6 @@ import 'package:songbuddy/constants/app_colors.dart';
 import 'package:songbuddy/constants/app_text_styles.dart';
 import 'package:songbuddy/widgets/riverpod_connection_overlay.dart';
 
-
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -28,18 +27,20 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _initializeApp() async {
     // Initialize auth provider
     await _authProvider.initialize();
-    
+
     // Wait for splash screen duration
     await Future.delayed(const Duration(seconds: 3));
-    
+
     if (mounted) {
       // Navigate based on authentication state with smooth animation
       if (_authProvider.isAuthenticated) {
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const MainScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const MainScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
               const begin = Offset(0.0, 1.0);
               const end = Offset.zero;
               const curve = Curves.easeInOut;
@@ -63,10 +64,12 @@ class _SplashScreenState extends State<SplashScreen>
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const RiverpodConnectionOverlay(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const RiverpodConnectionOverlay(
               child: OnboardingScreen(),
             ),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
               const begin = Offset(0.0, 1.0);
               const end = Offset.zero;
               const curve = Curves.easeInOut;

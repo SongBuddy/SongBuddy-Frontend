@@ -4,7 +4,7 @@ import 'package:songbuddy/constants/app_text_styles.dart';
 /// Thin snackbar shown at the bottom for connection status
 class OfflineSnackbar extends StatelessWidget {
   final bool isOffline;
-  
+
   const OfflineSnackbar({super.key, required this.isOffline});
 
   @override
@@ -36,7 +36,7 @@ class OfflineSnackbar extends StatelessWidget {
   static void show(BuildContext context) {
     // Remove any existing snackbar first
     ScaffoldMessenger.of(context).clearSnackBars();
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: OfflineSnackbar(isOffline: true),
@@ -53,7 +53,7 @@ class OfflineSnackbar extends StatelessWidget {
   static void showOnline(BuildContext context) {
     // Remove any existing snackbar first
     ScaffoldMessenger.of(context).clearSnackBars();
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: OfflineSnackbar(isOffline: false),

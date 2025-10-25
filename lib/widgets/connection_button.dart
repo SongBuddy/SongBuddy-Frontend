@@ -25,7 +25,8 @@ class ConnectionButton extends StatefulWidget {
   State<ConnectionButton> createState() => _ConnectionButtonState();
 }
 
-class _ConnectionButtonState extends State<ConnectionButton> with SingleTickerProviderStateMixin {
+class _ConnectionButtonState extends State<ConnectionButton>
+    with SingleTickerProviderStateMixin {
   bool _loading = false;
   bool _success = false;
   String? _errorMessage;
@@ -34,7 +35,8 @@ class _ConnectionButtonState extends State<ConnectionButton> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _iconController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    _iconController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 500));
   }
 
   @override
@@ -79,7 +81,8 @@ class _ConnectionButtonState extends State<ConnectionButton> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     final bg = widget.backgroundColor ?? Theme.of(context).colorScheme.primary;
-    final fg = widget.foregroundColor ?? Theme.of(context).colorScheme.onPrimary;
+    final fg =
+        widget.foregroundColor ?? Theme.of(context).colorScheme.onPrimary;
 
     return ConstrainedBox(
       constraints: BoxConstraints(minWidth: widget.minWidth),
@@ -91,13 +94,15 @@ class _ConnectionButtonState extends State<ConnectionButton> with SingleTickerPr
             backgroundColor: bg,
             foregroundColor: fg,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 3,
           ),
           onPressed: _loading ? null : _handleTap,
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
-            transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: child),
+            transitionBuilder: (child, anim) =>
+                FadeTransition(opacity: anim, child: child),
             child: _loading
                 ? Row(
                     key: const ValueKey('loading'),
@@ -121,8 +126,12 @@ class _ConnectionButtonState extends State<ConnectionButton> with SingleTickerPr
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           ScaleTransition(
-                            scale: Tween<double>(begin: 0.8, end: 1.0).animate(CurvedAnimation(parent: _iconController, curve: Curves.elasticOut)),
-                            child: const Icon(Icons.check_circle_outline, size: 20),
+                            scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+                                CurvedAnimation(
+                                    parent: _iconController,
+                                    curve: Curves.elasticOut)),
+                            child: const Icon(Icons.check_circle_outline,
+                                size: 20),
                           ),
                           const SizedBox(width: 10),
                           Text('Connected', style: TextStyle(color: fg)),
@@ -136,7 +145,9 @@ class _ConnectionButtonState extends State<ConnectionButton> with SingleTickerPr
                             widget.leading!,
                             const SizedBox(width: 10),
                           ],
-                          Flexible(child: Text(widget.label, overflow: TextOverflow.ellipsis)),
+                          Flexible(
+                              child: Text(widget.label,
+                                  overflow: TextOverflow.ellipsis)),
                         ],
                       ),
           ),

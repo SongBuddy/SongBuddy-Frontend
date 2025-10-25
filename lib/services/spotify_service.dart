@@ -17,9 +17,12 @@ class SpotifyException implements Exception {
 
 /// Service class to handle Spotify Web API calls
 class SpotifyService {
-  static String get _baseUrl => dotenv.env['SPOTIFY_API_BASE_URL'] ?? 'https://api.spotify.com/v1';
-  static String get _authUrl => dotenv.env['SPOTIFY_AUTH_URL'] ?? 'https://accounts.spotify.com/api/token';
-  
+  static String get _baseUrl =>
+      dotenv.env['SPOTIFY_API_BASE_URL'] ?? 'https://api.spotify.com/v1';
+  static String get _authUrl =>
+      dotenv.env['SPOTIFY_AUTH_URL'] ??
+      'https://accounts.spotify.com/api/token';
+
   // Get credentials from environment variables
   static String get _clientId => dotenv.env['SPOTIFY_CLIENT_ID'] ?? '';
   static String get _clientSecret => dotenv.env['SPOTIFY_CLIENT_SECRET'] ?? '';
@@ -50,6 +53,7 @@ class SpotifyService {
       );
     }
   }
+
   /// Dispose the HTTP client
   void dispose() {
     _client.close();
@@ -61,9 +65,11 @@ class SpotifyService {
   /// will be echoed back by Spotify. It should be validated upon callback.
   String getAuthorizationUrl({required String state}) {
     _validateEnvironmentVariables();
-    const String scope = 'user-read-private user-read-email user-read-currently-playing user-read-playback-state user-library-read playlist-read-private user-read-recently-played user-top-read';
+    const String scope =
+        'user-read-private user-read-email user-read-currently-playing user-read-playback-state user-library-read playlist-read-private user-read-recently-played user-top-read';
 
-    final Uri authUri = Uri.parse('https://accounts.spotify.com/authorize').replace(
+    final Uri authUri =
+        Uri.parse('https://accounts.spotify.com/authorize').replace(
       queryParameters: {
         'response_type': 'code',
         'client_id': _clientId,
@@ -99,10 +105,10 @@ class SpotifyService {
         final data = json.decode(response.body) as Map<String, dynamic>;
         return data;
       } else {
-        final errorData = response.body.isNotEmpty 
+        final errorData = response.body.isNotEmpty
             ? json.decode(response.body) as Map<String, dynamic>
             : <String, dynamic>{};
-        
+
         throw SpotifyException(
           errorData['error_description'] ?? 'Failed to exchange code for token',
           statusCode: response.statusCode,
@@ -144,7 +150,8 @@ class SpotifyService {
   }
 
   /// Get user's playlists
-  Future<Map<String, dynamic>> getUserPlaylists(String accessToken, {int limit = 20, int offset = 0}) async {
+  Future<Map<String, dynamic>> getUserPlaylists(String accessToken,
+      {int limit = 20, int offset = 0}) async {
     _validateEnvironmentVariables();
     return await _makeAuthenticatedRequest(
       'GET',
@@ -154,7 +161,8 @@ class SpotifyService {
   }
 
   /// Get user's saved tracks (liked songs)
-  Future<Map<String, dynamic>> getUserSavedTracks(String accessToken, {int limit = 20, int offset = 0}) async {
+  Future<Map<String, dynamic>> getUserSavedTracks(String accessToken,
+      {int limit = 20, int offset = 0}) async {
     _validateEnvironmentVariables();
     return await _makeAuthenticatedRequest(
       'GET',
@@ -164,7 +172,8 @@ class SpotifyService {
   }
 
   /// Get user's top tracks
-  Future<Map<String, dynamic>> getUserTopTracks(String accessToken, {String timeRange = 'medium_term', int limit = 20}) async {
+  Future<Map<String, dynamic>> getUserTopTracks(String accessToken,
+      {String timeRange = 'medium_term', int limit = 20}) async {
     _validateEnvironmentVariables();
     return await _makeAuthenticatedRequest(
       'GET',
@@ -174,7 +183,8 @@ class SpotifyService {
   }
 
   /// Get user's top artists
-  Future<Map<String, dynamic>> getUserTopArtists(String accessToken, {String timeRange = 'medium_term', int limit = 20}) async {
+  Future<Map<String, dynamic>> getUserTopArtists(String accessToken,
+      {String timeRange = 'medium_term', int limit = 20}) async {
     _validateEnvironmentVariables();
     return await _makeAuthenticatedRequest(
       'GET',
@@ -184,7 +194,8 @@ class SpotifyService {
   }
 
   /// Get user's recently played tracks
-  Future<Map<String, dynamic>> getRecentlyPlayed(String accessToken, {int limit = 20}) async {
+  Future<Map<String, dynamic>> getRecentlyPlayed(String accessToken,
+      {int limit = 20}) async {
     _validateEnvironmentVariables();
     return await _makeAuthenticatedRequest(
       'GET',
@@ -252,15 +263,15 @@ class SpotifyService {
         if (response.body.isEmpty) {
           return {};
         }
-       
+
         return json.decode(response.body) as Map<String, dynamic>;
       } else {
-        final errorData = response.body.isNotEmpty 
+        final errorData = response.body.isNotEmpty
             ? json.decode(response.body) as Map<String, dynamic>
             : <String, dynamic>{};
-        
+
         // Error details included in exception - no need for console spam
-        
+
         String errorMessage = 'API request failed';
         if (response.statusCode == 403) {
           errorMessage = 'Access forbidden (403). This usually means:\n'
@@ -273,7 +284,7 @@ class SpotifyService {
         } else if (errorData['error']?['message'] != null) {
           errorMessage = errorData['error']['message'];
         }
-        
+
         throw SpotifyException(
           errorMessage,
           statusCode: response.statusCode,
@@ -296,7 +307,8 @@ class SpotifyService {
   /// Securely generate a random URL-safe state string
   static String generateSecureState({int numBytes = 16}) {
     final secureRandom = Random.secure();
-    final bytes = List<int>.generate(numBytes, (_) => secureRandom.nextInt(256));
+    final bytes =
+        List<int>.generate(numBytes, (_) => secureRandom.nextInt(256));
     // Base64 URL-safe without padding
     return base64UrlEncode(bytes).replaceAll('=', '');
   }

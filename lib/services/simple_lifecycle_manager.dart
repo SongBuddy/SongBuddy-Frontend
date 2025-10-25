@@ -18,7 +18,7 @@ class SimpleLifecycleManager with WidgetsBindingObserver {
   /// Initialize the lifecycle manager
   Future<void> initialize() async {
     if (_isInitialized) return;
-    
+
     debugPrint('🔄 SimpleLifecycleManager: Initializing');
     WidgetsBinding.instance.addObserver(this);
     await _syncService.initialize();
@@ -70,4 +70,3 @@ class SimpleLifecycleManager with WidgetsBindingObserver {
     _isInitialized = false;
   }
 }
-

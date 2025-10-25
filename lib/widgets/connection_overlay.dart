@@ -7,7 +7,7 @@ import 'package:songbuddy/widgets/offline_snackbar.dart';
 /// Overlay widget that monitors internet connection and shows/hides UI elements
 class ConnectionOverlay extends StatefulWidget {
   final Widget child;
-  
+
   const ConnectionOverlay({
     super.key,
     required this.child,
@@ -29,7 +29,7 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
 
   void _initializeConnectionMonitoring() {
     final connectionService = InternetConnectionService.instance;
-    
+
     // Listen to connection changes
     _connectionSubscription = connectionService.connectionStream.listen(
       (isConnected) {

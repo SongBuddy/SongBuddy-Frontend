@@ -3,7 +3,6 @@ import 'package:songbuddy/models/AppUser.dart';
 import '../services/spotify_service.dart';
 import '../services/backend_service.dart';
 
-
 class AuthFlow {
   final SpotifyService spotifyService;
   final BackendService backendService;
@@ -15,7 +14,7 @@ class AuthFlow {
       // 1. Get Spotify profile
       final profileJson = await spotifyService.getCurrentUser(accessToken);
       final spotifyUserId = profileJson['id'] as String?;
-      
+
       if (spotifyUserId == null) {
         throw Exception('Unable to retrieve user ID from Spotify');
       }
@@ -36,9 +35,15 @@ class AuthFlow {
       // Get additional user data in parallel
       final futures = await Future.wait([
         spotifyService.getCurrentlyPlaying(accessToken).catchError((e) => null),
-        spotifyService.getUserTopArtists(accessToken, limit: 10).catchError((e) => {'items': []}),
-        spotifyService.getUserTopTracks(accessToken, limit: 10).catchError((e) => {'items': []}),
-        spotifyService.getRecentlyPlayed(accessToken, limit: 10).catchError((e) => {'items': []}),
+        spotifyService
+            .getUserTopArtists(accessToken, limit: 10)
+            .catchError((e) => {'items': []}),
+        spotifyService
+            .getUserTopTracks(accessToken, limit: 10)
+            .catchError((e) => {'items': []}),
+        spotifyService
+            .getRecentlyPlayed(accessToken, limit: 10)
+            .catchError((e) => {'items': []}),
       ]);
 
       final currentlyPlaying = futures[0];
@@ -48,11 +53,14 @@ class AuthFlow {
 
       // 4. Extract items from responses
       final topArtists = (topArtistsResponse['items'] as List<dynamic>?)
-          ?.cast<Map<String, dynamic>>() ?? [];
+              ?.cast<Map<String, dynamic>>() ??
+          [];
       final topTracks = (topTracksResponse['items'] as List<dynamic>?)
-          ?.cast<Map<String, dynamic>>() ?? [];
+              ?.cast<Map<String, dynamic>>() ??
+          [];
       final recentlyPlayed = (recentlyPlayedResponse['items'] as List<dynamic>?)
-          ?.cast<Map<String, dynamic>>() ?? [];
+              ?.cast<Map<String, dynamic>>() ??
+          [];
 
       // 5. Create enhanced user object
       final user = AppUser(
@@ -60,9 +68,10 @@ class AuthFlow {
         country: profileJson['country'] ?? 'US',
         displayName: profileJson['display_name'] ?? '',
         email: profileJson['email'] ?? '',
-        profilePicture: (profileJson['images'] != null && profileJson['images'].isNotEmpty)
-            ? profileJson['images'][0]['url'] ?? ''
-            : '',
+        profilePicture:
+            (profileJson['images'] != null && profileJson['images'].isNotEmpty)
+                ? profileJson['images'][0]['url'] ?? ''
+                : '',
         currentlyPlaying: currentlyPlaying,
         topArtists: topArtists,
         topTracks: topTracks,
@@ -74,7 +83,8 @@ class AuthFlow {
 
       // 7. Return the saved user (with backend confirmation)
       if (savedUser == null) {
-        throw Exception('Failed to save user to backend: received null response');
+        throw Exception(
+            'Failed to save user to backend: received null response');
       }
       return savedUser;
     } catch (e) {

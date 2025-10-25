@@ -8,17 +8,19 @@ import 'package:songbuddy/widgets/offline_snackbar.dart';
 /// Riverpod-based connection overlay that monitors internet connectivity
 class RiverpodConnectionOverlay extends ConsumerStatefulWidget {
   final Widget child;
-  
+
   const RiverpodConnectionOverlay({
     super.key,
     required this.child,
   });
 
   @override
-  ConsumerState<RiverpodConnectionOverlay> createState() => _RiverpodConnectionOverlayState();
+  ConsumerState<RiverpodConnectionOverlay> createState() =>
+      _RiverpodConnectionOverlayState();
 }
 
-class _RiverpodConnectionOverlayState extends ConsumerState<RiverpodConnectionOverlay> {
+class _RiverpodConnectionOverlayState
+    extends ConsumerState<RiverpodConnectionOverlay> {
   bool _showPopup = false;
   bool _lastConnectionState = true;
   StreamSubscription<bool>? _connectionSubscription;
@@ -32,7 +34,8 @@ class _RiverpodConnectionOverlayState extends ConsumerState<RiverpodConnectionOv
 
   void _initializeConnectionMonitoring() {
     // Listen to connection changes directly from the provider
-    _connectionSubscription = ref.read(internetConnectivityProvider.stream).listen(
+    _connectionSubscription =
+        ref.read(internetConnectivityProvider.stream).listen(
       (isConnected) {
         if (mounted && _lastConnectionState != isConnected) {
           _lastConnectionState = isConnected;
@@ -62,7 +65,7 @@ class _RiverpodConnectionOverlayState extends ConsumerState<RiverpodConnectionOv
 
   void _handleConnectionChange(bool isConnected) {
     if (!mounted) return;
-    
+
     if (!isConnected) {
       // Show popup and snackbar when disconnected
       if (!_showPopup) {
@@ -80,10 +83,10 @@ class _RiverpodConnectionOverlayState extends ConsumerState<RiverpodConnectionOv
 
   void _showOfflineUI() {
     if (!mounted) return;
-    
+
     // Show snackbar
     OfflineSnackbar.show(context);
-    
+
     // Show popup using overlay (no navigation issues)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -94,7 +97,7 @@ class _RiverpodConnectionOverlayState extends ConsumerState<RiverpodConnectionOv
 
   void _showOverlayPopup() {
     if (!mounted || _overlayEntry != null) return;
-    
+
     _overlayEntry = OverlayEntry(
       builder: (context) => GestureDetector(
         onTap: _removeOverlay,
@@ -102,14 +105,15 @@ class _RiverpodConnectionOverlayState extends ConsumerState<RiverpodConnectionOv
           color: Colors.transparent,
           child: Center(
             child: GestureDetector(
-              onTap: () {}, // Prevent tap from closing when tapping popup itself
+              onTap:
+                  () {}, // Prevent tap from closing when tapping popup itself
               child: const NoInternetPopup(),
             ),
           ),
         ),
       ),
     );
-    
+
     Overlay.of(context).insert(_overlayEntry!);
   }
 
@@ -120,10 +124,10 @@ class _RiverpodConnectionOverlayState extends ConsumerState<RiverpodConnectionOv
 
   void _showOnlineUI() {
     if (!mounted) return;
-    
+
     // Remove overlay popup safely
     _removeOverlay();
-    
+
     // Show online snackbar
     OfflineSnackbar.showOnline(context);
   }

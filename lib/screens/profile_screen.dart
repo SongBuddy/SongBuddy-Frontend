@@ -39,10 +39,10 @@ class ProfileScreenState extends State<ProfileScreen> {
   List<Map<String, dynamic>> _topTracks = const [];
   List<Map<String, dynamic>> _recentlyPlayed = const [];
   bool _insufficientScopeTop = false;
-  
+
   // Backend sync for currently playing (now handled by background service)
   Map<String, dynamic>? _lastSyncedCurrentlyPlaying;
-  
+
   // Track selection for posts
   final Set<String> _selectedTracks = <String>{};
   bool _isSelectionMode = false;
@@ -50,17 +50,18 @@ class ProfileScreenState extends State<ProfileScreen> {
   // User posts
   List<Post> _userPosts = [];
   bool _loadingPosts = false;
-  
+
   // Profile data (includes follow status)
   ProfileData? _profileData;
-  
+
   // Smart FAB positioning
   bool _shouldUseFAB = true;
   bool _isScrollingDown = false;
   bool _showFAB = true;
   double _lastScrollPosition = 0.0;
 
-  final bool _loadingTop = false; // non-blocking loading for top artists/tracks (kept for future use)
+  final bool _loadingTop =
+      false; // non-blocking loading for top artists/tracks (kept for future use)
   static const Duration _animDur = Duration(milliseconds: 250);
 
   @override
@@ -71,10 +72,10 @@ class ProfileScreenState extends State<ProfileScreen> {
     _spotifyService = SpotifyService();
     _backendService = BackendService();
     _scrollController = ScrollController();
-    
+
     // Add scroll listener for smart FAB behavior
     _scrollController.addListener(_onScroll);
-    
+
     _initialize();
   }
 
@@ -115,35 +116,39 @@ class ProfileScreenState extends State<ProfileScreen> {
     setState(() {});
   }
 
-
   /// Sync currently playing data to backend when it changes
   Future<void> _syncCurrentlyPlayingToBackend() async {
     if (_authProvider.userId == null) return;
-    
+
     // Check if currently playing has changed
     if (_currentlyPlaying == _lastSyncedCurrentlyPlaying) {
-      debugPrint('🎵 ProfileScreen: Currently playing unchanged - skipping sync');
+      debugPrint(
+          '🎵 ProfileScreen: Currently playing unchanged - skipping sync');
       return;
     }
-    
-    debugPrint('🎵 ProfileScreen: Currently playing changed - syncing to backend');
+
+    debugPrint(
+        '🎵 ProfileScreen: Currently playing changed - syncing to backend');
     debugPrint('🎵 ProfileScreen: Old: $_lastSyncedCurrentlyPlaying');
     debugPrint('🎵 ProfileScreen: New: $_currentlyPlaying');
-    
+
     try {
       final success = await _backendService.updateCurrentlyPlaying(
         _authProvider.userId!,
         _currentlyPlaying,
       );
-      
+
       if (success) {
-        debugPrint('✅ ProfileScreen: Successfully synced currently playing to backend');
+        debugPrint(
+            '✅ ProfileScreen: Successfully synced currently playing to backend');
         _lastSyncedCurrentlyPlaying = _currentlyPlaying;
       } else {
-        debugPrint('❌ ProfileScreen: Failed to sync currently playing to backend');
+        debugPrint(
+            '❌ ProfileScreen: Failed to sync currently playing to backend');
       }
     } catch (e) {
-      debugPrint('❌ ProfileScreen: Error syncing currently playing to backend: $e');
+      debugPrint(
+          '❌ ProfileScreen: Error syncing currently playing to backend: $e');
       // Don't show error to user - this is background sync
     }
   }
@@ -151,11 +156,11 @@ class ProfileScreenState extends State<ProfileScreen> {
   /// Handle scroll events for smart FAB behavior
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-    
+
     final currentScrollPosition = _scrollController.position.pixels;
     final isScrollingDown = currentScrollPosition > _lastScrollPosition;
     final isAtTop = currentScrollPosition <= 0;
-    
+
     // Update FAB visibility based on scroll direction
     if (isScrollingDown && !_isScrollingDown && currentScrollPosition > 100) {
       // Started scrolling down, hide FAB
@@ -176,24 +181,25 @@ class ProfileScreenState extends State<ProfileScreen> {
         _isScrollingDown = false;
       });
     }
-    
+
     _lastScrollPosition = currentScrollPosition;
   }
 
   /// Calculate if content is long enough to warrant scroll-aware FAB
   bool get _hasEnoughContentToScroll {
     if (!mounted) return false;
-    
+
     final screenHeight = MediaQuery.of(context).size.height;
     final appBarHeight = AppBar().preferredSize.height;
     final statusBarHeight = MediaQuery.of(context).padding.top;
     const bottomNavHeight = kBottomNavigationBarHeight;
-    
-    final availableHeight = screenHeight - appBarHeight - statusBarHeight - bottomNavHeight;
-    
+
+    final availableHeight =
+        screenHeight - appBarHeight - statusBarHeight - bottomNavHeight;
+
     // Estimate content height based on posts and other content
     final estimatedContentHeight = _calculateEstimatedContentHeight();
-    
+
     // Use 80% threshold - if content is less than 80% of available height, don't use FAB
     return estimatedContentHeight > availableHeight * 0.8;
   }
@@ -201,22 +207,22 @@ class ProfileScreenState extends State<ProfileScreen> {
   /// Estimate total content height
   double _calculateEstimatedContentHeight() {
     double totalHeight = 0;
-    
+
     // Profile header section (~300px)
     totalHeight += 300;
-    
+
     // Music sections (currently playing, top artists, tracks, recently played)
     if (_currentlyPlaying != null) totalHeight += 120;
     if (_topArtists.isNotEmpty) totalHeight += 150;
     if (_topTracks.isNotEmpty) totalHeight += 150;
     if (_recentlyPlayed.isNotEmpty) totalHeight += 150;
-    
+
     // Posts section - estimate ~200px per post
     totalHeight += _userPosts.length * 200.0;
-    
+
     // Add some padding
     totalHeight += 100;
-    
+
     return totalHeight;
   }
 
@@ -234,13 +240,15 @@ class ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _fetchAll() async {
-    if (!_authProvider.isAuthenticated || _authProvider.accessToken == null) return;
+    if (!_authProvider.isAuthenticated || _authProvider.accessToken == null) {
+      return;
+    }
     setState(() {
       _loading = true;
     });
     final token = _authProvider.accessToken;
     if (token == null) return;
-    
+
     // ignore: avoid_print
     print('[Profile] Fetch start');
     try {
@@ -257,26 +265,30 @@ class ProfileScreenState extends State<ProfileScreen> {
             print('[Profile] Failed to fetch Spotify user: $e');
           }
         }(),
-        
+
         // Essential backend profile data (posts count, followers, following, username)
         () async {
           try {
             if (_authProvider.userId != null) {
-              final profileData = await _backendService.getUserProfile(_authProvider.userId!, currentUserId: _authProvider.userId);
+              final profileData = await _backendService.getUserProfile(
+                  _authProvider.userId!,
+                  currentUserId: _authProvider.userId);
               setState(() {
                 _profileData = profileData;
               });
-              print('[Profile] Essential profile data loaded: ${profileData.user.username}, ${profileData.user.postsCount} posts, ${profileData.user.followersCount} followers');
+              print(
+                  '[Profile] Essential profile data loaded: ${profileData.user.username}, ${profileData.user.postsCount} posts, ${profileData.user.followersCount} followers');
             }
           } catch (e) {
             print('[Profile] Failed to fetch essential profile data: $e');
           }
         }(),
-        
+
         // Optional Spotify data with individual handling
         () async {
           try {
-            _currentlyPlaying = await _spotifyService.getCurrentlyPlaying(token);
+            _currentlyPlaying =
+                await _spotifyService.getCurrentlyPlaying(token);
             // Sync to backend after fetching from Spotify
             _syncCurrentlyPlayingToBackend();
           } catch (e) {
@@ -290,7 +302,8 @@ class ProfileScreenState extends State<ProfileScreen> {
               timeRange: 'medium_term',
               limit: 10,
             );
-            _topArtists = (ta['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
+            _topArtists = (ta['items'] as List<dynamic>? ?? const [])
+                .cast<Map<String, dynamic>>();
           } catch (e) {
             _insufficientScopeTop = true;
             _topArtists = const [];
@@ -303,7 +316,8 @@ class ProfileScreenState extends State<ProfileScreen> {
               timeRange: 'medium_term',
               limit: 10,
             );
-            _topTracks = (tt['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
+            _topTracks = (tt['items'] as List<dynamic>? ?? const [])
+                .cast<Map<String, dynamic>>();
           } catch (e) {
             _insufficientScopeTop = true;
             _topTracks = const [];
@@ -311,22 +325,25 @@ class ProfileScreenState extends State<ProfileScreen> {
         }(),
         () async {
           try {
-            final rp = await _spotifyService.getRecentlyPlayed(token, limit: 10);
-            _recentlyPlayed = (rp['items'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
+            final rp =
+                await _spotifyService.getRecentlyPlayed(token, limit: 10);
+            _recentlyPlayed = (rp['items'] as List<dynamic>? ?? const [])
+                .cast<Map<String, dynamic>>();
           } catch (e) {}
         }(),
       ];
       await Future.wait(futures);
-      
+
       // Fetch user posts separately (heavier data, can load after essential info)
       _fetchUserPosts();
-      
+
       // Background sync is now handled by AppLifecycleManager
       // Force immediate sync to catch up
       await SimpleLifecycleManager.instance.forceSync();
-      
+
       // ignore: avoid_print
-      print('[Profile] Fetch success: user=${_user?['id']} topArtists=${_topArtists.length} topTracks=${_topTracks.length} recently=${_recentlyPlayed.length}');
+      print(
+          '[Profile] Fetch success: user=${_user?['id']} topArtists=${_topArtists.length} topTracks=${_topTracks.length} recently=${_recentlyPlayed.length}');
     } catch (e) {
       // ignore: avoid_print
       print('[Profile] Fetch error: $e');
@@ -338,8 +355,6 @@ class ProfileScreenState extends State<ProfileScreen> {
       }
     }
   }
-
-
 
   void _toggleSelectionMode() {
     setState(() {
@@ -364,14 +379,14 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   void _createPost() {
     if (_selectedTracks.isEmpty) return;
-    
+
     // Find the selected track from recently played
     final selectedTrackId = _selectedTracks.first;
     final selectedTrack = _recentlyPlayed.firstWhere(
       (track) => track['track']['id'] == selectedTrackId,
       orElse: () => _recentlyPlayed.first,
     );
-    
+
     // Navigate to create post screen
     Navigator.push(
       context,
@@ -397,36 +412,42 @@ class ProfileScreenState extends State<ProfileScreen> {
       print('❌ ProfileScreen: User ID is null, cannot fetch posts');
       return;
     }
-    
+
     print('🔍 ProfileScreen: Fetching user posts for: ${_authProvider.userId}');
-    
+
     setState(() {
       _loadingPosts = true;
     });
 
     try {
-      final profileData = await _backendService.getUserProfile(_authProvider.userId!, currentUserId: _authProvider.userId);
-      print('🔍 ProfileScreen: Received posts data: ${profileData.posts.length} posts');
-      
+      final profileData = await _backendService.getUserProfile(
+          _authProvider.userId!,
+          currentUserId: _authProvider.userId);
+      print(
+          '🔍 ProfileScreen: Received posts data: ${profileData.posts.length} posts');
+
       // Update only posts data (profile data already loaded in parallel)
       setState(() {
         _userPosts = profileData.posts;
       });
-      
+
       // Update FAB strategy based on new content
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _updateFABStrategy();
       });
-      
-      print('✅ ProfileScreen: Successfully updated _userPosts with ${_userPosts.length} posts');
+
+      print(
+          '✅ ProfileScreen: Successfully updated _userPosts with ${_userPosts.length} posts');
     } catch (e) {
       print('❌ ProfileScreen: Failed to fetch user posts: $e');
-      
+
       // Show user-friendly error message
-      if (e.toString().contains('Connection timed out') || e.toString().contains('SocketException')) {
+      if (e.toString().contains('Connection timed out') ||
+          e.toString().contains('SocketException')) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Cannot connect to server. Please check your network connection.'),
+            content: Text(
+                'Cannot connect to server. Please check your network connection.'),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 5),
           ),
@@ -453,31 +474,36 @@ class ProfileScreenState extends State<ProfileScreen> {
       print('❌ ProfileScreen: User ID is null, cannot fetch profile');
       return;
     }
-    
-    print('🔍 ProfileScreen: Fetching profile for user: ${_authProvider.userId}');
-    
+
+    print(
+        '🔍 ProfileScreen: Fetching profile for user: ${_authProvider.userId}');
+
     setState(() {
       _loadingPosts = true;
     });
 
     try {
-      final profileData = await _backendService.getUserProfile(_authProvider.userId!, currentUserId: _authProvider.userId);
+      final profileData = await _backendService.getUserProfile(
+          _authProvider.userId!,
+          currentUserId: _authProvider.userId);
       print('🔍 ProfileScreen: Received profile data');
-      print('🔍 ProfileScreen: User: ${profileData.user.displayName}, Posts: ${profileData.posts.length}');
-      
+      print(
+          '🔍 ProfileScreen: User: ${profileData.user.displayName}, Posts: ${profileData.posts.length}');
+
       // Update posts and profile data
       setState(() {
         _userPosts = profileData.posts;
         _profileData = profileData;
       });
-      
+
       // Update FAB strategy based on new content
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _updateFABStrategy();
       });
-      
-      print('✅ ProfileScreen: Successfully updated _userPosts with ${_userPosts.length} posts');
-      
+
+      print(
+          '✅ ProfileScreen: Successfully updated _userPosts with ${_userPosts.length} posts');
+
       // Debug: Check final posts state
       if (_userPosts.isEmpty) {
         print('❌ ProfileScreen: _userPosts is empty after processing!');
@@ -485,22 +511,26 @@ class ProfileScreenState extends State<ProfileScreen> {
         print('✅ ProfileScreen: _userPosts has ${_userPosts.length} posts');
         for (int i = 0; i < _userPosts.length; i++) {
           final post = _userPosts[i];
-          print('🔍 ProfileScreen: Final post $i: id=${post.id}, title=${post.songName}');
+          print(
+              '🔍 ProfileScreen: Final post $i: id=${post.id}, title=${post.songName}');
         }
       }
-      
+
       // Log like states for debugging
       for (final post in _userPosts) {
-        print('🔍 ProfileScreen: Post ${post.id} - liked: ${post.isLikedByCurrentUser}, count: ${post.likeCount}');
+        print(
+            '🔍 ProfileScreen: Post ${post.id} - liked: ${post.isLikedByCurrentUser}, count: ${post.likeCount}');
       }
     } catch (e) {
       print('❌ ProfileScreen: Failed to fetch user profile: $e');
-      
+
       // Show user-friendly error message
-      if (e.toString().contains('Connection timed out') || e.toString().contains('SocketException')) {
+      if (e.toString().contains('Connection timed out') ||
+          e.toString().contains('SocketException')) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Cannot connect to server. Please check your network connection.'),
+            content: Text(
+                'Cannot connect to server. Please check your network connection.'),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 5),
           ),
@@ -529,26 +559,27 @@ class ProfileScreenState extends State<ProfileScreen> {
       if (userId == null) {
         throw Exception('User not authenticated');
       }
-      
+
       // Debug: Print the post being deleted and userId
       final postToDelete = _userPosts.firstWhere((post) => post.id == postId);
       print('🔍 ProfileScreen: Deleting post: $postId');
       print('🔍 ProfileScreen: Post owner userId: ${postToDelete.userId}');
       print('🔍 ProfileScreen: Current user userId: $userId');
-      print('🔍 ProfileScreen: UserIds match: ${postToDelete.userId == userId}');
-      
+      print(
+          '🔍 ProfileScreen: UserIds match: ${postToDelete.userId == userId}');
+
       await _backendService.deletePost(postId, userId: userId);
       setState(() {
         _userPosts.removeWhere((post) => post.id == postId);
       });
-      
+
       // Update FAB strategy after post deletion
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _updateFABStrategy();
       });
-      
+
       HapticFeedback.lightImpact();
-      
+
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -569,7 +600,6 @@ class ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-
   // Removed time range switching; always uses medium_term
 
   @override
@@ -582,7 +612,10 @@ class ProfileScreenState extends State<ProfileScreen> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
+              colors: [
+                AppColors.darkBackgroundStart,
+                AppColors.darkBackgroundEnd
+              ],
             ),
           ),
           child: const Center(
@@ -595,7 +628,6 @@ class ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
-
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
@@ -603,7 +635,10 @@ class ProfileScreenState extends State<ProfileScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
+            colors: [
+              AppColors.darkBackgroundStart,
+              AppColors.darkBackgroundEnd
+            ],
           ),
         ),
         child: SafeArea(
@@ -614,7 +649,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                   onRefresh: () async {
                     HapticFeedback.lightImpact();
                     await _fetchAll();
-                    await SimpleLifecycleManager.instance.forceSync(); // Force sync on refresh
+                    await SimpleLifecycleManager.instance
+                        .forceSync(); // Force sync on refresh
                     HapticFeedback.selectionClick();
                   },
                   child: ListView(
@@ -643,7 +679,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                                 child: _EmptyCard(
                                   icon: Icons.lock_outline,
                                   title: 'Limited data due to permissions',
-                                  subtitle: 'Re-connect and grant access to Top Artists/Tracks to see more.',
+                                  subtitle:
+                                      'Re-connect and grant access to Top Artists/Tracks to see more.',
                                 ),
                               ),
                             const SizedBox(height: 24),
@@ -671,7 +708,6 @@ class ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-
   /// Build scroll-aware FAB with smooth animations
   Widget _buildScrollAwareFAB() {
     return AnimatedSlide(
@@ -681,26 +717,29 @@ class ProfileScreenState extends State<ProfileScreen> {
         duration: const Duration(milliseconds: 200),
         opacity: _showFAB ? 1.0 : 0.0,
         child: FloatingActionButton.extended(
-        heroTag: 'fab-create-post',
-        backgroundColor: AppColors.primary,
+          heroTag: 'fab-create-post',
+          backgroundColor: AppColors.primary,
           elevation: _showFAB ? 6 : 0,
-        focusElevation: 0,
-        hoverElevation: 0,
-        highlightElevation: 0,
-          onPressed: _showFAB ? () {
-          showCreatePostSheet(
-            context,
-            nowPlaying: _currentlyPlaying,
-            topTracks: _topTracks,
-            recentPlayed: _recentlyPlayed,
-          ).then((success) {
-            if (success == true) {
-              _fetchUserPosts();
-            }
-          });
-          } : null,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Create post', style: TextStyle(color: Colors.white)),
+          focusElevation: 0,
+          hoverElevation: 0,
+          highlightElevation: 0,
+          onPressed: _showFAB
+              ? () {
+                  showCreatePostSheet(
+                    context,
+                    nowPlaying: _currentlyPlaying,
+                    topTracks: _topTracks,
+                    recentPlayed: _recentlyPlayed,
+                  ).then((success) {
+                    if (success == true) {
+                      _fetchUserPosts();
+                    }
+                  });
+                }
+              : null,
+          icon: const Icon(Icons.add, color: Colors.white),
+          label:
+              const Text('Create post', style: TextStyle(color: Colors.white)),
         ),
       ),
     );
@@ -708,7 +747,8 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   SliverAppBar _buildHeader(BuildContext context) {
     final images = (_user?['images'] as List<dynamic>?) ?? const [];
-    final avatarUrl = images.isNotEmpty ? (images.first['url'] as String?) : null;
+    final avatarUrl =
+        images.isNotEmpty ? (images.first['url'] as String?) : null;
     final displayName = _user?['display_name'] as String? ?? 'Spotify User';
     final email = _user?['email'] as String?;
     final followers = _user?['followers']?['total'] as int?;
@@ -724,7 +764,10 @@ class ProfileScreenState extends State<ProfileScreen> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
+              colors: [
+                AppColors.darkBackgroundStart,
+                AppColors.darkBackgroundEnd
+              ],
             ),
           ),
           child: SafeArea(
@@ -737,9 +780,12 @@ class ProfileScreenState extends State<ProfileScreen> {
                   CircleAvatar(
                     radius: MediaQuery.of(context).size.width < 360 ? 36 : 44,
                     backgroundColor: AppColors.onDarkPrimary.withOpacity(0.12),
-                    backgroundImage: avatarUrl != null ? CachedNetworkImageProvider(avatarUrl) : null,
+                    backgroundImage: avatarUrl != null
+                        ? CachedNetworkImageProvider(avatarUrl)
+                        : null,
                     child: avatarUrl == null
-                        ? const Icon(Icons.person, color: AppColors.onDarkPrimary, size: 44)
+                        ? const Icon(Icons.person,
+                            color: AppColors.onDarkPrimary, size: 44)
                         : null,
                   ),
                   const SizedBox(width: 16),
@@ -767,7 +813,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              const Icon(Icons.people, size: 16, color: AppColors.onDarkSecondary),
+                              const Icon(Icons.people,
+                                  size: 16, color: AppColors.onDarkSecondary),
                               const SizedBox(width: 6),
                               Text(
                                 '$followers followers',
@@ -810,7 +857,6 @@ class ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
@@ -818,7 +864,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         children: [
           Expanded(
             child: Text(
-              title, 
+              title,
               style: AppTextStyles.heading2OnDark.copyWith(fontSize: 18),
             ),
           ),
@@ -846,7 +892,9 @@ class ProfileScreenState extends State<ProfileScreen> {
         .where((s) => s.isNotEmpty)
         .join(', ');
     final images = item['album']?['images'] as List<dynamic>? ?? const [];
-    final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null; // smaller image
+    final imageUrl = images.isNotEmpty
+        ? images.last['url'] as String?
+        : null; // smaller image
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -856,15 +904,24 @@ class ProfileScreenState extends State<ProfileScreen> {
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: imageUrl != null
-                ? CachedNetworkImage(imageUrl: imageUrl, width: 56, height: 56, fit: BoxFit.cover, memCacheWidth: 112, memCacheHeight: 112)
+                ? CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
+                    memCacheWidth: 112,
+                    memCacheHeight: 112)
                 : Container(
                     width: 56,
                     height: 56,
                     color: AppColors.onDarkPrimary.withOpacity(0.12),
-                    child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
+                    child: const Icon(Icons.music_note,
+                        color: AppColors.onDarkSecondary),
                   ),
           ),
-          title: Text(name, style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600)),
+          title: Text(name,
+              style: AppTextStyles.bodyOnDark
+                  .copyWith(fontWeight: FontWeight.w600)),
           subtitle: Text(artists, style: AppTextStyles.captionOnDark),
         ),
       ),
@@ -889,8 +946,12 @@ class ProfileScreenState extends State<ProfileScreen> {
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundImage: url != null ? CachedNetworkImageProvider(url) : null,
-                child: url == null ? const Icon(Icons.person, color: AppColors.onDarkSecondary, size: 20) : null,
+                backgroundImage:
+                    url != null ? CachedNetworkImageProvider(url) : null,
+                child: url == null
+                    ? const Icon(Icons.person,
+                        color: AppColors.onDarkSecondary, size: 20)
+                    : null,
               ),
               const SizedBox(height: 6),
               SizedBox(
@@ -935,13 +996,13 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   // Removed time range toggle UI
 
-
   // New: Top Artists as a widget (no slivers)
   Widget _buildTopArtistsWidget() {
     return AnimatedSwitcher(
       duration: _animDur,
       child: _loadingTop
-          ? _buildTopArtistsSkeletonContent(key: const ValueKey('artists-skeleton'))
+          ? _buildTopArtistsSkeletonContent(
+              key: const ValueKey('artists-skeleton'))
           : (_topArtists.isEmpty
               ? const Padding(
                   key: ValueKey('artists-empty'),
@@ -968,54 +1029,57 @@ class ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     }
-     return SizedBox(
-       height: 80,
-       child: ListView.separated(
-         padding: const EdgeInsets.symmetric(horizontal: 16),
-         scrollDirection: Axis.horizontal,
-         itemBuilder: (context, index) {
-           if (index >= _topTracks.length) return const SizedBox.shrink();
-           final track = _topTracks[index];
-           final images = track['album']?['images'] as List<dynamic>? ?? const [];
-           final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
-           return Column(
-             children: [
-               ClipRRect(
-                 borderRadius: BorderRadius.circular(8),
-                 child: imageUrl != null
-                     ? CachedNetworkImage(
-                         imageUrl: imageUrl,
-                         width: 48,
-                         height: 48,
-                         fit: BoxFit.cover,
-                         memCacheWidth: 96,
-                         memCacheHeight: 96,
-                       )
-                     : Container(
-                         width: 48,
-                         height: 48,
-                         color: AppColors.onDarkPrimary.withOpacity(0.12),
-                         child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary, size: 20),
-                       ),
-               ),
-               const SizedBox(height: 6),
-               SizedBox(
-                 width: 60,
-                 child: Text(
-                   track['name'] as String? ?? '',
-                   maxLines: 1,
-                   overflow: TextOverflow.ellipsis,
-                   textAlign: TextAlign.center,
-                   style: AppTextStyles.captionOnDark.copyWith(fontSize: 10),
-                 ),
-               )
-             ],
-           );
-         },
-         separatorBuilder: (_, __) => const SizedBox(width: 12),
-         itemCount: _topTracks.length > 5 ? 5 : _topTracks.length,
-       ),
-     );
+    return SizedBox(
+      height: 80,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemBuilder: (context, index) {
+          if (index >= _topTracks.length) return const SizedBox.shrink();
+          final track = _topTracks[index];
+          final images =
+              track['album']?['images'] as List<dynamic>? ?? const [];
+          final imageUrl =
+              images.isNotEmpty ? images.last['url'] as String? : null;
+          return Column(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: imageUrl != null
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 96,
+                        memCacheHeight: 96,
+                      )
+                    : Container(
+                        width: 48,
+                        height: 48,
+                        color: AppColors.onDarkPrimary.withOpacity(0.12),
+                        child: const Icon(Icons.music_note,
+                            color: AppColors.onDarkSecondary, size: 20),
+                      ),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                width: 60,
+                child: Text(
+                  track['name'] as String? ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.captionOnDark.copyWith(fontSize: 10),
+                ),
+              )
+            ],
+          );
+        },
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemCount: _topTracks.length > 5 ? 5 : _topTracks.length,
+      ),
+    );
   }
 
   Widget _buildTopTracksSkeletonWidget(BuildContext context) {
@@ -1043,12 +1107,12 @@ class ProfileScreenState extends State<ProfileScreen> {
     // Filter tracks from last 24 hours
     final now = DateTime.now();
     final last24Hours = now.subtract(const Duration(hours: 24));
-    
+
     final recentTracks = _recentlyPlayed.where((track) {
       final playedAt = DateTime.tryParse(track['played_at'] as String? ?? '');
       return playedAt != null && playedAt.isAfter(last24Hours);
     }).toList();
-    
+
     if (recentTracks.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 16),
@@ -1059,7 +1123,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         ),
       );
     }
-    
+
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -1069,28 +1133,37 @@ class ProfileScreenState extends State<ProfileScreen> {
         final item = recentTracks[index];
         final track = item['track'] as Map<String, dynamic>? ?? const {};
         final images = track['album']?['images'] as List<dynamic>? ?? const [];
-        final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
+        final imageUrl =
+            images.isNotEmpty ? images.last['url'] as String? : null;
         final artists = (track['artists'] as List<dynamic>? ?? const [])
             .map((a) => a['name'] as String? ?? '')
             .where((s) => s.isNotEmpty)
             .join(', ');
-        
+
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
           child: _GlassCard(
             borderRadius: 8,
             child: ListTile(
               dense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               leading: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: imageUrl != null
-                    ? CachedNetworkImage(imageUrl: imageUrl, width: 40, height: 40, fit: BoxFit.cover, memCacheWidth: 80, memCacheHeight: 80)
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 80,
+                        memCacheHeight: 80)
                     : Container(
                         width: 40,
                         height: 40,
                         color: AppColors.onDarkPrimary.withOpacity(0.12),
-                        child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary, size: 20),
+                        child: const Icon(Icons.music_note,
+                            color: AppColors.onDarkSecondary, size: 20),
                       ),
               ),
               title: Text(
@@ -1103,7 +1176,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                 overflow: TextOverflow.ellipsis,
               ),
               subtitle: Text(
-                artists, 
+                artists,
                 style: AppTextStyles.captionOnDark.copyWith(fontSize: 12),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -1123,15 +1196,18 @@ class ProfileScreenState extends State<ProfileScreen> {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Column(
-          children: List.generate(3, (index) => const Padding(
-            padding: EdgeInsets.only(bottom: 12),
-            child: _SkeletonTile(),
-          )),
+          children: List.generate(
+              3,
+              (index) => const Padding(
+                    padding: EdgeInsets.only(bottom: 12),
+                    child: _SkeletonTile(),
+                  )),
         ),
       );
     }
 
-    print('🔍 ProfileScreen: UI rendering - _userPosts.length = ${_userPosts.length}');
+    print(
+        '🔍 ProfileScreen: UI rendering - _userPosts.length = ${_userPosts.length}');
 
     if (_userPosts.isEmpty) {
       print('🔍 ProfileScreen: Showing empty state - no posts to display');
@@ -1140,7 +1216,8 @@ class ProfileScreenState extends State<ProfileScreen> {
         child: _EmptyCard(
           icon: Icons.post_add,
           title: 'No posts yet',
-          subtitle: 'Create your first post by selecting a track from Recently Played.',
+          subtitle:
+              'Create your first post by selecting a track from Recently Played.',
         ),
       );
     }
@@ -1159,7 +1236,8 @@ class ProfileScreenState extends State<ProfileScreen> {
         post: post,
         showUserInfo: false, // Hide username and avatar in profile screen
         onDelete: () => _deletePost(post.id),
-        onEditDescription: (newDescription) => _editPost(post, newDescription: newDescription),
+        onEditDescription: (newDescription) =>
+            _editPost(post, newDescription: newDescription),
         onLikeChanged: (isLiked, likes) async {
           try {
             final userId = _authProvider.userId;
@@ -1167,11 +1245,14 @@ class ProfileScreenState extends State<ProfileScreen> {
               print('❌ ProfileScreen: User not authenticated for like');
               return;
             }
-            
-            print('🔍 ProfileScreen: Toggling like for post: ${post.id}, isLiked: $isLiked');
-            final result = await _backendService.togglePostLike(post.id, userId, !isLiked);
-            print('✅ ProfileScreen: Like toggled successfully, result: $result');
-            
+
+            print(
+                '🔍 ProfileScreen: Toggling like for post: ${post.id}, isLiked: $isLiked');
+            final result =
+                await _backendService.togglePostLike(post.id, userId, !isLiked);
+            print(
+                '✅ ProfileScreen: Like toggled successfully, result: $result');
+
             // Update the post in the list with new like count
             setState(() {
               final postIndex = _userPosts.indexWhere((p) => p.id == post.id);
@@ -1180,12 +1261,14 @@ class ProfileScreenState extends State<ProfileScreen> {
                   likeCount: likes,
                   isLikedByCurrentUser: isLiked,
                 );
-                print('✅ ProfileScreen: Updated like state for post ${post.id}: liked=$isLiked, count=$likes');
+                print(
+                    '✅ ProfileScreen: Updated like state for post ${post.id}: liked=$isLiked, count=$likes');
               } else {
-                print('❌ ProfileScreen: Post ${post.id} not found for like update');
+                print(
+                    '❌ ProfileScreen: Post ${post.id} not found for like update');
               }
             });
-            
+
             HapticFeedback.lightImpact();
           } catch (e) {
             print('❌ ProfileScreen: Failed to toggle like: $e');
@@ -1198,37 +1281,40 @@ class ProfileScreenState extends State<ProfileScreen> {
               ),
             );
           }
-            },
-            onCardTap: () {
-              // TODO: Implement post tap functionality
-              print('Post tapped: ${post.id}');
-            },
+        },
+        onCardTap: () {
+          // TODO: Implement post tap functionality
+          print('Post tapped: ${post.id}');
+        },
         onShare: () {
           PostSharingUtils.sharePost(post);
         },
         onOpenInSpotify: () async {
           try {
-            print('🔗 ProfileScreen: Opening song in Spotify: ${post.songName} by ${post.artistName}');
+            print(
+                '🔗 ProfileScreen: Opening song in Spotify: ${post.songName} by ${post.artistName}');
             final success = await SpotifyDeepLinkService.openSongInSpotify(
               songName: post.songName,
               artistName: post.artistName,
             );
-            
+
             if (success) {
               print('✅ ProfileScreen: Successfully opened song in Spotify');
               HapticFeedback.lightImpact();
             } else {
               print('❌ ProfileScreen: Failed to open song in Spotify');
-              
+
               // Try simple Spotify opening as fallback
-              final simpleSuccess = await SpotifyDeepLinkService.openSpotifySimple();
+              final simpleSuccess =
+                  await SpotifyDeepLinkService.openSpotifySimple();
               if (simpleSuccess) {
                 print('✅ ProfileScreen: Opened Spotify app (simple method)');
                 HapticFeedback.lightImpact();
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(SpotifyDeepLinkService.getSpotifyErrorMessage()),
+                    content:
+                        Text(SpotifyDeepLinkService.getSpotifyErrorMessage()),
                     backgroundColor: Colors.orange,
                     duration: const Duration(seconds: 4),
                     action: SnackBarAction(
@@ -1255,7 +1341,6 @@ class ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-
   /// Edit a post
   Future<void> _editPost(Post post, {String? newDescription}) async {
     try {
@@ -1265,25 +1350,27 @@ class ProfileScreenState extends State<ProfileScreen> {
       }
 
       if (newDescription != null) {
-        print('🔍 ProfileScreen: Updating post: ${post.id} with new description');
+        print(
+            '🔍 ProfileScreen: Updating post: ${post.id} with new description');
         print('🔍 ProfileScreen: Original post ID: ${post.id}');
-        
-        final updatedPost = await _backendService.updatePost(post.id, userId, newDescription);
+
+        final updatedPost =
+            await _backendService.updatePost(post.id, userId, newDescription);
         print('🔍 ProfileScreen: Updated post ID: ${updatedPost.id}');
-        
+
         // Handle case where backend doesn't return ID in response
-        final finalUpdatedPost = updatedPost.id.isEmpty 
+        final finalUpdatedPost = updatedPost.id.isEmpty
             ? updatedPost.copyWith(id: post.id) // Preserve original ID
             : updatedPost;
-        
+
         print('🔍 ProfileScreen: Final post ID: ${finalUpdatedPost.id}');
-        
+
         // Refresh the profile screen to get updated post information
         print('🔄 ProfileScreen: Refreshing profile screen after post update');
         await _fetchUserPosts();
-        
+
         HapticFeedback.lightImpact();
-        
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1330,23 +1417,31 @@ class ProfileScreenState extends State<ProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _SkeletonBox(width: 120, height: 18, radius: 9), // displayName
+                      _SkeletonBox(
+                          width: 120, height: 18, radius: 9), // displayName
                       SizedBox(height: 2),
-                      _SkeletonBox(width: 80, height: 12, radius: 6), // @username
+                      _SkeletonBox(
+                          width: 80, height: 12, radius: 6), // @username
                       SizedBox(height: 4),
                       Row(
                         children: [
-                          _SkeletonBox(width: 8, height: 8, radius: 4), // post_add icon
+                          _SkeletonBox(
+                              width: 8, height: 8, radius: 4), // post_add icon
                           SizedBox(width: 4),
-                          _SkeletonBox(width: 50, height: 11, radius: 5), // posts text
+                          _SkeletonBox(
+                              width: 50, height: 11, radius: 5), // posts text
                         ],
                       ),
                       SizedBox(height: 4),
                       Row(
                         children: [
-                          _SkeletonBox(width: 8, height: 8, radius: 4), // people icon
+                          _SkeletonBox(
+                              width: 8, height: 8, radius: 4), // people icon
                           SizedBox(width: 4),
-                          _SkeletonBox(width: 70, height: 11, radius: 5), // followers text
+                          _SkeletonBox(
+                              width: 70,
+                              height: 11,
+                              radius: 5), // followers text
                         ],
                       ),
                     ],
@@ -1369,7 +1464,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         _SkeletonBox(width: 20, height: 14, radius: 7), // count
                         SizedBox(height: 2),
-                        _SkeletonBox(width: 50, height: 10, radius: 5), // "Followers"
+                        _SkeletonBox(
+                            width: 50, height: 10, radius: 5), // "Followers"
                       ],
                     ),
                   ),
@@ -1386,7 +1482,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         _SkeletonBox(width: 20, height: 14, radius: 7), // count
                         SizedBox(height: 2),
-                        _SkeletonBox(width: 50, height: 10, radius: 5), // "Following"
+                        _SkeletonBox(
+                            width: 50, height: 10, radius: 5), // "Following"
                       ],
                     ),
                   ),
@@ -1419,24 +1516,24 @@ class ProfileScreenState extends State<ProfileScreen> {
           itemCount: 6,
         ),
       ),
-       _buildSectionTitle('Top Tracks'),
-       SizedBox(
-         height: 70,
-         child: ListView.separated(
-           padding: const EdgeInsets.symmetric(horizontal: 16),
-           scrollDirection: Axis.horizontal,
-           itemBuilder: (_, __) => const Column(
-             mainAxisAlignment: MainAxisAlignment.start,
-             children: [
-               _SkeletonBox(width: 40, height: 40, radius: 6),
-               SizedBox(height: 4),
-               _SkeletonBox(width: 50, height: 8, radius: 4),
-             ],
-           ),
-           separatorBuilder: (_, __) => const SizedBox(width: 12),
-           itemCount: 5,
-         ),
-       ),
+      _buildSectionTitle('Top Tracks'),
+      SizedBox(
+        height: 70,
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          scrollDirection: Axis.horizontal,
+          itemBuilder: (_, __) => const Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              _SkeletonBox(width: 40, height: 40, radius: 6),
+              SizedBox(height: 4),
+              _SkeletonBox(width: 50, height: 8, radius: 4),
+            ],
+          ),
+          separatorBuilder: (_, __) => const SizedBox(width: 12),
+          itemCount: 5,
+        ),
+      ),
       _buildSectionTitle('Recently Played'),
       ListView.builder(
         shrinkWrap: true,
@@ -1537,8 +1634,10 @@ class ProfileScreenState extends State<ProfileScreen> {
         (context, index) {
           if (index >= _topTracks.length) return const SizedBox.shrink();
           final track = _topTracks[index];
-          final images = track['album']?['images'] as List<dynamic>? ?? const [];
-          final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
+          final images =
+              track['album']?['images'] as List<dynamic>? ?? const [];
+          final imageUrl =
+              images.isNotEmpty ? images.last['url'] as String? : null;
           final artists = (track['artists'] as List<dynamic>? ?? const [])
               .map((a) => a['name'] as String? ?? '')
               .where((s) => s.isNotEmpty)
@@ -1553,10 +1652,14 @@ class ProfileScreenState extends State<ProfileScreen> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: imageUrl != null
-                        ? CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover, memCacheWidth: 400)
+                        ? CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.cover,
+                            memCacheWidth: 400)
                         : Container(
                             color: AppColors.onDarkPrimary.withOpacity(0.12),
-                            child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
+                            child: const Icon(Icons.music_note,
+                                color: AppColors.onDarkSecondary),
                           ),
                   ),
                 ),
@@ -1565,7 +1668,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                   track['name'] as String? ?? '',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+                  style: AppTextStyles.bodyOnDark
+                      .copyWith(fontWeight: FontWeight.w600),
                 ),
                 Text(
                   artists,
@@ -1629,7 +1733,8 @@ class ProfileScreenState extends State<ProfileScreen> {
           child: Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: List.generate(4, (_) => const _SkeletonBox(width: 160, height: 54, radius: 12)),
+            children: List.generate(4,
+                (_) => const _SkeletonBox(width: 160, height: 54, radius: 12)),
           ),
         ),
       ),
@@ -1700,8 +1805,10 @@ class ProfileScreenState extends State<ProfileScreen> {
           if (index >= _recentlyPlayed.length) return const SizedBox.shrink();
           final item = _recentlyPlayed[index];
           final track = item['track'] as Map<String, dynamic>? ?? const {};
-          final images = track['album']?['images'] as List<dynamic>? ?? const [];
-          final imageUrl = images.isNotEmpty ? images.last['url'] as String? : null;
+          final images =
+              track['album']?['images'] as List<dynamic>? ?? const [];
+          final imageUrl =
+              images.isNotEmpty ? images.last['url'] as String? : null;
           final artists = (track['artists'] as List<dynamic>? ?? const [])
               .map((a) => a['name'] as String? ?? '')
               .where((s) => s.isNotEmpty)
@@ -1714,17 +1821,25 @@ class ProfileScreenState extends State<ProfileScreen> {
                 leading: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: imageUrl != null
-                      ? CachedNetworkImage(imageUrl: imageUrl, width: 56, height: 56, fit: BoxFit.cover, memCacheWidth: 112, memCacheHeight: 112)
+                      ? CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          width: 56,
+                          height: 56,
+                          fit: BoxFit.cover,
+                          memCacheWidth: 112,
+                          memCacheHeight: 112)
                       : Container(
                           width: 56,
                           height: 56,
                           color: AppColors.onDarkPrimary.withOpacity(0.12),
-                          child: const Icon(Icons.music_note, color: AppColors.onDarkSecondary),
+                          child: const Icon(Icons.music_note,
+                              color: AppColors.onDarkSecondary),
                         ),
                 ),
                 title: Text(
                   track['name'] as String? ?? '',
-                  style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600),
+                  style: AppTextStyles.bodyOnDark
+                      .copyWith(fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(artists, style: AppTextStyles.captionOnDark),
               ),
@@ -1744,7 +1859,10 @@ class ProfileScreenState extends State<ProfileScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [AppColors.darkBackgroundStart, AppColors.darkBackgroundEnd],
+            colors: [
+              AppColors.darkBackgroundStart,
+              AppColors.darkBackgroundEnd
+            ],
           ),
         ),
         child: const SafeArea(
@@ -1780,7 +1898,8 @@ class ProfileScreenState extends State<ProfileScreen> {
   /// Build compact profile header with user info and followers/following buttons
   Widget _buildProfileHeader() {
     final images = (_user?['images'] as List<dynamic>?) ?? const [];
-    final avatarUrl = images.isNotEmpty ? (images.first['url'] as String?) : null;
+    final avatarUrl =
+        images.isNotEmpty ? (images.first['url'] as String?) : null;
     final displayName = _user?['display_name'] as String? ?? 'Spotify User';
     final followers = _user?['followers']?['total'] as int?;
 
@@ -1803,9 +1922,12 @@ class ProfileScreenState extends State<ProfileScreen> {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: AppColors.onDarkPrimary.withOpacity(0.12),
-                backgroundImage: avatarUrl != null ? CachedNetworkImageProvider(avatarUrl) : null,
+                backgroundImage: avatarUrl != null
+                    ? CachedNetworkImageProvider(avatarUrl)
+                    : null,
                 child: avatarUrl == null
-                    ? const Icon(Icons.person, color: AppColors.onDarkPrimary, size: 24)
+                    ? const Icon(Icons.person,
+                        color: AppColors.onDarkPrimary, size: 24)
                     : null,
               ),
               const SizedBox(width: 12),
@@ -1815,7 +1937,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     Text(
                       displayName,
-                      style: AppTextStyles.heading2OnDark.copyWith(fontSize: 18),
+                      style:
+                          AppTextStyles.heading2OnDark.copyWith(fontSize: 18),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1837,11 +1960,13 @@ class ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.post_add, size: 12, color: AppColors.onDarkSecondary),
+                          const Icon(Icons.post_add,
+                              size: 12, color: AppColors.onDarkSecondary),
                           const SizedBox(width: 4),
                           Text(
                             '${_profileData!.user.postsCount} posts',
-                            style: AppTextStyles.captionOnDark.copyWith(fontSize: 11),
+                            style: AppTextStyles.captionOnDark
+                                .copyWith(fontSize: 11),
                           ),
                         ],
                       ),
@@ -1920,39 +2045,46 @@ class ProfileScreenState extends State<ProfileScreen> {
   }
 
   /// Enrich followers list with follow status by checking each user individually
-  Future<List<Map<String, dynamic>>> _enrichFollowersWithFollowStatus(List<Map<String, dynamic>> followers) async {
+  Future<List<Map<String, dynamic>>> _enrichFollowersWithFollowStatus(
+      List<Map<String, dynamic>> followers) async {
     final enrichedFollowers = <Map<String, dynamic>>[];
-    
+
     for (final follower in followers) {
       try {
         // Check follow status for each follower
-        final followStatus = await _backendService.getFollowStatus(_authProvider.userId!, follower['id']);
+        final followStatus = await _backendService.getFollowStatus(
+            _authProvider.userId!, follower['id']);
         follower['isFollowing'] = followStatus['isFollowing'] ?? false;
         follower['followRequestStatus'] = followStatus['status'] ?? 'none';
-        debugPrint('🔍 Debug - Follower ${follower['displayName']}: isFollowing = ${follower['isFollowing']}');
+        debugPrint(
+            '🔍 Debug - Follower ${follower['displayName']}: isFollowing = ${follower['isFollowing']}');
       } catch (e) {
-        debugPrint('⚠️ Debug - Could not get follow status for ${follower['displayName']}: $e');
+        debugPrint(
+            '⚠️ Debug - Could not get follow status for ${follower['displayName']}: $e');
         follower['isFollowing'] = false;
         follower['followRequestStatus'] = 'none';
       }
       enrichedFollowers.add(follower);
     }
-    
+
     return enrichedFollowers;
   }
 
   /// Show followers dialog
   void _showFollowersDialog() async {
     if (_profileData == null) return;
-    
+
     try {
-      final followers = await _backendService.getUserFollowers(_profileData!.user.id, currentUserId: _authProvider.userId);
-      
+      final followers = await _backendService.getUserFollowers(
+          _profileData!.user.id,
+          currentUserId: _authProvider.userId);
+
       // Smart solution: If backend doesn't provide follow status, check it manually
-      final followersWithStatus = await _enrichFollowersWithFollowStatus(followers);
-      
+      final followersWithStatus =
+          await _enrichFollowersWithFollowStatus(followers);
+
       if (!mounted) return;
-      
+
       showDialog(
         context: context,
         builder: (context) => _FollowersFollowingDialog(
@@ -1971,7 +2103,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       print('❌ ProfileScreen: Failed to get followers: $e');
       if (!mounted) return;
-      
+
       // Show dialog with empty list instead of error
       showDialog(
         context: context,
@@ -1987,7 +2119,7 @@ class ProfileScreenState extends State<ProfileScreen> {
           },
         ),
       );
-      
+
       // Show a brief error message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -2002,12 +2134,14 @@ class ProfileScreenState extends State<ProfileScreen> {
   /// Show following dialog
   void _showFollowingDialog() async {
     if (_profileData == null) return;
-    
+
     try {
-      final following = await _backendService.getUserFollowing(_profileData!.user.id, currentUserId: _authProvider.userId);
-      
+      final following = await _backendService.getUserFollowing(
+          _profileData!.user.id,
+          currentUserId: _authProvider.userId);
+
       if (!mounted) return;
-      
+
       showDialog(
         context: context,
         builder: (context) => _FollowersFollowingDialog(
@@ -2026,7 +2160,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       print('❌ ProfileScreen: Failed to get following: $e');
       if (!mounted) return;
-      
+
       // Show dialog with empty list instead of error
       showDialog(
         context: context,
@@ -2042,7 +2176,7 @@ class ProfileScreenState extends State<ProfileScreen> {
           },
         ),
       );
-      
+
       // Show a brief error message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -2072,7 +2206,8 @@ class _FollowersFollowingDialog extends StatefulWidget {
   });
 
   @override
-  State<_FollowersFollowingDialog> createState() => _FollowersFollowingDialogState();
+  State<_FollowersFollowingDialog> createState() =>
+      _FollowersFollowingDialogState();
 }
 
 class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
@@ -2083,8 +2218,9 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
   @override
   void initState() {
     super.initState();
-    _users = List.from(widget.users); // Create a copy for local state management
-    
+    _users =
+        List.from(widget.users); // Create a copy for local state management
+
     // Initialize user states properly
     for (var user in _users) {
       if (widget.title == 'Following') {
@@ -2093,16 +2229,17 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
       } else {
         // In Followers list, check multiple possible field names for follow status
         // Backend might use different field names like: isFollowing, following, followed, etc.
-        user['isFollowing'] = user['isFollowing'] ?? 
-                              user['following'] ?? 
-                              user['followed'] ?? 
-                              user['isFollowedByCurrentUser'] ?? 
-                              false;
-        
-        debugPrint('🔍 Debug - User ${user['displayName']}: isFollowing = ${user['isFollowing']}, all user data: $user');
+        user['isFollowing'] = user['isFollowing'] ??
+            user['following'] ??
+            user['followed'] ??
+            user['isFollowedByCurrentUser'] ??
+            false;
+
+        debugPrint(
+            '🔍 Debug - User ${user['displayName']}: isFollowing = ${user['isFollowing']}, all user data: $user');
       }
     }
-    
+
     // Initialize counts from profile data
     _followersCount = widget.users.length;
     _followingCount = widget.users.length;
@@ -2187,7 +2324,7 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
     final displayName = user['displayName'] as String? ?? 'Unknown User';
     final username = user['username'] as String? ?? '';
     final profilePicture = user['profilePicture'] as String?;
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.all(12),
@@ -2204,9 +2341,12 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
           CircleAvatar(
             radius: 20,
             backgroundColor: AppColors.onDarkPrimary.withOpacity(0.1),
-            backgroundImage: profilePicture != null ? CachedNetworkImageProvider(profilePicture) : null,
+            backgroundImage: profilePicture != null
+                ? CachedNetworkImageProvider(profilePicture)
+                : null,
             child: profilePicture == null
-                ? const Icon(Icons.person, color: AppColors.onDarkPrimary, size: 20)
+                ? const Icon(Icons.person,
+                    color: AppColors.onDarkPrimary, size: 20)
                 : null,
           ),
           const SizedBox(width: 12),
@@ -2238,8 +2378,7 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
             ),
           ),
           // Follow/Unfollow button (only show if not current user)
-          if (userId != widget.currentUserId)
-            _buildActionButtons(userId, user),
+          if (userId != widget.currentUserId) _buildActionButtons(userId, user),
         ],
       ),
     );
@@ -2249,10 +2388,11 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
     if (widget.title == 'Followers') {
       // In Followers list: Show Remove button + conditional Follow button
       final isFollowing = user['isFollowing'] as bool? ?? false;
-      
+
       // Debug: Use debugPrint for Flutter debugging
-      debugPrint('🔍 Debug - User: ${user['displayName']}, isFollowing: $isFollowing, user data: $user');
-      
+      debugPrint(
+          '🔍 Debug - User: ${user['displayName']}, isFollowing: $isFollowing, user data: $user');
+
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -2295,15 +2435,17 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
 
   Widget _buildFollowButton(String userId, Map<String, dynamic> user) {
     // Get current follow status from local state
-    final isFollowing = user['isFollowing'] as bool? ?? true; // Default to true for Following list
+    final isFollowing = user['isFollowing'] as bool? ??
+        true; // Default to true for Following list
     final isFollowedBy = user['isFollowedBy'] as bool? ?? false;
-    final followRequestStatus = user['followRequestStatus'] as String? ?? 'none';
-    
+    final followRequestStatus =
+        user['followRequestStatus'] as String? ?? 'none';
+
     // Determine button text and action based on context and current state
     String buttonText;
     Color buttonColor;
     VoidCallback? onPressed;
-    
+
     if (widget.title == 'Following') {
       // In Following list: Smart Instagram-style workflow
       if (isFollowing) {
@@ -2351,7 +2493,7 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
         };
       }
     }
-    
+
     return TextButton(
       onPressed: onPressed,
       child: Text(
@@ -2369,24 +2511,28 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
       debugPrint('🔍 Debug - Starting follow for user: $userId');
       await widget.backendService.followUser(widget.currentUserId, userId);
       debugPrint('✅ Followed user: $userId');
-      
+
       // Update the user's status immediately and permanently
       setState(() {
         final userIndex = _users.indexWhere((u) => u['id'] == userId);
-        debugPrint('🔍 Debug - User index: $userIndex, Users list length: ${_users.length}');
+        debugPrint(
+            '🔍 Debug - User index: $userIndex, Users list length: ${_users.length}');
         if (userIndex != -1) {
-          debugPrint('🔍 Debug - Before update: isFollowing = ${_users[userIndex]['isFollowing']}');
+          debugPrint(
+              '🔍 Debug - Before update: isFollowing = ${_users[userIndex]['isFollowing']}');
           _users[userIndex]['isFollowing'] = true;
-          _users[userIndex]['followRequestStatus'] = 'accepted'; // Mark as accepted, not pending
-          debugPrint('🔍 Debug - After update: isFollowing = ${_users[userIndex]['isFollowing']}');
+          _users[userIndex]['followRequestStatus'] =
+              'accepted'; // Mark as accepted, not pending
+          debugPrint(
+              '🔍 Debug - After update: isFollowing = ${_users[userIndex]['isFollowing']}');
         }
-        
+
         // Update counter
         if (widget.title == 'Followers') {
           _followingCount++;
         }
       });
-      
+
       // Update main profile screen (adds user to following list)
       // This ensures the state is saved on the backend
       widget.onFollowToggle(userId, true);
@@ -2408,7 +2554,7 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
     try {
       await widget.backendService.unfollowUser(widget.currentUserId, userId);
       print('✅ Unfollowed user: $userId');
-      
+
       // Update the user's status immediately (Instagram-style: button changes, user stays in list)
       setState(() {
         final userIndex = _users.indexWhere((u) => u['id'] == userId);
@@ -2416,13 +2562,13 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
           _users[userIndex]['isFollowing'] = false;
           _users[userIndex]['followRequestStatus'] = 'none';
         }
-        
+
         // Update counter
         if (widget.title == 'Following') {
           _followingCount--;
         }
       });
-      
+
       widget.onFollowToggle(userId, false);
       HapticFeedback.lightImpact();
     } catch (e) {
@@ -2441,20 +2587,22 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
     try {
       // Check if we were following this user (to unfollow them too)
       final userIndex = _users.indexWhere((u) => u['id'] == userId);
-      final wasFollowing = userIndex != -1 && (_users[userIndex]['isFollowing'] as bool? ?? false);
-      
+      final wasFollowing = userIndex != -1 &&
+          (_users[userIndex]['isFollowing'] as bool? ?? false);
+
       // Step 1: Remove them from our followers (they stop following us)
       // This requires a different API endpoint - removeFollower
       // For now, we'll use unfollowUser but we need to implement removeFollower API
-      await widget.backendService.unfollowUser(userId, widget.currentUserId); // Reverse the parameters
+      await widget.backendService
+          .unfollowUser(userId, widget.currentUserId); // Reverse the parameters
       print('✅ Removed user from followers: $userId');
-      
+
       // Step 2: If we were following them, unfollow them too (we stop following them)
       if (wasFollowing) {
         await widget.backendService.unfollowUser(widget.currentUserId, userId);
         print('✅ Also unfollowed user: $userId');
       }
-      
+
       // Remove user from list immediately (Instagram-style: immediate removal)
       setState(() {
         _users.removeWhere((u) => u['id'] == userId);
@@ -2463,7 +2611,7 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
           _followingCount--;
         }
       });
-      
+
       // Update main profile screen with both changes
       widget.onFollowToggle(userId, false);
       HapticFeedback.lightImpact();
@@ -2486,20 +2634,21 @@ class _FollowersFollowingDialogState extends State<_FollowersFollowingDialog> {
       final unfollowedUsers = <String>[];
       for (final user in _users) {
         final isFollowing = user['isFollowing'] as bool? ?? false;
-        final followRequestStatus = user['followRequestStatus'] as String? ?? 'none';
-        
+        final followRequestStatus =
+            user['followRequestStatus'] as String? ?? 'none';
+
         // If user was unfollowed and not re-followed, mark for removal
         if (!isFollowing && followRequestStatus == 'none') {
           unfollowedUsers.add(user['id'] as String);
         }
       }
-      
+
       // Update the main profile screen with final changes
       if (unfollowedUsers.isNotEmpty) {
         widget.onFollowToggle(unfollowedUsers.join(','), false);
       }
     }
-    
+
     // Close the dialog
     Navigator.pop(context);
   }
@@ -2509,7 +2658,8 @@ class _EmptyCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  const _EmptyCard({required this.icon, required this.title, required this.subtitle});
+  const _EmptyCard(
+      {required this.icon, required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -2525,7 +2675,9 @@ class _EmptyCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: AppTextStyles.bodyOnDark.copyWith(fontWeight: FontWeight.w600)),
+                  Text(title,
+                      style: AppTextStyles.bodyOnDark
+                          .copyWith(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 4),
                   Text(subtitle, style: AppTextStyles.captionOnDark),
                 ],
@@ -2554,7 +2706,8 @@ class _GlassCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.onDarkPrimary.withOpacity(0.03),
             borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(color: AppColors.onDarkPrimary.withOpacity(0.06)),
+            border:
+                Border.all(color: AppColors.onDarkPrimary.withOpacity(0.06)),
           ),
           child: child,
         ),
@@ -2563,12 +2716,12 @@ class _GlassCard extends StatelessWidget {
   }
 }
 
-
 class _SkeletonBox extends StatelessWidget {
   final double width;
   final double height;
   final double radius;
-  const _SkeletonBox({required this.width, required this.height, this.radius = 8});
+  const _SkeletonBox(
+      {required this.width, required this.height, this.radius = 8});
 
   @override
   Widget build(BuildContext context) {
@@ -2642,13 +2795,15 @@ class _Shimmer extends StatefulWidget {
   State<_Shimmer> createState() => _ShimmerState();
 }
 
-class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin {
+class _ShimmerState extends State<_Shimmer>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 3500))
+    _controller = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 3500))
       ..repeat();
   }
 
@@ -2684,5 +2839,3 @@ class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin 
     );
   }
 }
-
-

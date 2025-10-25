@@ -49,9 +49,10 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
   int _discoveryCurrentPage = 1;
   static const int _discoveryPostsPerPage = 10;
   late final ScrollController _discoveryScrollController;
-  
+
   // Navigation state for nested navigation
-  final GlobalKey<NavigatorState> _nestedNavigatorKey = GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> _nestedNavigatorKey =
+      GlobalKey<NavigatorState>();
   bool _showUserProfile = false;
   String? _selectedUserId;
   String? _selectedUsername;
@@ -106,7 +107,8 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
   }
 
   // Method to navigate to user profile (sub-route)
-  void _navigateToUserProfile(String userId, String username, String avatarUrl) {
+  void _navigateToUserProfile(
+      String userId, String username, String avatarUrl) {
     setState(() {
       _showUserProfile = true;
       _selectedUserId = userId;
@@ -126,7 +128,8 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
   }
 
   void _onDiscoveryScroll() {
-    if (_discoveryScrollController.position.pixels >= _discoveryScrollController.position.maxScrollExtent - 200) {
+    if (_discoveryScrollController.position.pixels >=
+        _discoveryScrollController.position.maxScrollExtent - 200) {
       _loadMoreDiscoveryPosts();
     }
   }
@@ -134,7 +137,7 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
   /// Perform debounced search
   void _performSearch(String searchQuery) {
     _debounceTimer?.cancel();
-    
+
     if (searchQuery.trim().isEmpty) {
       setState(() {
         _searchResults = [];
@@ -171,7 +174,7 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
     try {
       print('🔍 SearchFeedScreen: Searching users with query: "$searchQuery"');
       final results = await _backendService.searchUsers(searchQuery, limit: 20);
-      
+
       if (!mounted) return;
 
       setState(() {
@@ -198,12 +201,13 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
   Future<void> _listen() async {
     if (!_isListening) {
       try {
-      final available = await _speech.initialize();
+        final available = await _speech.initialize();
         if (!available) {
           print('❌ SearchFeedScreen: Speech recognition not available');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Voice recognition is not available on this device'),
+              content:
+                  Text('Voice recognition is not available on this device'),
               backgroundColor: Colors.orange,
               duration: Duration(seconds: 2),
             ),
@@ -211,40 +215,43 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
           return;
         }
 
-      _searchFocusNode.requestFocus();
-      setState(() => _isListening = true);
+        _searchFocusNode.requestFocus();
+        setState(() => _isListening = true);
 
-      _speech.listen(
-        onResult: (result) {
-          final recognized = result.recognizedWords;
-            print('🎤 SearchFeedScreen: Voice recognition result: "$recognized"');
-            
-          setState(() {
-            query = recognized;
-            _controller.text = recognized;
-            _controller.selection = TextSelection.fromPosition(
-              TextPosition(offset: _controller.text.length),
-            );
-            _isSearching = true;
+        _speech.listen(
+          onResult: (result) {
+            final recognized = result.recognizedWords;
+            print(
+                '🎤 SearchFeedScreen: Voice recognition result: "$recognized"');
+
+            setState(() {
+              query = recognized;
+              _controller.text = recognized;
+              _controller.selection = TextSelection.fromPosition(
+                TextPosition(offset: _controller.text.length),
+              );
+              _isSearching = true;
               _searchError = null;
             });
-            
+
             // Explicitly trigger search since programmatic text changes might not trigger the listener
             if (recognized.trim().isNotEmpty) {
-              print('🔍 SearchFeedScreen: Triggering search from voice input: "$recognized"');
+              print(
+                  '🔍 SearchFeedScreen: Triggering search from voice input: "$recognized"');
               _performSearch(recognized.trim());
             }
-            
+
             // Stop listening after getting a result (for better UX)
             if (result.finalResult) {
-              print('🎤 SearchFeedScreen: Final result received, stopping voice recognition');
+              print(
+                  '🎤 SearchFeedScreen: Final result received, stopping voice recognition');
               _speech.stop();
               setState(() => _isListening = false);
             }
-        },
-        listenMode: stt.ListenMode.search,
-        partialResults: true,
-      );
+          },
+          listenMode: stt.ListenMode.search,
+          partialResults: true,
+        );
       } catch (e) {
         print('❌ SearchFeedScreen: Voice recognition error: $e');
         setState(() => _isListening = false);
@@ -324,7 +331,8 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
               SizedBox(height: 16),
               Text("No users found", style: TextStyle(color: Colors.white54)),
               SizedBox(height: 8),
-              Text("Try a different search term", style: TextStyle(color: Colors.white38, fontSize: 12)),
+              Text("Try a different search term",
+                  style: TextStyle(color: Colors.white38, fontSize: 12)),
             ],
           ),
         ),
@@ -344,7 +352,7 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
           final username = user['username'] as String? ?? '';
           final followersCount = user['followersCount'] as int? ?? 0;
           final profilePicture = user['profilePicture'] as String? ?? '';
-          
+
           return ListTile(
             leading: CircleAvatar(
               backgroundColor: Colors.purple,
@@ -358,9 +366,7 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
             title: Text(
               displayName,
               style: const TextStyle(
-                color: Colors.white, 
-                fontWeight: FontWeight.w600
-              ),
+                  color: Colors.white, fontWeight: FontWeight.w600),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -388,9 +394,9 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
               _navigateToUserProfile(
                 user['id'] as String,
                 displayName,
-                profilePicture.isNotEmpty 
-                        ? profilePicture 
-                        : "https://i.pravatar.cc/150?img=1",
+                profilePicture.isNotEmpty
+                    ? profilePicture
+                    : "https://i.pravatar.cc/150?img=1",
               );
             },
           );
@@ -404,13 +410,14 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
     final postId = post['id'] as String;
     final userId = post['userId'] as String? ?? '';
     final username = post['username'] as String? ?? 'Unknown User';
-    final userAvatar = post['userAvatar'] as String? ?? 'https://i.pravatar.cc/150?img=1';
+    final userAvatar =
+        post['userAvatar'] as String? ?? 'https://i.pravatar.cc/150?img=1';
     final songName = post['songName'] as String? ?? 'Unknown Track';
     final artistName = post['artistName'] as String? ?? 'Unknown Artist';
     final songImage = post['songImage'] as String? ?? '';
     final description = post['description'] as String? ?? '';
     final createdAt = post['createdAt'] as String? ?? '';
-    
+
     // Calculate time since posted
     String timeAgo = 'now';
     if (createdAt.isNotEmpty) {
@@ -418,7 +425,7 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
         final postTime = DateTime.parse(createdAt);
         final now = DateTime.now();
         final difference = now.difference(postTime);
-        
+
         if (difference.inHours < 1) {
           timeAgo = '${difference.inMinutes}m';
         } else if (difference.inDays < 1) {
@@ -433,9 +440,10 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
 
     final initialLikes = _likeCounts[postId] ?? 0;
     final isInitiallyLiked = _likedPosts[postId] ?? false;
-    
-    print('🎵 Building discovery post $postId: initialLikes=$initialLikes, isInitiallyLiked=$isInitiallyLiked');
-    
+
+    print(
+        '🎵 Building discovery post $postId: initialLikes=$initialLikes, isInitiallyLiked=$isInitiallyLiked');
+
     return MusicPostCard(
       username: username,
       avatarUrl: userAvatar,
@@ -453,16 +461,19 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
             print('❌ SearchFeedScreen: User not authenticated for like');
             return;
           }
-          
-          print('🔍 SearchFeedScreen: Toggling like for discovery post: $postId, isLiked: $newLiked');
-          final result = await _backendService.togglePostLike(postId, userId, !newLiked);
-          print('✅ SearchFeedScreen: Like toggled successfully, result: $result');
-          
+
+          print(
+              '🔍 SearchFeedScreen: Toggling like for discovery post: $postId, isLiked: $newLiked');
+          final result =
+              await _backendService.togglePostLike(postId, userId, !newLiked);
+          print(
+              '✅ SearchFeedScreen: Like toggled successfully, result: $result');
+
           setState(() {
             _likedPosts[postId] = newLiked;
             _likeCounts[postId] = newLikes;
           });
-          
+
           HapticFeedback.lightImpact();
         } catch (e) {
           print('❌ SearchFeedScreen: Failed to toggle like: $e');
@@ -485,12 +496,13 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
       },
       onOpenInSpotify: () async {
         try {
-          print('🔗 SearchFeedScreen: Opening song in Spotify: $songName by $artistName');
+          print(
+              '🔗 SearchFeedScreen: Opening song in Spotify: $songName by $artistName');
           final success = await SpotifyDeepLinkService.openSongInSpotify(
             songName: songName,
             artistName: artistName,
           );
-          
+
           if (success) {
             print('✅ SearchFeedScreen: Successfully opened song in Spotify');
             HapticFeedback.lightImpact();
@@ -499,14 +511,15 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Could not open Spotify. Please install Spotify app.'),
+                  content: Text(
+                      'Could not open Spotify. Please install Spotify app.'),
                   backgroundColor: Colors.orange,
                   duration: Duration(seconds: 3),
                 ),
               );
             }
           }
-          } catch (e) {
+        } catch (e) {
           print('❌ SearchFeedScreen: Error opening Spotify: $e');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -607,25 +620,26 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
         page: 1,
         limit: _discoveryPostsPerPage,
       );
-      
+
       setState(() {
         _discoveryPosts = posts;
         _discoveryCurrentPage = 1;
         _hasMoreDiscoveryPosts = posts.length >= _discoveryPostsPerPage;
-        
+
         // Initialize like counts for discovery posts
         for (final post in posts) {
           final postId = post['id'] as String;
           final likesCount = post['likesCount'] as int? ?? 0;
           final isLiked = post['isLiked'] as bool? ?? false;
-          
-          print('🔍 Discovery Post $postId: likesCount=$likesCount, isLiked=$isLiked');
-          
+
+          print(
+              '🔍 Discovery Post $postId: likesCount=$likesCount, isLiked=$isLiked');
+
           _likedPosts[postId] = isLiked;
           _likeCounts[postId] = likesCount;
         }
       });
-      
+
       print('✅ SearchFeedScreen: Loaded ${posts.length} discovery posts');
     } catch (e) {
       setState(() {
@@ -650,37 +664,40 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
 
     try {
       final nextPage = _discoveryCurrentPage + 1;
-      
-      print('🔗 SearchFeedScreen: Loading more discovery posts - Page: $nextPage');
-      
+
+      print(
+          '🔗 SearchFeedScreen: Loading more discovery posts - Page: $nextPage');
+
       final newPosts = await _backendService.getDiscoveryPosts(
         userId: _authProvider.userId,
         page: nextPage,
         limit: _discoveryPostsPerPage,
       );
-      
-      print('📊 SearchFeedScreen: Received ${newPosts.length} more discovery posts');
-      
+
+      print(
+          '📊 SearchFeedScreen: Received ${newPosts.length} more discovery posts');
+
       setState(() {
         _discoveryPosts.addAll(newPosts);
         _discoveryCurrentPage = nextPage;
         _hasMoreDiscoveryPosts = newPosts.length >= _discoveryPostsPerPage;
-        
+
         // Initialize like counts for new discovery posts
         for (final post in newPosts) {
           final postId = post['id'] as String;
           final likesCount = post['likesCount'] as int? ?? 0;
           final isLiked = post['isLiked'] as bool? ?? false;
-          
+
           _likedPosts[postId] = isLiked;
           _likeCounts[postId] = likesCount;
         }
       });
-      
-      print('✅ SearchFeedScreen: Successfully loaded ${newPosts.length} more discovery posts. Total: ${_discoveryPosts.length}');
+
+      print(
+          '✅ SearchFeedScreen: Successfully loaded ${newPosts.length} more discovery posts. Total: ${_discoveryPosts.length}');
     } catch (e) {
       print('❌ SearchFeedScreen: Failed to load more discovery posts: $e');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -742,7 +759,8 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
             children: [
               Icon(Icons.explore_off, color: Colors.white54, size: 48),
               SizedBox(height: 16),
-              Text("No discovery posts available", style: TextStyle(color: Colors.white54)),
+              Text("No discovery posts available",
+                  style: TextStyle(color: Colors.white54)),
             ],
           ),
         ),
@@ -809,7 +827,9 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
           ),
         ),
         child: SafeArea(
-          child: _showUserProfile ? _buildUserProfileView() : _buildSearchFeedView(),
+          child: _showUserProfile
+              ? _buildUserProfileView()
+              : _buildSearchFeedView(),
         ),
       ),
     );
@@ -825,7 +845,8 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
             avatarUrl: _selectedAvatarUrl ?? '',
             userId: _selectedUserId,
             onBackPressed: _goBackToSearchFeed,
-            nestedNavigatorKey: _nestedNavigatorKey, // Pass navigator key for nested navigation
+            nestedNavigatorKey:
+                _nestedNavigatorKey, // Pass navigator key for nested navigation
           ),
         );
       },
@@ -834,99 +855,91 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
 
   Widget _buildSearchFeedView() {
     return Column(
-            children: [
-            // Search bar + cancel button
-            Row(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: TextField(
-                      focusNode: _searchFocusNode,
-                      controller: _controller,
-                      style: const TextStyle(color: Colors.white),
-                      textInputAction: TextInputAction.search,
-                      decoration: InputDecoration(
-                        hintText: 'Search users...',
-                        hintStyle: const TextStyle(color: Colors.white54),
-                        prefixIcon:
-                            const Icon(Icons.search, color: Colors.white70),
-                        suffixIcon: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (query.isNotEmpty)
-                              IconButton(
-                                icon: const Icon(Icons.clear,
-                                    color: Colors.white70),
-                                onPressed: () {
-                                  setState(() {
-                                    query = '';
-                                    _controller.clear();
-                                    _searchResults = [];
-                                    _isLoadingUsers = false;
-                                    _searchError = null;
-                                  });
-                                },
-                              ),
-                            IconButton(
-                              icon: Icon(
-                                  _isListening ? Icons.mic : Icons.mic_none,
-                                  color: Colors.white70),
-                              onPressed: _listen,
-                            ),
-                          ],
+      children: [
+        // Search bar + cancel button
+        Row(
+          children: [
+            Expanded(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: TextField(
+                  focusNode: _searchFocusNode,
+                  controller: _controller,
+                  style: const TextStyle(color: Colors.white),
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    hintText: 'Search users...',
+                    hintStyle: const TextStyle(color: Colors.white54),
+                    prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (query.isNotEmpty)
+                          IconButton(
+                            icon:
+                                const Icon(Icons.clear, color: Colors.white70),
+                            onPressed: () {
+                              setState(() {
+                                query = '';
+                                _controller.clear();
+                                _searchResults = [];
+                                _isLoadingUsers = false;
+                                _searchError = null;
+                              });
+                            },
+                          ),
+                        IconButton(
+                          icon: Icon(_isListening ? Icons.mic : Icons.mic_none,
+                              color: Colors.white70),
+                          onPressed: _listen,
                         ),
-                        filled: true,
-                        fillColor: Colors.white.withOpacity(0.06),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      onTap: () => setState(() => _isSearching = true),
-                      onSubmitted: (_) =>
-                          setState(() => _isSearching = true),
+                      ],
                     ),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.06),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onTap: () => setState(() => _isSearching = true),
+                  onSubmitted: (_) => setState(() => _isSearching = true),
+                ),
+              ),
+            ),
+            if (_isSearching)
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: GestureDetector(
+                  onTap: _cancelSearch,
+                  child: const Text(
+                    "Cancel",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16),
                   ),
                 ),
-                if (_isSearching)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: GestureDetector(
-                      onTap: _cancelSearch,
-                      child: const Text(
-                        "Cancel",
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-
-            // Suggestions or discovery feed
-            if (_isSearching)
-              _buildSuggestionDropdown()
-            else
-              _buildDiscoveryFeed(),
+              ),
           ],
-        );
-   
+        ),
+
+        // Suggestions or discovery feed
+        if (_isSearching) _buildSuggestionDropdown() else _buildDiscoveryFeed(),
+      ],
+    );
   }
 
   /// Refresh discovery feed with haptic feedback
   Future<void> _refreshDiscoveryFeed() async {
     HapticFeedback.lightImpact();
-    
+
     setState(() {
       _isLoadingDiscovery = true;
     });
-    
+
     try {
       await _loadDiscoveryPosts();
     } finally {
@@ -936,7 +949,7 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
         });
       }
     }
-    
+
     HapticFeedback.selectionClick();
   }
 
@@ -946,14 +959,14 @@ class SearchFeedScreenState extends State<SearchFeedScreen> {
     setState(() {
       _isLoadingDiscovery = true;
     });
-    
+
     if (_discoveryScrollController.hasClients) {
       _discoveryScrollController.animateTo(
         0,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
-      
+
       // Trigger refresh after scroll animation
       Future.delayed(const Duration(milliseconds: 350), () {
         _loadDiscoveryPosts();

@@ -29,7 +29,8 @@ class Post {
 
   factory Post.fromJson(Map<String, dynamic> json) {
     return Post(
-      id: json['id'] as String? ?? '', // Use empty string as fallback for update operations
+      id: json['id'] as String? ??
+          '', // Use empty string as fallback for update operations
       userId: json['userId'] as String? ?? '',
       username: json['username'] as String? ?? 'Unknown User',
       userProfilePicture: json['userProfilePicture'] as String? ?? '',

@@ -20,12 +20,12 @@ class _SuccessDialogState extends State<SuccessDialog>
   @override
   void initState() {
     super.initState();
-    
+
     _scaleController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    
+
     _rotationController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
@@ -85,98 +85,100 @@ class _SuccessDialogState extends State<SuccessDialog>
               ),
             ),
             child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Animated success icon
-            AnimatedBuilder(
-              animation: Listenable.merge([_scaleAnimation, _rotationAnimation]),
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _scaleAnimation.value,
-                  child: Transform.rotate(
-                    angle: _rotationAnimation.value * 0.1,
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            AppColors.accentMint.withOpacity(0.14),
-                            AppColors.accentGreen.withOpacity(0.10),
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Animated success icon
+                AnimatedBuilder(
+                  animation:
+                      Listenable.merge([_scaleAnimation, _rotationAnimation]),
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _scaleAnimation.value,
+                      child: Transform.rotate(
+                        angle: _rotationAnimation.value * 0.1,
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                AppColors.accentMint.withOpacity(0.14),
+                                AppColors.accentGreen.withOpacity(0.10),
+                              ],
+                            ),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.accentMint.withOpacity(0.28),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.check_circle,
+                            size: 50,
+                            color: AppColors.accentMint,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 24),
+
+                // Success text with animation
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 800),
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: value,
+                      child: Transform.translate(
+                        offset: Offset(0, 20 * (1 - value)),
+                        child: const Column(
+                          children: [
+                            Text(
+                              'Success!',
+                              style: AppTextStyles.heading2OnDark,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Connected to Spotify',
+                              style: AppTextStyles.captionOnDark,
+                            ),
                           ],
                         ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.accentMint.withOpacity(0.28),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
                       ),
-                      child: const Icon(
-                        Icons.check_circle,
-                        size: 50,
-                        color: AppColors.accentMint,
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 24),
+
+                // Loading indicator
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 1200),
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: value,
+                      child: const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.accentMint),
+                        ),
                       ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Success text with animation
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 800),
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: Transform.translate(
-                    offset: Offset(0, 20 * (1 - value)),
-                    child: const Column(
-                      children: [
-                        Text(
-                          'Success!',
-                          style: AppTextStyles.heading2OnDark,
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Connected to Spotify',
-                          style: AppTextStyles.captionOnDark,
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Loading indicator
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.0, end: 1.0),
-              duration: const Duration(milliseconds: 1200),
-              builder: (context, value, child) {
-                return Opacity(
-                  opacity: value,
-                  child: const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentMint),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
+                    );
+                  },
+                ),
+              ],
             ),
           ),
         ),
